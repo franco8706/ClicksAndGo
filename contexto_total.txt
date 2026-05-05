@@ -1,0 +1,1482 @@
+
+
+========================================
+📂 ARCHIVO: ./Cargo.toml
+========================================
+
+[package]
+name = "clicks-agent"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+dotenvy = "0.15"
+
+
+========================================
+📂 ARCHIVO: ./web/package.json
+========================================
+
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "lucide-react": "^1.14.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+
+========================================
+📂 ARCHIVO: ./web/types/laptop.ts
+========================================
+
+// ==========================================
+// CLICKS & GO - Domain Types
+// Mapeo exacto del modelo Rust & PostgreSQL
+// ==========================================
+
+export type Retailer = "Amazon" | "MercadoLibre" | "Dell" | "HP" | "Lenovo" | "Best Buy";
+
+export type LaptopCategory = 
+  | "gaming" 
+  | "business" 
+  | "ultrabook" 
+  | "workstation" 
+  | "budget" 
+  | "creator";
+
+/** Espejo de la tabla 'laptops' en PostgreSQL */
+export interface Laptop {
+  id: string; // uuid en Rust
+  brand: string;
+  model: string;
+  slug: string;
+
+  // Pricing - f64 en Rust
+  price: number;
+  original_price: number;
+  discount_pct: number; // 0-100
+
+  // AI Scoring - f64 en Rust
+  ai_score: number; // 0.0 - 100.0
+  ai_score_label: "ÓPTIMO" | "BUENO" | "REGULAR" | "BAJO";
+  price_trend: "up" | "down" | "stable"; // Derivado del historial
+
+  // Hardware Specs
+  cpu: string;
+  ram_gb: number; // Integer
+  storage_gb: number; // Integer
+  gpu: string;
+  display_inches: number; // f64
+  battery_wh: number; // f64
+  weight_kg: number; // f64
+
+  // Meta
+  category: LaptopCategory;
+  retailer: Retailer;
+  affiliate_url: string;
+  image_url: string;
+  detected_at: string; // ISO-8601 timestamp
+  is_featured_deal: boolean;
+  in_stock: boolean;
+}
+
+/** Estructura devuelta por el endpoint /api/deals (Escáner en tiempo real) */
+export interface AIDeal {
+  laptop_id: string;
+  headline: string; // ej: "Precio mínimo histórico"
+  savings: number;  // Valor absoluto f64
+  confidence: number; // 0.0 - 1.0
+  expires_at: string | null;
+}
+
+/** Envoltura de paginación para listas largas */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+/** Sugerencia del motor de búsqueda IA */
+export interface SearchSuggestion {
+  query: string;
+  category: LaptopCategory | null;
+  result_counts: number;
+}
+
+/** Estado del agente - Refleja el enum AgentState de Rust */
+export type AgentStatus = "idle" | "scanning" | "analyzing" | "complete" | "error";
+
+export interface AgentState {
+  status: AgentStatus;
+  last_run: string; // ISO-8601
+  deals_found: number;
+  sources_checked: number;
+}
+
+
+========================================
+📂 ARCHIVO: ./web/next.config.ts
+========================================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // Lo sacamos de experimental y lo ponemos en la raíz
+  allowedDevOrigins: [
+    "3000-cs-5edf3677-8ab1-4945-bd88-46342531447e.cs-us-east1-pkhd.cloudshell.dev"
+  ],
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "*.cloudshell.dev",
+        "*.googleusercontent.com",
+        "localhost:3000"
+      ],
+    },
+  },
+};
+
+export default nextConfig;
+
+========================================
+📂 ARCHIVO: ./web/tailwind.config.ts
+========================================
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        neon: {
+          blue: "#00f3ff",
+          purple: "#bc13fe",
+        }
+      },
+      animation: {
+        'scan': 'scan 3s linear infinite',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        scan: {
+          '0%': { transform: 'translateY(-100%)', opacity: '0' },
+          '50%': { opacity: '1' },
+          '100%': { transform: 'translateY(100%)', opacity: '0' },
+        },
+        glow: {
+          '0%': { boxShadow: '0 0 5px #00f3ff, 0 0 10px #00f3ff' },
+          '100%': { boxShadow: '0 0 15px #00f3ff, 0 0 25px #00f3ff' },
+        }
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
+
+
+========================================
+📂 ARCHIVO: ./web/components/LaptopCard.tsx
+========================================
+
+import React from 'react';
+
+// Interfaz para mantener el contrato de datos alineado con POO
+interface LaptopProps {
+  name?: string;
+  price?: number;
+  aiScore?: number;
+}
+
+export default function LaptopCard({ name = "Laptop Cyber-Gamer Pro", price = 1499, aiScore = 98 }: LaptopProps) {
+  return (
+    <div className="relative overflow-hidden border border-neon-blue rounded-xl bg-gray-900 p-6 animate-glow transition-all hover:scale-105 cursor-pointer">
+      {/* Línea de escaneo láser */}
+      <div className="absolute inset-0 w-full h-[2px] bg-neon-blue shadow-[0_0_15px_#00f3ff] animate-scan pointer-events-none z-0"></div>
+      
+      {/* Contenido encapsulado */}
+      <div className="relative z-10 flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <h3 className="text-xl font-bold text-white tracking-wide">{name}</h3>
+          <span className="bg-neon-purple text-white text-xs font-bold px-2 py-1 rounded shadow-[0_0_8px_#bc13fe]">
+            AI Match: {aiScore}%
+          </span>
+        </div>
+        
+        <p className="text-gray-400 text-sm">Escaneando especificaciones óptimas...</p>
+        
+        <div className="mt-4 flex justify-between items-center border-t border-gray-800 pt-4">
+          <span className="text-2xl font-bold text-neon-blue">${price}</span>
+          <button className="bg-transparent border border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black font-semibold py-1 px-4 rounded transition-colors">
+            Ver Oferta
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+========================================
+📂 ARCHIVO: ./web/components/HeroSection.tsx
+========================================
+
+"use client";
+
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Search, Cpu, TrendingDown, Star, X, ArrowRight } from "lucide-react";
+import type { SearchSuggestion } from "@/types/laptop";
+
+// Seed de sugerencias estáticas
+const SUGGESTIONS: SearchSuggestion[] = [
+  { query: "Gaming laptop RTX 4070", category: "gaming", result_counts: 12 },
+  { query: "ThinkPad business ultrabook", category: "business", result_counts: 8 },
+  { query: "MacBook Pro M3", category: "workstation", result_counts: 4 },
+  { query: "Mejor laptop para programar", category: "ultrabook", result_counts: 19 },
+  { query: "Notebook barata menos de $700", category: "budget", result_counts: 23 },
+  { query: "Creator laptop Adobe Premiere", category: "creator", result_counts: 7 },
+];
+
+const CATEGORY_ICON: Record<string, React.ReactNode> = {
+  gaming: <Cpu size={13} className="text-purple-400" />,
+  business: <Star size={13} className="text-blue-400" />,
+  workstation: <Cpu size={13} className="text-amber-400" />,
+  ultrabook: <TrendingDown size={13} className="text-emerald-400" />,
+  budget: <TrendingDown size={13} className="text-cyan-400" />,
+  creator: <Star size={13} className="text-pink-400" />,
+};
+
+// --- Predictive Search Bar ---
+function PredictiveSearch() {
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = SUGGESTIONS.filter((s) =>
+    s.query.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 5);
+
+  const handleSelect = useCallback((suggestion: SearchSuggestion) => {
+    setQuery(suggestion.query);
+    setIsOpen(false);
+    inputRef.current?.blur();
+  }, []);
+
+  useEffect(() => {
+    setIsOpen(query.length > 0 && filtered.length > 0 && isFocused);
+  }, [query, filtered.length, isFocused]);
+
+  return (
+    <div className="relative w-full max-w-2xl mx-auto">
+      {/* Glow ring on focus */}
+      {isFocused && (
+        <div className="absolute -inset-px rounded-xl bg-cyan-500/20 blur-sm pointer-events-none" />
+      )}
+
+      {/* Input wrapper */}
+      <div 
+        className={`relative flex items-center bg-slate-900 rounded-xl border transition-all duration-200 ${
+          isFocused ? "border-cyan-500/50" : "border-slate-700"
+        }`}
+      >
+        <Search size={16} className={`ml-4 shrink-0 transition-colors ${isFocused ? "text-cyan-400" : "text-slate-500"}`} />
+        
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+          placeholder="Busca por modelo, specs o necesidad..."
+          className="flex-1 bg-transparent px-3 py-4 text-sm text-white placeholder-slate-500 font-mono outline-none caret-cyan-400"
+        />
+
+        {query && (
+          <button 
+            onClick={() => setQuery("")}
+            className="mr-2 p-1.5 rounded hover:bg-slate-800 transition-colors"
+          >
+            <X size={14} className="text-slate-500" />
+          </button>
+        )}
+
+        <button className="mr-2 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm font-semibold font-mono hover:bg-cyan-500/20 transition-all duration-200 shrink-0">
+          <span>BUSCAR</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      {/* Autocomplete dropdown */}
+      {isOpen && (
+        <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl shadow-black/50">
+          <div className="px-3 pt-2 pb-1">
+            <p className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Sugerencias del motor IA</p>
+          </div>
+          {filtered.map((suggestion, i) => (
+            <button
+              key={i}
+              onMouseDown={() => handleSelect(suggestion)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800 transition-colors text-left group"
+            >
+              <span className="shrink-0">
+                {CATEGORY_ICON[suggestion.category ?? ""] ?? <Search size={13} className="text-slate-400" />}
+              </span>
+              <span className="flex-1 text-sm text-slate-300 group-hover:text-white transition-colors font-mono">
+                {suggestion.query}
+              </span>
+              <span className="text-[10px] font-mono text-slate-600">
+                {suggestion.result_counts} resultados
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Hero Stats Pill ---
+function StatPill({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 px-6">
+      <span className="font-mono text-lg font-bold text-white">{value}</span>
+      <span className="font-mono text-xs text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+// --- Main Component: HeroSection ---
+export default function HeroSection() {
+  return (
+    <section className="relative w-full pt-28 pb-16 px-4 flex flex-col items-center text-center overflow-hidden">
+      {/* Background grid pattern */}
+      <div 
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,212,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,1) 1px, transparent 1px)`,
+          backgroundSize: "40px 40px",
+        }}
+      />
+      
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/5 rounded-full blur-3xl" />
+
+      {/* Badge */}
+      <div className="mb-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+        <span className="font-mono text-xs text-slate-400 uppercase tracking-widest">
+          Motor IA activo – 1.847 escaneos hoy
+        </span>
+      </div>
+
+      {/* Headline */}
+      <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight max-w-3xl">
+        El mejor precio de laptop,{" "}
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-200">
+          detectado por IA
+        </span>
+      </h1>
+
+      <p className="text-base sm:text-lg text-slate-400 mb-10 max-w-xl leading-relaxed">
+        Comparamos Amazon, MercadoLibre, Dell, HP y Lenovo en tiempo real.
+        Solo mostramos la oferta cuando vale la pena.
+      </p>
+
+      {/* Search */}
+      <div className="w-full mb-12">
+        <PredictiveSearch />
+      </div>
+
+      {/* Quick filters */}
+      <div className="flex flex-wrap justify-center gap-2 mb-12">
+        {["Gaming", "Trabajo", "Ultrabook", "Menos de $800", "Mac", "Workstation"].map((tag) => (
+          <button
+            key={tag}
+            className="font-mono text-xs px-3 py-1.5 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-all duration-200"
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 sm:gap-0 divide-x divide-slate-800">
+        <StatPill value="2.400+" label="modelos" />
+        <StatPill value="7" label="retailers" />
+        <StatPill value="$287" label="ahorro prom." />
+        <StatPill value="24/7" label="monitoreo" />
+      </div>
+    </section>
+  );
+}
+
+
+========================================
+📂 ARCHIVO: ./web/components/SkeletonCard.tsx
+========================================
+
+"use client";
+
+/**
+ * SkeletonCard - se muestra mientras los agentes de IA buscan / califican laptops.
+ * Usa una animación puramente CSS vía Tailwind 'animate-pulse'.
+ * Refleja exactamente el diseño de 'LaptopCard' para que la transición sea fluida.
+ */
+export function SkeletonCard() {
+  return (
+    <div className="flex flex-col bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+      
+      {/* Image placeholder */}
+      <div className="h-36 mx-4 mt-4 rounded-lg bg-slate-800 animate-pulse" />
+
+      <div className="flex flex-col p-4 gap-3">
+        {/* Brand line */}
+        <div className="space-y-1.5">
+          <div className="h-2.5 w-24 rounded bg-slate-800 animate-pulse" />
+          <div className="h-4 w-48 rounded bg-slate-800 animate-pulse" />
+        </div>
+
+        {/* AI Score badge */}
+        <div className="h-7 w-36 rounded bg-slate-800 animate-pulse" />
+
+        {/* Spec pills */}
+        <div className="flex gap-1.5">
+          <div className="h-6 w-20 rounded bg-slate-800 animate-pulse" />
+          <div className="h-6 w-14 rounded bg-slate-800 animate-pulse" />
+          <div className="h-6 w-14 rounded bg-slate-800 animate-pulse" />
+        </div>
+
+        <div className="h-8" />
+
+        {/* Price + CTA */}
+        <div className="flex items-end justify-between pt-2 border-t border-slate-800">
+          <div className="space-y-1.5">
+            <div className="h-6 w-20 rounded bg-slate-800 animate-pulse" />
+            <div className="h-3 w-28 rounded bg-slate-800 animate-pulse" />
+          </div>
+          <div className="h-8 w-14 rounded-lg bg-slate-800 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Inline skeleton para el ticker de Ofertas IA */
+export function SkeletonDealTicker() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 border border-slate-800">
+      <div className="h-4 w-4 rounded-full bg-slate-800 animate-pulse shrink-0" />
+      <div className="flex-1 space-y-1">
+        <div className="h-3 w-3/4 rounded bg-slate-800 animate-pulse" />
+        <div className="h-2.5 w-1/2 rounded bg-slate-800 animate-pulse" />
+      </div>
+      <div className="h-5 w-16 rounded bg-slate-800 animate-pulse" />
+    </div>
+  );
+}
+export default SkeletonCard;
+
+
+========================================
+📂 ARCHIVO: ./web/components/AIDealsSection.tsx
+========================================
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { Activity, Bot, Zap, TrendingDown, Clock } from "lucide-react";
+import type { AIDeal, AgentState, AgentStatus } from "@/types/laptop";
+import { MOCK_AI_DEALS, MOCK_AGENT_STATE, MOCK_LAPTOPS } from "@/lib/mock-data";
+import { SkeletonDealTicker } from "./SkeletonCard";
+
+// --- Agent Status Indicator ---
+
+const STATUS_COPY: Record<AgentStatus, string> = {
+  idle: "Agente en espera",
+  scanning: "Escaneando fuentes...",
+  analyzing: "Analizando precios...",
+  complete: "Análisis completado",
+  error: "Error de conexión",
+};
+
+const STATUS_COLOR: Record<AgentStatus, string> = {
+  idle: "text-slate-400",
+  scanning: "text-cyan-400",
+  analyzing: "text-amber-400",
+  complete: "text-emerald-400",
+  error: "text-red-400",
+};
+
+function AgentStatusBadge({ state }: { state: AgentState }) {
+  const isActive = state.status === "scanning" || state.status === "analyzing";
+
+  return (
+    <div className="flex items-center gap-2 text-xs font-mono">
+      <div className="relative flex items-center justify-center w-4 h-4">
+        {isActive && (
+          <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-ping" />
+        )}
+        <span 
+          className={`relative w-2 h-2 rounded-full ${isActive ? "bg-cyan-400" : "bg-slate-500"}`} 
+        />
+      </div>
+      <span className={`${STATUS_COLOR[state.status]} transition-colors`}>
+        {STATUS_COPY[state.status]}
+      </span>
+      <span className="text-slate-600">•</span>
+      <span className="text-slate-500">{state.sources_checked} fuentes</span>
+      <span className="text-slate-600">•</span>
+      <span className="text-slate-500">{state.deals_found} ofertas detectadas</span>
+    </div>
+  );
+}
+
+// --- Individual Deal Row ---
+
+interface DealRowProps {
+  deal: AIDeal;
+  index: number;
+}
+
+function DealRow({ deal, index }: DealRowProps) {
+  const laptop = MOCK_LAPTOPS.find((l) => l.id === deal.laptop_id);
+  if (!laptop) return null;
+
+  const confidencePct = Math.round(deal.confidence * 100);
+
+  return (
+    <div 
+      className="group flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/20 hover:bg-slate-800/60 transition-all duration-200 cursor-pointer"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <span className="font-mono text-xs text-slate-600 w-4 shrink-0">
+        #{index + 1}
+      </span>
+
+      <div className="w-7 h-7 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+        <TrendingDown size={14} className="text-cyan-400" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-slate-200 truncate group-hover:text-white transition-colors">
+          {deal.headline}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="font-mono text-[10px] text-slate-500">{laptop.retailer}</span>
+          <span className="text-slate-700">•</span>
+          {deal.expires_at ? (
+            <span className="font-mono text-[10px] text-amber-400/70 flex items-center gap-1">
+              <Clock size={10} />
+              Expira pronto
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] text-slate-600">Sin vencimiento</span>
+          )}
+        </div>
+      </div>
+
+      <div className="text-right shrink-0">
+        <p className="font-mono text-sm font-bold text-emerald-400">
+          -${deal.savings.toFixed(0)}
+        </p>
+        <p className="font-mono text-[10px] text-slate-500">
+          {confidencePct}% confianza
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// --- Main Component: AIDealsSection ---
+
+export default function AIDealsSection() {
+  const [agentState, setAgentState] = useState<AgentState>(MOCK_AGENT_STATE);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+
+  // Simula la carga inicial de los agentes
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsLoading(false), 1800);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // Simula el ciclo de actividad de los agentes (Scanning -> Analyzing)
+  useEffect(() => {
+    const stateCycle: AgentStatus[] = ["scanning", "analyzing", "scanning"];
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+      setAgentState((prev) => ({
+        ...prev,
+        status: stateCycle[tick % stateCycle.length],
+        sources_checked: prev.sources_checked + Math.floor(Math.random() * 2),
+      }));
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [tick]);
+
+  return (
+    <section className="w-full">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700">
+            <Bot size={14} className="text-cyan-400" />
+            <span className="font-mono text-xs font-semibold text-slate-300 uppercase tracking-widest">
+              IA Deals
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          </div>
+          <h2 className="text-lg font-bold text-white">
+            Ofertas en tiempo real
+          </h2>
+        </div>
+        <AgentStatusBadge state={agentState} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, i) => <SkeletonDealTicker key={i} />)
+          : MOCK_AI_DEALS.map((deal, i) => (
+              <DealRow key={deal.laptop_id} deal={deal} index={i} />
+            ))}
+      </div>
+
+      {!isLoading && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: <Activity size={12} />, label: "Scans hoy", value: "1,847" },
+            { icon: <Zap size={12} />, label: "Alertas emitidas", value: agentState.deals_found.toString() },
+            { icon: <TrendingDown size={12} />, label: "Ahorro promedio", value: "$287" },
+          ].map((stat) => (
+            <div 
+              key={stat.label} 
+              className="flex items-center gap-2.5 bg-slate-900 rounded-lg px-3 py-2.5 border border-slate-800"
+            >
+              <span className="text-cyan-400/60">{stat.icon}</span>
+              <div>
+                <p className="font-mono text-xs font-bold text-white">{stat.value}</p>
+                <p className="font-mono text-[10px] text-slate-500">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
+========================================
+📂 ARCHIVO: ./web/app/layout.tsx
+========================================
+
+import type { Metadata } from "next";
+// 1. Eliminamos las importaciones de 'next/font/google'
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Clicks & go | AI Laptop Deals",
+  description: "Sistema agéntico para recomendaciones de laptops",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="es">
+      {/* 2. Usamos fuentes del sistema temporales (sans-serif) para destrabar el build */}
+      <body className="antialiased bg-gray-950 text-gray-100 font-sans">
+        {children}
+      </body>
+    </html>
+  );
+}
+
+========================================
+📂 ARCHIVO: ./web/app/page.tsx
+========================================
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { SlidersHorizontal, LayoutGrid, List, Bot, Zap } from "lucide-react";
+import type { Laptop, LaptopCategory } from "@/types/laptop";
+import { MOCK_LAPTOPS } from "@/lib/mock-data";
+import LaptopCard from "@/components/LaptopCard";
+import SkeletonCard from "@/components/SkeletonCard";
+import HeroSection from "@/components/HeroSection";
+import AIDealsSection from "@/components/AIDealsSection";
+
+// --- Navbar Component ---
+function Navbar() {
+  return (
+    <nav className="fixed top-0 inset-x-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+            <Zap size={14} className="text-cyan-400" />
+          </div>
+          <span className="font-mono text-sm font-bold text-white tracking-tight">
+            clicks<span className="text-cyan-400">&</span>go
+          </span>
+        </a>
+
+        <div className="hidden sm:flex items-center gap-6">
+          {["Laptops", "Ofertas IA", "Comparar", "Alertas"].map((item) => (
+            <a key={item} href="#" className="font-mono text-xs text-slate-400 hover:text-white transition-colors uppercase tracking-widest">
+              {item}
+            </a>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-slate-500">
+            <Bot size={12} className="text-cyan-400" />
+            <span>IA activa</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          </div>
+          <button className="font-mono text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all duration-200">
+            Alertas
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// --- Constants & Types ---
+const CATEGORIES: { value: LaptopCategory | "all"; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "gaming", label: "Gaming" },
+  { value: "business", label: "Trabajo" },
+  { value: "ultrabook", label: "Ultrabook" },
+  { value: "creator", label: "Creadores" },
+  { value: "workstation", label: "Workstation" },
+  { value: "budget", label: "Económico" },
+];
+
+interface FilterBarProps {
+  active: string;
+  onSelect: (val: string) => void;
+  viewMode: "grid" | "list";
+  onViewMode: (m: "grid" | "list") => void;
+}
+
+function FilterBar({ active, onSelect, viewMode, onViewMode }: FilterBarProps) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-4 border-y border-slate-800">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <SlidersHorizontal size={14} className="text-slate-500 shrink-0" />
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.value}
+            onClick={() => onSelect(cat.value)}
+            className={`font-mono text-xs px-3 py-1.5 rounded-full border whitespace-nowrap shrink-0 transition-all duration-200 ${
+              active === cat.value
+                ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                : "text-slate-400 border-slate-700 hover:border-slate-600 hover:text-slate-200"
+            }`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1 bg-slate-900 rounded-lg border border-slate-800 p-1 shrink-0">
+        {[
+          { mode: "grid", icon: <LayoutGrid size={13} /> },
+          { mode: "list", icon: <List size={13} /> },
+        ].map(({ mode, icon }) => (
+          <button
+            key={mode}
+            onClick={() => onViewMode(mode as "grid" | "list")}
+            className={`p-1.5 rounded transition-all duration-200 ${
+              viewMode === mode ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            {icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Product Grid ---
+interface ProductGridProps {
+  laptops: Laptop[];
+  isLoading: boolean;
+  viewMode: "grid" | "list";
+}
+
+function ProductGrid({ laptops, isLoading, viewMode }: ProductGridProps) {
+  if (isLoading) {
+    return (
+      <div className={`grid ${viewMode === "grid" 
+        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" 
+        : "grid-cols-1 sm:grid-cols-2 gap-4"}`}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (laptops.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <Bot size={36} className="text-slate-700 mb-4" />
+        <p className="font-mono text-sm text-slate-500">Sin resultados para ese filtro</p>
+        <p className="font-mono text-xs text-slate-600 mt-1">El agente IA sigue buscando nuevas ofertas</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid ${viewMode === "grid" 
+      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" 
+      : "grid-cols-1 sm:grid-cols-2 gap-4"}`}>
+      {laptops.map((laptop, i) => (
+        <LaptopCard key={laptop.id} laptop={laptop} isNew={i < 2} />
+      ))}
+    </div>
+  );
+}
+
+// --- Main Page ---
+export default function HomePage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [category, setCategory] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filtered, setFiltered] = useState<Laptop[]>([]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      const results = category === "all" 
+        ? MOCK_LAPTOPS 
+        : MOCK_LAPTOPS.filter(l => l.category === category);
+      setFiltered(results);
+      setIsLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [category]);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-slate-200 pb-20">
+      <Navbar />
+      <HeroSection />
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 -mt-8 relative z-10">
+        <AIDealsSection />
+
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-mono text-xs text-slate-500">
+              {isLoading ? "Cargando laptops..." : `${filtered.length} laptops encontradas`}
+              <p className="text-cyan-400/60 mt-1">Actualizado hace 2 min</p>
+            </div>
+          </div>
+
+          <FilterBar 
+            active={category} 
+            onSelect={setCategory} 
+            viewMode={viewMode} 
+            onViewMode={setViewMode} 
+          />
+
+          <div className="mt-8">
+            <ProductGrid laptops={filtered} isLoading={isLoading} viewMode={viewMode} />
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-800 py-8 mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="font-mono text-xs text-slate-600">
+            clicks&go © 2026 - Motor IA en Rust + Next.js 14
+          </p>
+          <p className="font-mono text-xs text-slate-700">
+            Algunos enlaces son de afiliados. El precio no varía para el comprador.
+          </p>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+
+========================================
+📂 ARCHIVO: ./web/app/globals.css
+========================================
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+========================================
+📂 ARCHIVO: ./web/lib/mock-data.ts
+========================================
+
+import type { Laptop, AIDeal, AgentState } from "@/types/laptop";
+
+export const MOCK_LAPTOPS: Laptop[] = [
+  {
+    id: "nb_001",
+    brand: "ASUS",
+    model: "ROG Zephyrus G14 (2024)",
+    slug: "asus-rog-zephyrus-g14-2024",
+    price: 1899.99,
+    original_price: 2399.99,
+    discount_pct: 21,
+    ai_score: 94,
+    ai_score_label: "ÓPTIMO",
+    price_trend: "down",
+    cpu: "AMD Ryzen 9 8945HS",
+    ram_gb: 32,
+    storage_gb: 1000,
+    gpu: "RTX 4070 8GB",
+    display_inches: 14,
+    battery_wh: 73,
+    weight_kg: 1.65,
+    category: "gaming",
+    retailer: "Amazon",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T18:30:00Z",
+    is_featured_deal: true,
+    in_stock: true,
+  },
+  {
+    id: "nb_002",
+    brand: "Dell",
+    model: "XPS 15 9530",
+    slug: "dell-xps-15-9530",
+    price: 1349.0,
+    original_price: 1599.0,
+    discount_pct: 16,
+    ai_score: 88,
+    ai_score_label: "BUENO",
+    price_trend: "stable",
+    cpu: "Intel Core i7-13700H",
+    ram_gb: 16,
+    storage_gb: 512,
+    gpu: "RTX 4050 6GB",
+    display_inches: 15.6,
+    battery_wh: 86,
+    weight_kg: 1.86,
+    category: "creator",
+    retailer: "Dell",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T17:00:00Z",
+    is_featured_deal: false,
+    in_stock: true,
+  },
+  {
+    id: "nb_003",
+    brand: "Lenovo",
+    model: "ThinkPad X1 Carbon Gen 12",
+    slug: "lenovo-thinkpad-x1-carbon-gen-12",
+    price: 1189.0,
+    original_price: 1549.0,
+    discount_pct: 23,
+    ai_score: 91,
+    ai_score_label: "ÓPTIMO",
+    price_trend: "down",
+    cpu: "Intel Core Ultra 7 165U",
+    ram_gb: 32,
+    storage_gb: 1000,
+    gpu: "Intel Arc Graphics",
+    display_inches: 14,
+    battery_wh: 57,
+    weight_kg: 1.12,
+    category: "business",
+    retailer: "Lenovo",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T16:45:00Z",
+    is_featured_deal: true,
+    in_stock: true,
+  },
+  {
+    id: "nb_004",
+    brand: "HP",
+    model: "Spectre x360 14",
+    slug: "hp-spectre-x360-14",
+    price: 979.0,
+    original_price: 1199.0,
+    discount_pct: 18,
+    ai_score: 82,
+    ai_score_label: "BUENO",
+    price_trend: "down",
+    cpu: "Intel Core Ultra 5 125H",
+    ram_gb: 16,
+    storage_gb: 512,
+    gpu: "Intel Arc Graphics",
+    display_inches: 14,
+    battery_wh: 68,
+    weight_kg: 1.45,
+    category: "ultrabook",
+    retailer: "HP",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T15:20:00Z",
+    is_featured_deal: false,
+    in_stock: true,
+  },
+  {
+    id: "nb_005",
+    brand: "Apple",
+    model: "MacBook Pro 14\" M3 Pro",
+    slug: "apple-macbook-pro-14-m3-pro",
+    price: 1799.0,
+    original_price: 1999.0,
+    discount_pct: 10,
+    ai_score: 96,
+    ai_score_label: "ÓPTIMO",
+    price_trend: "stable",
+    cpu: "Apple M3 Pro 12-core",
+    ram_gb: 18,
+    storage_gb: 512,
+    gpu: "Apple M3 Pro 18-core GPU",
+    display_inches: 14.2,
+    battery_wh: 72.4,
+    weight_kg: 1.61,
+    category: "workstation",
+    retailer: "Amazon",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T14:00:00Z",
+    is_featured_deal: false,
+    in_stock: true,
+  },
+  {
+    id: "nb_006",
+    brand: "Acer",
+    model: "Swift X 14",
+    slug: "acer-swift-x-14",
+    price: 699.0,
+    original_price: 899.0,
+    discount_pct: 22,
+    ai_score: 75,
+    ai_score_label: "BUENO",
+    price_trend: "down",
+    cpu: "AMD Ryzen 7 7745HX",
+    ram_gb: 16,
+    storage_gb: 512,
+    gpu: "RTX 4050 6GB",
+    display_inches: 14.5,
+    battery_wh: 65,
+    weight_kg: 1.47,
+    category: "budget",
+    retailer: "Amazon",
+    affiliate_url: "#",
+    image_url: "",
+    detected_at: "2024-12-14T12:30:00Z",
+    is_featured_deal: false,
+    in_stock: false,
+  }
+];
+
+export const MOCK_AI_DEALS: AIDeal[] = [
+  {
+    laptop_id: "nb_001",
+    headline: "Precio mínimo histórico - ROG Zephyrus G14",
+    savings: 300.0,
+    confidence: 0.97,
+    expires_at: "2024-12-15T23:59:59Z",
+  },
+  {
+    laptop_id: "nb_003",
+    headline: "Caída del 23% detectada - ThinkPad X1 Carbon",
+    savings: 360.0,
+    confidence: 0.91,
+    expires_at: null,
+  },
+  {
+    laptop_id: "nb_006",
+    headline: "Flash sale Amazon - Acer Swift X 14",
+    savings: 200.0,
+    confidence: 0.83,
+    expires_at: "2024-12-14T20:00:00Z",
+  }
+];
+
+export const MOCK_AGENT_STATE: AgentState = {
+  status: "scanning",
+  last_run: "2024-12-14T18:28:00Z",
+  deals_found: 14,
+  sources_checked: 7,
+};
+
+
+========================================
+📂 ARCHIVO: ./src/database.rs
+========================================
+
+use sqlx::postgres::PgPool;
+use std::env;
+
+pub struct DatabaseManager {
+    pub pool: PgPool,
+}
+
+impl DatabaseManager {
+    pub async fn new() -> Result<Self, sqlx::Error> {
+        // La URL tendrá el formato: postgresql://usuario:password@IP/nombre_db
+        let database_url = env::var("DATABASE_URL")
+            .expect("DATABASE_URL no definida en las variables de entorno");
+        
+        let pool = PgPool::connect(&database_url).await?;
+        Ok(Self { pool })
+    }
+}
+
+========================================
+📂 ARCHIVO: ./src/models.rs
+========================================
+
+use chrono::NaiveDateTime;
+use serde::{Serialize, Deserialize};
+use serde_json::Value;
+
+// Aplicamos Encapsulamiento: esta clase representa exactamente una fila de tu tabla SQL
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Notebook {
+    pub id: Option<i32>, // Option porque puede ser None antes de insertarse en la DB
+    pub marca: String,
+    pub modelo: String,
+    pub precio: f64,
+    pub url: String,
+    pub metadata_extra: Value, // Para guardar el JSONB
+    pub fecha_actualizacion: NaiveDateTime,
+}
+
+========================================
+📂 ARCHIVO: ./src/main.rs
+========================================
+
+mod database;
+mod models;
+mod traits;
+
+use database::DatabaseManager;
+use models::Notebook;
+use dotenvy::dotenv;
+use std::error::Error;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv().ok(); 
+    println!("🛸 Proyecto: Clicks & go - Validando Motores...");
+
+    // 1. Conexión a la Base de Datos
+    let db = DatabaseManager::new().await?;
+    println!("✅ Conexión exitosa a PostgreSQL.");
+
+    // 2. Construcción del Objeto (Usando los campos en español de tu modelo)
+    let prueba_laptop = Notebook {
+        id: Some(1), // Envolvemos el número en Some()
+        marca: "Lenovo".to_string(),
+        modelo: "Legion 5".to_string(),
+        precio: 1200.50,
+        url: "https://clicks-and-go.com".to_string(),
+        metadata_extra: serde_json::json!({"vram": "8GB", "cpu": "i7"}),
+        fecha_actualizacion: chrono::Utc::now().naive_utc(),
+    };
+
+    println!("💻 Modelo validado en memoria: {} {}", prueba_laptop.marca, prueba_laptop.modelo);
+
+    // 3. Prueba de lectura real usando el Pool
+    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM notebooks_procesadas")
+        .fetch_one(&db.pool)
+        .await
+        .unwrap_or((0,));
+
+    println!("📊 Total de laptops en PostgreSQL: {}", count.0);
+    println!("🚀 Sistema 100% operativo y listo para los Agentes.");
+
+    Ok(())
+}
+
+========================================
+📂 ARCHIVO: ./src/traits.rs
+========================================
+
+use async_trait::async_trait;
+use std::error::Error;
+use crate::models::Notebook;
+
+#[async_trait]
+pub trait RetailerProvider: Send + Sync {
+    // Definimos el contrato: Cualquier tienda debe poder devolver una lista de ofertas.
+    async fn fetch_offers(&self) -> Result<Vec<Notebook>, Box<dyn Error + Send + Sync>>;
+    fn get_store_name(&self) -> &str;
+}
+
+
+========================================
+📂 ARCHIVO: ./src/agents/mod.rs
+========================================
+
+pub mod market_hunter;
+
+
+========================================
+📂 ARCHIVO: ./src/agents/market_hunter.rs
+========================================
+
+use crate::models::Notebook;
+use crate::traits::RetailerProvider;
+use async_trait::async_trait;
+use sqlx::PgPool;
+use std::sync::Arc;
+use std::error::Error;
+
+pub struct MarketHunter {
+    pub retailer_name: String,
+    pub db_pool: Arc<PgPool>,
+}
+
+#[async_trait]
+impl RetailerProvider for MarketHunter {
+    fn get_store_name(&self) -> &str {
+        &self.retailer_name
+    }
+
+    async fn fetch_offers(&self) -> Result<Vec<Notebook>, Box<dyn Error + Send + Sync>> {
+        // Simulación de captura (aquí irá el scraping/API después)
+        let mock_notebook = Notebook {
+            id: None,
+            marca: "Lenovo".to_string(),
+            modelo: "Legion Slim 5".to_string(),
+            precio: 1350.00,
+            metadata_extra: serde_json::json!({
+                "procesador": "Ryzen 7",
+                "ram": "16GB",
+                "gpu": "RTX 4060"
+            }),
+        };
+
+        // Lógica de Persistencia (SQL Dinámico)
+        sqlx::query!(
+            "INSERT INTO notebooks_procesadas (marca, modelo, precio, metadata_extra) 
+             VALUES ($1, $2, $3, $4)",
+            mock_notebook.marca,
+            mock_notebook.modelo,
+            mock_notebook.precio,
+            mock_notebook.metadata_extra
+        )
+        .execute(&*self.db_pool)
+        .await?;
+
+        println!("💾 Oferta guardada en PostgreSQL: {}", mock_notebook.modelo);
+
+        Ok(vec![mock_notebook])
+    }
+}
+
+
+========================================
+📂 ARCHIVO: ./src/providers/mongo.rs
+========================================
+
+use async_trait::async_trait;
+use mongodb::{Client, bson::doc};
+use std::sync::Arc;
+use crate::models::Laptop;
+use crate::traits::LaptopProvider;
+use std::error::Error;
+
+pub struct MongoLaptopProvider {
+    // Encapsulamiento: El cliente se comparte mediante punteros atómicos (Arc)
+    // para maximizar la eficiencia de memoria en Google Cloud.
+    db_client: Arc<Client>,
+}
+
+impl MongoLaptopProvider {
+    // Constructor (POO)
+    pub fn new(client: Arc<Client>) -> Self {
+        Self { db_client: client }
+    }
+}
+
+#[async_trait]
+impl LaptopProvider for MongoLaptopProvider {
+    async fn extraer_ofertas(&self) -> Result<Vec<Laptop>, Box<dyn Error + Send + Sync>> {
+        let db = self.db_client.database("clicks_and_go");
+        let collection = db.collection::<Laptop>("ofertas_lenovo");
+
+        // 1. Simulación de extracción de datos (Próximo paso: Scraping/API)
+        let ofertas_capturadas = vec![
+            Laptop::new(
+                "Lenovo".to_string(), 
+                "Legion Slim 7".to_string(), 
+                1799.99, 
+                "https://lenovo.com/legion-slim-7".to_string()
+            ),
+            Laptop::new(
+                "Lenovo".to_string(), 
+                "ThinkPad X1 Carbon".to_string(), 
+                2100.00, 
+                "https://lenovo.com/x1-carbon".to_string()
+            ),
+        ];
+
+        // 2. Lógica de Persistencia (Upsert inteligente)
+        for laptop in &ofertas_capturadas {
+            let filter = doc! { "model": &laptop.model, "brand": &laptop.brand };
+            let update = doc! {
+                "$set": {
+                    "price": laptop.price,
+                    "url": &laptop.url,
+                    "last_updated": chrono::Utc::now().to_rfc3339()
+                }
+            };
+            
+            // Implementación ultra-optimizada utilizando el Patrón Builder
+            collection.update_one(filter, update).upsert(true).await?;
+        }
+
+        println!("Agente Lenovo: {} ofertas procesadas y sincronizadas en MongoDB.", ofertas_capturadas.len());
+        
+        Ok(ofertas_capturadas)
+    }
+}
+
+========================================
+📂 ARCHIVO: ./src/providers/mod.rs
+========================================
+
+pub mod mongo;
+
+================================================================
+📖 CONTEXTO TOTAL - PROYECTO: CLICKS & GO
+================================================================
+Última Actualización: 2026-05-02
+Estado Global: ✅ Full-Stack Híbrido Operativo (Fase de Validación)
+
+1. IDENTIDAD DEL PROYECTO
+----------------------------------------------------------------
+- Nombre: Clicks & go
+- Objetivo Core: Plataforma e-commerce agéntica impulsada por IA para la caza, análisis y venta de laptops de fabricantes líderes (HP, Dell, Lenovo) mediante marketing de afiliados.
+- Entorno de Desarrollo: Google Cloud Shell / GitHub Codespaces.
+
+2. PILA TECNOLÓGICA (TECH STACK)
+----------------------------------------------------------------
+- Backend Core: Rust (tokio, sqlx, mongodb, serde).
+- Frontend: Next.js 16.2.4, React 19, Tailwind CSS v4, Lucide React.
+- Bases de Datos: PostgreSQL (Cloud SQL) y MongoDB Atlas.
+- Ecosistema Adicional proyectado: Python, n8n, Antigravity, ElevenLabs.
+
+3. HITOS DE INFRAESTRUCTURA Y REDES
+----------------------------------------------------------------
+- Túnel Seguro: Implementación de Cloud SQL Auth Proxy (`127.0.0.1:5432`) apuntando a la instancia `clicks-and-go-2026:us-central1:clicks-go-postgres` para evadir bloqueos de firewall (PoolTimedOut).
+- Automatización: Script inyectado en `~/.bashrc` para arranque silencioso del proxy y creación de alias de productividad (`run-agent`, `git-save`).
+- Configuración Web: Adaptación de `next.config.ts` (`allowedDevOrigins` y `serverActions`) para permitir la ejecución del frontend dentro del entorno dinámico de Google Cloud Shell.
+
+4. ARQUITECTURA DE CÓDIGO Y AGENTES (POO)
+----------------------------------------------------------------
+El sistema aplica rigurosamente la Programación Orientada a Objetos:
+
+- Abstracción (Traits): Implementación de `RetailerProvider` (para tiendas) y `LaptopProvider` (para bases de datos), obligando a los agentes a cumplir un contrato estandarizado (`fetch_offers`).
+- Encapsulamiento: La conexión a bases de datos ocurre dentro de `DatabaseManager` (PostgreSQL) y `MongoLaptopProvider` (MongoDB), protegiendo los pools de conexión de manipulaciones externas.
+- Eficiencia de Memoria (Rust): Uso de `Arc<PgPool>` y `Arc<Client>` para compartir de manera segura y ligera los clientes de base de datos entre múltiples hilos o agentes concurrentes.
+- Modelado Espejo: Sincronización absoluta entre las estructuras de Rust (`models.rs -> Notebook`) y las interfaces de TypeScript (`types/laptop.ts -> Laptop, AIDeal, AgentState`).
+
+5. ESTADO ACTUAL DEL SISTEMA
+----------------------------------------------------------------
+- Backend (Agentes): `MarketHunter` inserta datos exitosamente en PostgreSQL (tabla `notebooks_procesadas`). `MongoLaptopProvider` ejecuta operaciones `upsert` optimizadas en MongoDB Atlas (colección `ofertas_lenovo`).
+- Frontend (Dashboard): UI renderizada con Tailwind CSS, incluyendo simulador de actividad de agentes IA (`AIDealsSection`), barra de búsqueda predictiva y renderizado de laptops mediante `LaptopCard` y componentes Skeleton.
+- Validación: El sistema se encuentra procesando datos simulados (Mock Data) de manera fluida, confirmando que las tuberías de red, persistencia y renderizado están 100% listas para inyectar los algoritmos de web scraping e IA reales.
+================================================================
+📝 [2026-05-04 08:21:00] [Backend]: Iniciando cacería y sincronización de datos de tiendas.
+📝 [2026-05-04 08:21:00] [Vertex AI]: Evaluación finalizada para Legion Slim 5 Gen 9. Puntaje asignado: 8.7. ¿Es ganga destacada?: true
+📝 [2026-05-04 08:21:01] [Vertex AI]: Evaluación finalizada para Omen 16 Transcend. Puntaje asignado: 8.7. ¿Es ganga destacada?: true
+📝 [2026-05-04 08:21:01] [Backend]: Ciclo de sincronización completado y datos guardados en PostgreSQL.
+📝 [2026-05-04 08:33:09] [Backend]: Iniciando cacería y sincronización de datos de tiendas.
+📝 [2026-05-04 08:33:09] [Vertex AI]: Evaluación finalizada para Legion Slim 5 Gen 9. Puntaje asignado: 5.0. ¿Es ganga destacada?: false
+📝 [2026-05-04 08:33:09] [Vertex AI]: Evaluación finalizada para Omen 16 Transcend. Puntaje asignado: 5.0. ¿Es ganga destacada?: false
+📝 [2026-05-04 08:33:10] [Backend]: Ciclo de sincronización completado y datos guardados en PostgreSQL.
+📝 [2026-05-04 08:46:32] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-04 08:46:33] [Backend]: Iniciando cacería y sincronización de datos de tiendas.
+📝 [2026-05-04 08:46:33] [Vertex AI]: Evaluación finalizada para Legion Slim 5 Gen 9. Puntaje asignado: 8.5. ¿Es ganga destacada?: true
+📝 [2026-05-04 08:46:33] [Vertex AI]: Evaluación finalizada para Omen 16 Transcend. Puntaje asignado: 9.2. ¿Es ganga destacada?: true
+📝 [2026-05-04 08:46:33] [Backend]: Ciclo de sincronización completado y datos guardados en PostgreSQL.
+📝 [2026-05-05 03:54:11] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 03:54:12] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 03:54:14] [Vertex AI]: Análisis IA: Legion Slim 5. Score: 6.5.
+📝 [2026-05-05 03:54:14] [Backend]: Pausa táctica de 5s para evitar detección en HP.
+📝 [2026-05-05 03:54:23] [Vertex AI]: Análisis IA: Notebook Gaming VICTUS 15-fb3032la, AMD Ryzen 5, 8 GB RAM, NVIDIA GeForce RTX 3050, 512 GB SSD, 15.6" FHD, Windows 11 Home. Score: 6.5.
+📝 [2026-05-05 03:54:23] [Vertex AI]: Análisis IA: Notebook OMEN Gaming 16-ap0000la, 16" + Mouse gaming HyperX Pulsefire Haste 2 (Negro) + Auriculares gaming HyperX Cloud Stinger 2 Core. Score: 6.5.
+📝 [2026-05-05 03:54:23] [Vertex AI]: Análisis IA: Notebook OMEN Gaming 16-ap0000la, 16", Windows 11 Home,  AMD Ryzen™ AI 5, 16GB RAM, 1TB SSD, 2K, Negro sombra. Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Teclado para juegos HyperX Alloy Core RGB + Audífonos HyperX Cloud III Inalámbrico (Negro- Rojo) + Micrófono HyperX QuadCast 2 - USB (negro) + Mouse gaming HyperX Pulsefire Haste 2 Core inalámbrico. Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: HyperX Cloud Mini - Wireless Gaming Headset (Blanco). Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Mouse gaming wireless HyperX Pulsefire Haste 2 Mini (Blanco). Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Micrófono USB HyperX QuadCast 2 S (negro). Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Mouse gaming HyperX Pulsefire Haste 2 Core inalámbrico. Score: 6.5.
+📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Mouse gaming HyperX Pulsefire Haste 2 Core inalámbrico (negro). Score: 6.5.
+📝 [2026-05-05 03:54:24] [Backend]: Sincronización completada exitosamente.

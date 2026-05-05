@@ -1,0 +1,7 @@
+/target
+.env
+**/*.rs.bk
+cloud-sql-proxy
+proxy.log
+nohup.out
+.env

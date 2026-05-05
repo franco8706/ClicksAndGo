@@ -1,0 +1,32 @@
+[package]
+name = "clicks-agent"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 1. Motor Asíncrono y Utilidades
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+dotenvy = "0.15"
+futures = "0.3" # Recomendado para manejar flujos de datos de agentes
+
+# 2. Persistencia de Datos (SQL & NoSQL)
+# Agregamos 'runtime-tokio-rustls' para evitar dependencias de sistema en Cloud Shell
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
+mongodb = "3.1.0" # Versión estable compatible con tu arquitectura
+
+# 3. Serialización y Tipado
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# 4. Comunicación con Vertex AI (NUEVO)
+# 'rustls-tls' es preferible en entornos Cloud por portabilidad
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# 5. Diagnóstico y Logs (Recomendación Senior)
+log = "0.4"
+env_logger = "0.10"
+scraper = "0.26.0"
+rand = "0.10.1"

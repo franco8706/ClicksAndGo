@@ -1,0 +1,39 @@
+# 🏛️ Arquitectura de Software - Clicks & Go
+**Rol de Diseño:** Arquitecto de Software Senior
+**Paradigma Core:** Programación Orientada a Objetos (POO) Estricta
+
+## 1. Topología del Sistema
+El sistema se diseña bajo un modelo de **Ecosistema Agéntico**. No existen scripts procedimentales sueltos; toda la lógica de negocio, extracción de datos y escritura en base de datos es manejada por entidades (Objetos/Agentes) que interactúan entre sí.
+
+## 2. Aplicación de los Pilares de POO
+El código fuente en Rust (y futuros lenguajes) debe someterse a las siguientes reglas inquebrantables:
+
+### A. Abstracción
+- **Definición:** Ocultar la complejidad técnica exponiendo solo las interfaces necesarias.
+- **Implementación:** Uso de `Traits` en Rust. Ejemplo: `RetailerProvider`. Los agentes no necesitan saber cómo funciona la API de HP o de Dell internamente; solo implementan el contrato definido por el `Trait` para extraer el catálogo de laptops.
+
+### B. Encapsulamiento
+- **Definición:** Protección del estado interno de los objetos.
+- **Implementación:** Las credenciales y lógicas de conexión residen exclusivamente en la clase/estructura `DatabaseManager`. Los agentes de scraping o de ventas no tienen acceso directo a la cadena de conexión de PostgreSQL o MongoDB; deben pedirle los datos al gestor a través de métodos públicos seguros.
+
+### C. Herencia (Composición en Rust)
+- **Definición:** Reutilización de comportamientos comunes.
+- **Implementación:** Existirá una estructura base `BaseAgent` (o traits equivalentes) que definirá características universales (ID de agente, estado de actividad, sistema de logs). Agentes específicos como `MarketHunterAgent` o `PricingAnalystAgent` "heredarán" o compondrán esta base para no duplicar código.
+
+### D. Polimorfismo
+- **Definición:** Múltiples objetos respondiendo al mismo método de formas distintas.
+- **Implementación:** El sistema principal puede llamar al método `.fetch_laptops()` en una lista de diferentes agentes proveedores. El agente de Dell ejecutará una consulta GraphQL, mientras que el de Lenovo podría procesar un archivo JSON, pero el sistema central los tratará de manera uniforme.
+
+## 3. Arquitectura de Datos Híbrida
+El diseño de bases de datos respeta el modelo de Objetos:
+- **PostgreSQL (Estructura Rígida):** Almacena entidades fuertemente tipadas y relacionales. Tablas dedicadas a `Usuarios`, `Transacciones`, `Inventario_Core`. Define la verdad financiera e histórica.
+- **MongoDB (Estructura Flexible):** Almacena documentos JSON cambiantes. Ideal para el `Web Scraping` bruto, historiales de fluctuación de precios y especificaciones técnicas variables de las laptops.
+
+## 4. Gestión de Memoria y Eficiencia (Rust)
+- Prioridad absoluta al uso del _Borrow Checker_.
+- Las estructuras de datos pesadas (como listas de miles de laptops) se pasarán entre los agentes utilizando referencias (`&`) y punteros inteligentes (como `Box`, `Rc`, o `Arc` en contextos concurrentes) para evitar la clonación innecesaria en memoria durante la ejecución en Google Cloud.📝 [2026-05-04 08:20:59] [DevOps]: Inicio de validación de métricas de sistema.
+📝 [2026-05-04 08:33:09] [DevOps]: Inicio de validación de métricas de sistema.
+📝 [2026-05-04 08:46:32] [Sistema]: Despliegue de núcleo agéntico: Conexión dinámica a Vertex AI establecida.
+📝 [2026-05-04 08:46:32] [DevOps]: Inicio de validación de métricas de sistema.
+📝 [2026-05-05 03:54:11] [Sistema]: Despliegue de núcleo agéntico: Conexión dinámica a Vertex AI establecida.
+📝 [2026-05-05 03:54:12] [DevOps]: Validación de métricas pre-vuelo.
