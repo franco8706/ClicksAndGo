@@ -1,26 +1,51 @@
-use crate::traits::RetailerProvider;
+use crate::traits::{RetailerProvider, NormalizadorDePrecios};
 use crate::models::Notebook;
 use async_trait::async_trait;
 use scraper::{Html, Selector};
 use std::error::Error;
-use serde_json::json; // Necesario para metadata_extra
 
 pub struct LenovoHunter;
 pub struct HPHunter;
 
+// --- IMPLEMENTACIÓN DE LA LÓGICA DE NORMALIZACIÓN ---
+// Aplicamos el redondeo absoluto para eliminar centavos y ajustamos el umbral.
+impl NormalizadorDePrecios for LenovoHunter {
+    fn estandarizar_a_usd(&self, precio_extraido: f64, _origen_tienda: &str, tipo_cambio_oficial: f64) -> f64 {
+        // Si el precio supera los 5000, es imposible que sea USD (es ARS).
+        let precio_normalizado = if precio_extraido > 5000.0 {
+            precio_extraido / tipo_cambio_oficial
+        } else {
+            precio_extraido
+        };
+
+        // .round() elimina los centavos devolviendo el entero más cercano como f64.
+        precio_normalizado.round()
+    }
+}
+
+impl NormalizadorDePrecios for HPHunter {
+    fn estandarizar_a_usd(&self, precio_extraido: f64, _origen_tienda: &str, tipo_cambio_oficial: f64) -> f64 {
+        // HP Argentina siempre publica en ARS. Umbral de seguridad de 5000.
+        let precio_normalizado = if precio_extraido > 5000.0 {
+            precio_extraido / tipo_cambio_oficial
+        } else {
+            precio_extraido
+        };
+
+        precio_normalizado.round()
+    }
+}
+
 #[async_trait]
 impl RetailerProvider for LenovoHunter {
-    // CORRECCIÓN: Devolvemos &str para cumplir con el Trait
-    fn get_store_name(&self) -> &str { "Lenovo" }
+    fn get_store_name(&self) -> &str { "Lenovo_AR" }
 
     async fn fetch_offers(&self) -> Result<Vec<Notebook>, Box<dyn Error + Send + Sync>> {
-        println!("🌐 [Cazador Lenovo] Extrayendo datos...");
+        println!("🌐 [Cazador Lenovo] Iniciando captura...");
         let url = "https://www.lenovo.com/ar/es/laptops/subseries-results";
+        let tipo_cambio_actual = 1425.0; 
         
-        let client = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0")
-            .build()?;
-
+        let client = reqwest::Client::builder().user_agent("Mozilla/5.0").build()?;
         let res = client.get(url).send().await?.text().await?;
         let document = Html::parse_document(&res);
         
@@ -39,26 +64,27 @@ impl RetailerProvider for LenovoHunter {
                 .map(|e| e.text().collect::<String>())
                 .unwrap_or_else(|| "0".to_string());
 
-            let precio = precio_texto.replace('$', "").replace('.', "").replace(',', ".").trim().parse::<f64>().unwrap_or(0.0);
+            // Limpieza: quitamos puntos de miles y usamos punto para decimales.
+            let precio_crudo = precio_texto.replace('$', "").replace('.', "").replace(',', ".").trim().parse::<f64>().unwrap_or(0.0);
 
-            if precio > 0.0 {
-                items.push(Notebook {
-                    id: None, // Placeholder para cumplimiento de struct
-                    retailer: "Lenovo".to_string(),
-                    sku_original: format!("LEN-{}", i),
-                    marca: "Lenovo".to_string(),
+            if precio_crudo > 0.0 {
+                let mut notebook = Notebook::new(
+                    self.get_store_name().to_string(),
+                    format!("LEN-{}", i),
+                    "Lenovo".to_string(),
                     modelo,
-                    precio_actual: precio,
-                    procesador: None,
-                    ram_gb: None,
-                    disco_gb: None,
-                    tarjeta_video: None,
-                    rubro: None,
-                    es_oferta_destacada: false,
-                    url_afiliado: url.to_string(),
-                    metadata_extra: json!(null), // CORRECCIÓN: Usamos JsonValue
-                    fecha_actualizacion: None, // O el timestamp si tu struct lo requiere
-                });
+                    precio_crudo,
+                    url.to_string(),
+                    "ARS".to_string() 
+                );
+
+                // Polimorfismo: el objeto usa su implementación de estandarizar_a_usd
+                let precio_usd = self.estandarizar_a_usd(precio_crudo, self.get_store_name(), tipo_cambio_actual);
+                
+                // Encapsulamiento: fijamos el precio final redondeado
+                notebook.fijar_precio_final(precio_usd);
+
+                items.push(notebook);
             }
         }
         Ok(items)
@@ -67,11 +93,12 @@ impl RetailerProvider for LenovoHunter {
 
 #[async_trait]
 impl RetailerProvider for HPHunter {
-    fn get_store_name(&self) -> &str { "HP" }
+    fn get_store_name(&self) -> &str { "HP_AR" }
 
     async fn fetch_offers(&self) -> Result<Vec<Notebook>, Box<dyn Error + Send + Sync>> {
-        println!("🌐 [Cazador HP] Extrayendo datos...");
+        println!("🌐 [Cazador HP] Iniciando captura...");
         let url = "https://www.hp.com/ar-es/shop/laptops.html";
+        let tipo_cambio_actual = 1425.0; 
         
         let client = reqwest::Client::builder().user_agent("Mozilla/5.0").build()?;
         let res = client.get(url).send().await?.text().await?;
@@ -92,26 +119,23 @@ impl RetailerProvider for HPHunter {
                 .map(|e| e.text().collect::<String>())
                 .unwrap_or_default();
 
-            let precio = precio_str.replace('$', "").replace('.', "").replace(',', ".").trim().parse::<f64>().unwrap_or(0.0);
+            let precio_crudo = precio_str.replace('$', "").replace('.', "").replace(',', ".").trim().parse::<f64>().unwrap_or(0.0);
 
-            if !nombre.is_empty() && precio > 0.0 {
-                items.push(Notebook {
-                    id: 0,
-                    retailer: "HP".to_string(),
-                    sku_original: format!("HP-{}", i),
-                    marca: "HP".to_string(),
-                    modelo: nombre,
-                    precio_actual: precio,
-                    tarjeta_video: None,
-                    procesador: None,
-                    ram_gb: None,
-                    disco_gb: None,
-                    rubro: None,
-                    es_oferta_destacada: false,
-                    url_afiliado: url.to_string(),
-                    metadata_extra: json!(null),
-                    fecha_actualizacion: None,
-                });
+            if !nombre.is_empty() && precio_crudo > 0.0 {
+                let mut notebook = Notebook::new(
+                    self.get_store_name().to_string(),
+                    format!("HP-{}", i),
+                    "HP".to_string(),
+                    nombre,
+                    precio_crudo,
+                    url.to_string(),
+                    "ARS".to_string()
+                );
+
+                let precio_usd = self.estandarizar_a_usd(precio_crudo, self.get_store_name(), tipo_cambio_actual);
+                notebook.fijar_precio_final(precio_usd);
+
+                items.push(notebook);
             }
         }
         Ok(items)

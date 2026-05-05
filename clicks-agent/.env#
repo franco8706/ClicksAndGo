@@ -1,5 +1,5 @@
 
 DATABASE_URL="postgres://postgres:franco8706@34.132.143.68:5432/postgres"# 🍃 Auditoría NoSQL - Ecosistema Agéntico
 
-MONGODB_URI="mongodb+srv://francocornelio87_db_user:ck1qeT101ITCnYTw@franco8706.bqwviqm.mongodb.net/clicks_and_go_db?retryWrites=true&w=majority&appName=franco8706"
+MONGODB_URI="mongodb+srv://francocornelio87_db_user:franco8706@franco8706.bqwviqm.mongodb.net/clicks_and_go_db?retryWrites=true&w=majority&appName=franco8706"
 

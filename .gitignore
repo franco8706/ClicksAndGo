@@ -1,3 +1,13 @@
 target/
 .env
 cloud-sql-proxy
+gcp-vertex.json
+.env.local
+# --- REGLAS DE SEGURIDAD (Credenciales IA y BD) ---
+web/.env.local
+web/gcp-vertex.json
+.env.local
+gcp-vertex.json
+
+# --- CONFIGURACIONES LOCALES DEL EDITOR ---
+.vscode/

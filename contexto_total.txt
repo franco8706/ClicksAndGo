@@ -1480,3 +1480,23 @@ El sistema aplica rigurosamente la Programación Orientada a Objetos:
 📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Mouse gaming HyperX Pulsefire Haste 2 Core inalámbrico. Score: 6.5.
 📝 [2026-05-05 03:54:24] [Vertex AI]: Análisis IA: Mouse gaming HyperX Pulsefire Haste 2 Core inalámbrico (negro). Score: 6.5.
 📝 [2026-05-05 03:54:24] [Backend]: Sincronización completada exitosamente.
+📝 [2026-05-05 07:32:18] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 07:32:18] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 07:32:19] [Backend]: Pausa táctica de 5s para evitar detección en HP.
+📝 [2026-05-05 07:32:25] [Backend]: Sincronización completada exitosamente.
+📝 [2026-05-05 12:20:22] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 12:20:22] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 12:20:23] [Backend]: Pausa táctica de 5s para evitar detección en HP_AR.
+📝 [2026-05-05 12:20:29] [Backend]: Sincronización completada exitosamente.
+📝 [2026-05-05 12:35:08] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 12:35:08] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 12:35:09] [Backend]: Pausa táctica de 5s para evitar detección en HP_AR.
+📝 [2026-05-05 12:35:15] [Backend]: Sincronización completada exitosamente.
+📝 [2026-05-05 12:37:49] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 12:37:50] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 12:37:51] [Backend]: Pausa táctica de 5s para evitar detección en HP_AR.
+📝 [2026-05-05 12:37:57] [Backend]: Sincronización completada exitosamente.
+📝 [2026-05-05 13:04:57] [Sistema]: Boot-up secuencial completado. Project ID: clicks-and-go-2026
+📝 [2026-05-05 13:04:57] [Backend]: Iniciando cacería en Modo Sigilo.
+📝 [2026-05-05 13:04:58] [Backend]: Pausa táctica de 5s para evitar detección en HP_AR.
+📝 [2026-05-05 13:05:04] [Backend]: Sincronización completada exitosamente.

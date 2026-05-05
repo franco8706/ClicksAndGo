@@ -7,6 +7,7 @@ use std::sync::Arc;
 use mongodb::bson::{doc, DateTime as BsonDateTime}; // Importamos el DateTime nativo de BSON
 
 pub struct SystemMetrics {
+    #[allow(dead_code)] // Silenciamos el campo individual
     pub traffic_tps: u32,
     pub cpu_usage_percent: f32,
 }

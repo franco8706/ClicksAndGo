@@ -17,7 +17,6 @@ use agents::devops::DevopsAgent;
 
 // 4. Librerías del sistema
 use dotenvy::dotenv;
-use std::error::Error;
 use std::sync::Arc;
 use std::env;
 
@@ -27,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🛸 Clicks & Go - Ecosistema Agéntico v2.0 Activo");
 
     // 1. Inicialización de Recursos y Memoria
-    let db = DatabaseManager::new().await.map_err(|e| e as Box<dyn std::error::Error + Send + Sync>)?;
+    let db = DatabaseManager::new().await.map_err(|e| e)?;
     let db_pool = Arc::new(db.pool);
     let mongo_client = db.mongo;
 
