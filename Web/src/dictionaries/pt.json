@@ -1,0 +1,150 @@
+{
+  "common": {
+    "allLaptops": "Laptops",
+    "gaming": "Gaming",
+    "business": "Trabalho",
+    "ultrabook": "Portáteis",
+    "creator": "Criação",
+    "workstation": "Profissional",
+    "budget": "Econômicos",
+    "loading": "Encontrando as melhores ofertas para você...",
+    "showing": "Mostrando {count} laptops verificados",
+    "noResults": "Nenhum Resultado",
+    "save": "Você economiza",
+    "finalPrice": "Preço Verificado",
+    "viewDeal": "Ir para a Loja",
+    "soldBy": "Vendido por",
+    "optimizingFor": "Laptops verificados em",
+    "scanning": "Buscando disponibilidade na sua região",
+    "specs": {
+      "processor": "Processador",
+      "memory": "Memória RAM",
+      "storage": "Armazenamento SSD"
+    }
+  },
+  "news": {
+    "title": "Notícias de Tecnologia",
+    "subtitle": "Fique informado para comprar melhor",
+    "readMore": "Ler mais"
+  },
+  "navbar": {
+    "home": "Laptops",
+    "promotions": "Melhores Ofertas",
+    "news": "Notícias",
+    "categories": "Como funciona",
+    "updated": "Atualizado",
+    "realTime": "AO VIVO"
+  },
+  "nav": {
+    "cta": "Pesquisar"
+  },
+  "hero": {
+    "verifiedDeals": "Preços atualizados ao instante",
+    "aiTag": "Encontre o laptop perfeito para você",
+    "title1": "Seu Próximo Laptop,",
+    "title2": "Pelo Melhor Preço",
+    "subtitle": "Comparamos milhares de ofertas nas principais lojas para que você encontre o laptop perfeito pelo menor preço garantido.",
+    "searchPlaceholder": "Para que você vai usar seu laptop?",
+    "suggestions": "Buscas populares",
+    "tags": [
+      "Para estudar",
+      "Edição de vídeo",
+      "Gaming",
+      "Para o trabalho"
+    ]
+  },
+  "stats": {
+    "eyebrow": "Por que escolher Clicks & Go",
+    "products": "Países com cobertura",
+    "productsNum": "5",
+    "engines": "Sempre grátis",
+    "enginesNum": "100%",
+    "countries": "Atualização de preços",
+    "countriesNum": "Diário",
+    "latency": "Sempre disponível",
+    "latencyNum": "24/7"
+  },
+  "howItWorks": {
+    "eyebrow": "Simples e transparente",
+    "title": "Como encontramos as melhores ofertas?",
+    "subtitle": "Comparamos milhares de laptops para que você não precise",
+    "step1Num": "01",
+    "step1Title": "Buscamos por você",
+    "step1Desc": "Rastreamos as principais lojas online do seu país para encontrar o melhor preço disponível em cada modelo.",
+    "step2Num": "02",
+    "step2Title": "Analisamos cada oferta",
+    "step2Desc": "Comparamos preço, especificações e avaliações reais para calcular se realmente vale a pena comprar.",
+    "step3Num": "03",
+    "step3Title": "Você compra com confiança",
+    "step3Desc": "Mostramos apenas ofertas de lojas oficiais verificadas. Clique em Ver oferta e pronto."
+  },
+  "deals": {
+    "title": "Melhores Ofertas",
+    "subtitle": "Selecionadas para a sua região hoje",
+    "eyebrow": "Destaques do dia",
+    "realTime": "Agora",
+    "limitedTime": "Preço caiu",
+    "hot": "OFERTA TOP",
+    "youSave": "Você economiza",
+    "verified": "Preço verificado"
+  },
+  "catalog": {
+    "eyebrow": "O melhor disponível",
+    "title": "Laptops",
+    "subtitle": "Melhor preço encontrado para cada modelo na sua região"
+  },
+  "card": {
+    "final_price": "Preço Verificado",
+    "view_deal": "Ver Oferta",
+    "hide_details": "Ocultar",
+    "buy_at": "Comprar em",
+    "usd_ref": "Ref USD",
+    "ram": "GB RAM",
+    "ssd": "GB SSD"
+  },
+  "featuredDeal": "Melhor custo-benefício",
+  "greatOpportunity": "Ótima oferta",
+  "analysisPending": "Preço verificado",
+  "features": {
+    "eyebrow": "Nossa promessa",
+    "title": "Por que confiar na Clicks & Go?",
+    "subtitle": "Fazemos a comparação de preços para que você não precise",
+    "audit": "Preços verificados",
+    "auditDesc": "Revisamos cada preço antes de mostrá-lo para que você nunca pague mais do que precisa.",
+    "finance": "Melhor preço do mercado",
+    "financeDesc": "Conectamos diretamente com as lojas para trazer a oferta mais baixa disponível.",
+    "security": "Só lojas confiáveis",
+    "securityDesc": "Trabalhamos exclusivamente com distribuidores e lojas oficiais verificadas.",
+    "curation": "Seleção para você",
+    "curationDesc": "Filtramos milhares de laptops para mostrar só os que realmente valem o seu dinheiro."
+  },
+  "cta": {
+    "title": "Pronto para encontrar seu próximo laptop?",
+    "subtitle": "Milhares de pessoas já encontraram o laptop ideal com a Clicks & Go. Sem comparar preços, sem perder tempo.",
+    "buttonPrimary": "Ver todos os laptops",
+    "buttonSecondary": "Como funciona?"
+  },
+  "footer": {
+    "description": "Clicks & Go compara preços de laptops em tempo real para que você sempre pague o justo.",
+    "disclaimer": "Os preços e a disponibilidade podem variar. Fazemos o melhor esforço para manter as informações atualizadas.",
+    "products": "Categorias",
+    "resources": "A empresa",
+    "contact": "Contato",
+    "statusLink": "Status do serviço",
+    "privacyLink": "Privacidade",
+    "termsLink": "Termos",
+    "cookiesLink": "Cookies",
+    "copyright": "© 2026 Clicks & Go. Todos os direitos reservados."
+  },
+  "condition": {
+    "new": "Novo",
+    "refurbished": "Recondicionado certificado",
+    "open_box": "Caixa aberta"
+  },
+  "ai_labels": {
+    "OPTIMAL": "Menor preço histórico",
+    "GOOD": "Bom preço",
+    "REGULAR": "Preço normal",
+    "LOW": "Preço elevado"
+  }
+}

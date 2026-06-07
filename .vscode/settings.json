@@ -1,0 +1,57 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/target": true,
+    "**/__pycache__": true,
+    "**/.venv": true,
+    "**/venv": true,
+    "**/.pnp.*": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/.sqlx": true,
+    "**/tmp": true,
+    "**/log": true,
+    "**/.eslintcache": true,
+    "**/*.pyc": true,
+    "**/*.tsbuildinfo": true,
+    "**/package-lock.json": true,
+    "**/Cargo.lock": true,
+    "**/Gemfile.lock": true,
+    "**/.pnpm-lock.yaml": true,
+    ".Agents": true,
+    "gcp-vertex.json": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/.next": true,
+    "**/__pycache__": true,
+    "**/.venv": true,
+    "**/tmp": true,
+    "**/log": true,
+    "**/*.tsbuildinfo": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/target/**": true,
+    "**/.next/**": true,
+    "**/tmp/**": true,
+    "**/log/**": true,
+    "**/__pycache__/**": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "docker-compose.yaml": "docker-compose.local.yml, docker-compose.override.yml",
+    "tsconfig.json": "tsconfig.*.json, *.tsbuildinfo",
+    "package.json": "package-lock.json, .npmrc, .nvmrc",
+    ".env": ".env.*, .env.example",
+    "Cargo.toml": "Cargo.lock",
+    "Gemfile": "Gemfile.lock"
+  },
+  "editor.formatOnSave": true,
+  "python-envs.defaultEnvManager": "ms-python.python:venv"
+}

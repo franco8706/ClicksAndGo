@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LaptopDataContract_v4",
+  "description": "Contrato universal estricto para Clicks & Go v4.0. Validado por Python, calculado por Rust, persistido por Rails, renderizado por Next.js.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sku_original": {
+      "type": "string",
+      "description": "Identificador original del Retailer o API"
+    },
+    "retailer_slug": {
+      "type": "string",
+      "description": "Slug del retailer (ej. mercadolibre, amazon, generic)"
+    },
+    "country_code": {
+      "type": "string",
+      "enum": [
+        "AR",
+        "ES",
+        "US",
+        "MX",
+        "BR",
+        "CL",
+        "CO"
+      ],
+      "maxLength": 2
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "ARS",
+        "EUR",
+        "USD",
+        "MXN",
+        "BRL",
+        "CLP",
+        "COP"
+      ],
+      "maxLength": 3
+    },
+    "brand": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 250
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "new",
+        "refurbished",
+        "open_box"
+      ],
+      "default": "new"
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "ram_gb": {
+          "type": "integer",
+          "minimum": 4
+        },
+        "storage_gb": {
+          "type": "integer",
+          "minimum": 64
+        },
+        "gpu": {
+          "type": "string"
+        },
+        "display_inches": {
+          "type": "number"
+        },
+        "battery_wh": {
+          "type": "number"
+        },
+        "weight_kg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "cpu",
+        "ram_gb",
+        "storage_gb",
+        "gpu"
+      ]
+    },
+    "financials": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "original_price": {
+          "type": "number",
+          "minimum": 0
+        },
+        "current_price": {
+          "type": "number",
+          "minimum": 0
+        },
+        "discount_pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "applied_exchange_rate": {
+          "type": "number"
+        },
+        "in_stock": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "original_price",
+        "current_price"
+      ]
+    },
+    "intelligence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deal_score": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 10.0,
+          "description": "Calculado exclusivamente por el Rust Engine"
+        },
+        "ai_score_label": {
+          "type": "string",
+          "enum": [
+            "ÓPTIMO",
+            "BUENO",
+            "REGULAR",
+            "BAJO"
+          ]
+        },
+        "ai_reasoning": {
+          "type": "string"
+        },
+        "price_trend": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "stable"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "gaming",
+            "business",
+            "ultrabook",
+            "workstation",
+            "budget",
+            "creator",
+            "student"
+          ]
+        },
+        "is_featured_deal": {
+          "type": "boolean"
+        },
+        "ai_badge": {
+          "type": "string"
+        },
+        "ui_accent_color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "deal_score"
+      ]
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 160
+        }
+      }
+    },
+    "urls": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "format": "uri"
+        },
+        "affiliate_raw": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "image",
+        "affiliate_raw"
+      ]
+    },
+    "timestamps": {
+      "type": "object",
+      "properties": {
+        "detected_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "metadata_extra": {
+      "type": "object",
+      "description": "Payload Extensible. Soporta la inyección del MarketIntelligenceAgent.",
+      "properties": {
+        "retailer": {
+          "type": "string"
+        },
+        "is_promo_season": {
+          "type": "boolean"
+        },
+        "promo_event": {
+          "type": "string"
+        },
+        "market_urgency": {
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ]
+        },
+        "fomo_message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "sku_original",
+    "retailer_slug",
+    "country_code",
+    "currency",
+    "brand",
+    "name",
+    "hardware",
+    "financials",
+    "urls"
+  ]
+}

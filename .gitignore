@@ -1,0 +1,76 @@
+# =========================================================
+# Secretos y credenciales — ¡NUNCA al repositorio!
+# =========================================================
+.env
+.env.*
+gcp-vertex.json
+**/*service_account*.json
+*.pem
+*.key
+*.p12
+
+# =========================================================
+# Next.js / Node
+# =========================================================
+Web/node_modules/
+Web/.next/
+Web/.turbo/
+Web/out/
+Web/build/
+Web/coverage/
+**/*.tsbuildinfo
+
+# =========================================================
+# Rust
+# =========================================================
+Rust/target/
+Rust/**/*.rs.bk
+
+# =========================================================
+# Python
+# =========================================================
+**/__pycache__/
+Python/.venv/
+Python/venv/
+Python/.pytest_cache/
+Python/logs/
+*.pyc
+*.pyo
+*.egg-info/
+
+# =========================================================
+# Rails
+# =========================================================
+Rails/tmp/
+Rails/log/
+Rails/public/system/
+Rails/public/assets/
+Rails/public/packs/
+Rails/storage/
+Rails/coverage/
+Rails/vendor/bundle/
+Rails/.bundle/
+
+# =========================================================
+# Logs (globales)
+# =========================================================
+*.log
+
+# =========================================================
+# OS / IDEs
+# =========================================================
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+.Agents/
+/package-lock.json
+
+# =========================================================
+# Docker overrides y herramientas de análisis
+# =========================================================
+docker-compose.override.yml
+repomix-output.txt
+

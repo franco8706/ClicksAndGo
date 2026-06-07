@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* =========================================================
+   🛸 CLICKS & GO - CONFIGURACIÓN DE TEMA NATIVO TAILWIND v4
+   ========================================================= */
+@theme {
+  /* Paleta Base: Estética Tecnológica/Oscura Premium (NVIDIA Cyberpunk Style) */
+  --color-background: #090d16;       /* Fondo ultra-oscuro de alta fidelidad profunda */
+  --color-foreground: #f8fafc;       /* Texto principal claro de alto contraste (slate-50) */
+  
+  /* Colores de Marca Coherentes con la Identidad Corporativa */
+  --color-brand-primary: #3b82f6;     /* blue-500 (Energía y Tecnología) */
+  --color-brand-hover: #2563eb;       /* blue-600 */
+  --color-brand-success: #10b981;     /* emerald-500 (Ofertas de un Clic / Verificaciones) */
+  --color-brand-border: #1e293b;      /* slate-800 para divisiones perimetrales sutiles */
+  --color-brand-glow: rgba(16, 185, 129, 0.15); /* Aura verde de alta fidelidad */
+
+  /* Tipografía Estricta Inter (Inyectada de forma asíncrona desde layout.tsx) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  
+  /* Radios geométricos adaptados v3.6 */
+  --radius-card: 0.75rem;
+
+  /* 🚀 Inyección Nativa de Animaciones en el Motor Core de Tailwind v4 */
+  --animate-hero-entry: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-shimmer: shimmer 2.5s infinite linear;
+  --animate-soft-pulse: softPulse 3s ease-in-out infinite;
+  --animate-scroll-bounce: scrollBounce 2s infinite ease-in-out;
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 1rem, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes softPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.99); }
+  }
+
+  @keyframes scrollBounce {
+    0%, 20%, 50%, 80%, 100% { transform: translate3d(0, 0, 0); }
+    40% { transform: translate3d(0, -8px, 0); }
+    60% { transform: translate3d(0, -4px, 0); }
+  }
+}
+
+/* =========================================================
+   🔌 ESTILOS BASE Y ACCESIBILIDAD (Capa Global Saneada)
+   ========================================================= */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem; /* clearance for fixed navbar (~88px) */
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Personalización premium del cursor de selección de texto */
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.25);
+    color: #ffffff;
+  }
+
+  /* Blindaje de Accesibilidad WCAG AAA: Foco visible de alta intensidad sobre entornos oscuros */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 3px;
+  }
+}
+
+/* =========================================================
+   📊 UTILITIES / CLASES UTILITARIAS DE EXPERIENCIA (UX)
+   ========================================================= */
+
+/* Gradiente de Atenuación de Fondo para el Hero (Estilo Cinematográfico) */
+@utility hero-gradient {
+  background: linear-gradient(to right, rgba(9, 13, 22, 0.98) 0%, rgba(9, 13, 22, 0.7) 50%, rgba(9, 13, 22, 0.1) 100%);
+}
+
+/* Texto con Gradiente Metálico de Alto Impacto */
+@utility text-gradient {
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enlaces de Navegación con Expansión Dinámica de Línea Inferior */
+@utility nav-link {
+  position: relative;
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  &::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background-color: var(--color-brand-primary);
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  &:hover::after {
+    width: 100%;
+  }
+}
+
+/* Botón de Conversión Primaria con Micro-Interacciones de un Clic */
+@utility btn-primary {
+  background-color: var(--color-brand-primary);
+  will-change: transform, box-shadow;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  &:hover {
+    background-color: var(--color-brand-hover);
+    transform: translate3d(0, -1px, 0);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.45);
+  }
+
+  &:active {
+    transform: translate3d(0, 1px, 0);
+  }
+}
+
+/* Indicador de Desplazamiento Vertical Automatizado */
+@utility scroll-indicator {
+  animation: var(--animate-scroll-bounce);
+}
+
+/* Tarjetas Reactivas con Efecto de Profundidad Flotante al Pasar el Mouse */
+@utility card-hover {
+  will-change: transform, box-shadow;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  &:hover {
+    transform: translate3d(0, -4px, 0);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+}
+
+/* Aura de Brillo Inteligente para Ofertas Destacadas (Scores >= 8.5) */
+@utility neon-glow {
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 20px var(--color-brand-glow);
+}
+
+/* Contenedor de Iconos de Características con Gradiente Corpóreo */
+@utility feature-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+/* Shimmer Optimizado para Skeletons de Carga Asíncrona (Alineado a la Paleta Oscura) */
+@utility skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #0f172a 0%,
+    #1e293b 50%,
+    #0f172a 100%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Glassmorphism Sutil Adaptado para Bloques Perimetrales en Modo Oscuro */
+@utility glass-effect {
+  background-color: rgba(9, 13, 22, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Eliminación de Scrollbars manteniendo el comportamiento nativo de scroll táctil e inercial */
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* =========================================================
+   📈 STAGGERED CHILDREN (Efecto Cascada Fluido para la Grilla de Laptops)
+   ========================================================= */
+@utility stagger-children {
+  & > * {
+    opacity: 0;
+    will-change: transform, opacity;
+    animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  & > *:nth-child(1) { animation-delay: 0.04s; }
+  & > *:nth-child(2) { animation-delay: 0.08s; }
+  & > *:nth-child(3) { animation-delay: 0.12s; }
+  & > *:nth-child(4) { animation-delay: 0.16s; }
+  & > *:nth-child(5) { animation-delay: 0.20s; }
+  & > *:nth-child(6) { animation-delay: 0.24s; }
+  & > *:nth-child(7) { animation-delay: 0.28s; }
+  & > *:nth-child(8) { animation-delay: 0.32s; }
+}

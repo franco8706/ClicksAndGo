@@ -1,0 +1,61 @@
+# =========================================================
+# ☁️ CLOUD RUN — Next.js Frontend (La Fachada)
+# Deploy: gcloud run services replace Infra/cloud/cloudrun-web.yaml --region us-central1
+#
+# Para picos de 50k-80k usuarios, configurar Cloud CDN delante:
+#   gcloud compute backend-services update clicks-web-backend --enable-cdn
+#   gcloud compute backend-services update clicks-web-backend \
+#     --cache-mode=CACHE_ALL_STATIC \
+#     --default-ttl=60 \
+#     --max-ttl=3600
+# =========================================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: clicks-web
+  labels:
+    app: clicks-and-go
+    tier: frontend
+  annotations:
+    # Único servicio público — el resto es interno
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Mínimo 2 instancias para absorber spikes sin cold-start visible al usuario
+        autoscaling.knative.dev/minScale: "2"
+        autoscaling.knative.dev/maxScale: "50"
+    spec:
+      serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+      # Next.js SSR aguanta ~80 requests concurrentes por instancia con standalone output
+      containerConcurrency: 80
+      timeoutSeconds: 30
+      containers:
+      - image: us-central1-docker.pkg.dev/clicks-and-go/clicks-and-go/web:latest
+        ports:
+        - name: http1
+          containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "3000"
+        - name: RAILS_API_URL
+          # Actualizar con la URL interna de Cloud Run de Rails tras el primer deploy
+          value: https://clicks-rails-HASH-uc.a.run.app
+        startupProbe:
+          httpGet:
+            path: /
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 10
+        livenessProbe:
+          httpGet:
+            path: /
+          periodSeconds: 20
+          failureThreshold: 3

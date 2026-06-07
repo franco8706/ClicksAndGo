@@ -1,0 +1,60 @@
+# =========================================================
+# CLOUD RUN - Rust Engine (El Motor Matematico)
+# Deploy: gcloud run services replace Infra/cloud/cloudrun-rust.yaml --region us-central1
+# =========================================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: clicks-rust
+  labels:
+    app: clicks-and-go
+    tier: math-engine
+  annotations:
+    run.googleapis.com/ingress: internal
+spec:
+  template:
+    metadata:
+      annotations:
+        # Rust arranca en <100ms — puede ir a 0 sin problema de cold-start
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+      # Axum es async y ultra-eficiente — aguanta 100 requests concurrentes por instancia
+      containerConcurrency: 100
+      timeoutSeconds: 10
+      containers:
+      - image: us-central1-docker.pkg.dev/clicks-and-go/clicks-and-go/rust:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        resources:
+          # Rust usa CPU sin OOM — 2 cores para Rayon parallelism
+          limits:
+            cpu: "2"
+            memory: 256Mi
+        env:
+        - name: PORT
+          value: "8080"
+        - name: RUST_LOG
+          value: info
+        - name: BENCHMARK_CPU_URL
+          value: "https://www.cpubenchmark.net/laptop.html"
+        - name: BENCHMARK_GPU_URL
+          value: "https://www.videocardbenchmark.net/laptop_video_card_list.html"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: MONGODB_URI
+              key: latest
+        startupProbe:
+          httpGet:
+            path: /health
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          failureThreshold: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+          periodSeconds: 15
+          failureThreshold: 3

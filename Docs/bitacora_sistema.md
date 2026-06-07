@@ -1,0 +1,202 @@
+ **[2026-05-07 09:08:21]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 09:08:21]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 09:08:22]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 09:08:23]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 09:08:28]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 09:23:59]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 09:23:59]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 09:23:59]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 09:24:00]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 09:24:06]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 11:15:03]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 11:15:03]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 11:15:04]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 11:15:04]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 11:15:10]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 11:21:12]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 11:21:12]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 11:21:13]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 11:21:14]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 11:21:20]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 11:28:47]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 11:28:47]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 11:28:47]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 11:28:48]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 11:28:54]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 11:35:38]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 11:35:38]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 11:35:38]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 11:35:39]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 11:35:45]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 12:34:08]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 12:34:08]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 12:34:08]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 12:34:09]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 12:34:14]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 12:50:53]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 12:50:53]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 12:50:53]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 12:50:54]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 12:51:00]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-07 14:13:06]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-07 14:13:06]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-07 14:13:07]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-07 14:13:08]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-07 14:13:14]** `[Backend]`: Sincronización completada exitosamente.
+- **[2026-05-08 05:21:22]** `[Sistema]`: Boot-up secuencial completado. Núcleo agéntico operativo.
+- **[2026-05-08 05:21:22]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-08 05:21:23]** `[Backend]`: Iniciando cacería en Modo Sigilo.
+- **[2026-05-08 05:21:23]** `[Backend]`: Pausa táctica de 5s para evitar detección en HP_AR.
+- **[2026-05-08 05:21:29]** `[Backend]`: Sincronización completada exitosamente.
+
+- **[2026-05-11 13:15:28]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 13:15:28]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 13:15:28]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 13:15:29]** `[DevOps_Alerta]`: ❌ Pruebas fallidas: npm error Missing script: "test"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/codespace/.npm/_logs/2026-05-11T13_15_29_063Z-debug-0.log
+
+- **[2026-05-11 13:15:29]** `[DevOps_Alerta]`: CRITICAL_ERROR: ABORTANDO CICLO: El Agente DevOps determinó que el código fuente no es seguro o las pruebas fallaron.
+- **[2026-05-11 13:25:02]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 13:25:03]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 13:25:03]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 13:25:03]** `[DevOps_Alerta]`: ❌ Pruebas fallidas: sh: 1: vitest: not found
+
+- **[2026-05-11 13:25:03]** `[DevOps_Alerta]`: CRITICAL_ERROR: ABORTANDO CICLO: El Agente DevOps determinó que el código fuente no es seguro o las pruebas fallaron.
+- **[2026-05-11 13:35:06]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 13:35:07]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 13:35:07]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 13:35:07]** `[DevOps_Alerta]`: ❌ Pruebas fallidas: sh: 1: vitest: not found
+
+- **[2026-05-11 13:35:07]** `[DevOps_Alerta]`: CRITICAL_ERROR: ABORTANDO CICLO: El Agente DevOps determinó que el código fuente no es seguro o las pruebas fallaron.
+- **[2026-05-11 13:55:23]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 13:55:23]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 13:55:23]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 13:55:25]** `[DevOps]`: ✅ Pruebas aprobadas. Código íntegro.
+- **[2026-05-11 13:55:25]** `[Backend]`: Iniciando cacería en Modo Sigilo Global.
+- **[2026-05-11 13:55:26]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en HP_AR.
+- **[2026-05-11 13:55:31]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en MongoDB_Internal_Source.
+- **[2026-05-11 13:55:36]** `[Vertex AI]`: Análisis IA: Legion Slim 7. Score: 5.0.
+- **[2026-05-11 13:55:37]** `[Backend]`: Sincronización de mercado completada exitosamente.
+- **[2026-05-11 14:29:42]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 14:29:42]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 14:29:42]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 14:29:43]** `[DevOps]`: ✅ Pruebas aprobadas. Código íntegro.
+- **[2026-05-11 14:29:43]** `[Backend]`: Iniciando cacería en Modo Sigilo Global.
+- **[2026-05-11 14:29:44]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en HP_AR.
+- **[2026-05-11 14:29:50]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en MongoDB_Internal_Source.
+- **[2026-05-11 14:29:55]** `[Vertex AI]`: Análisis IA: Legion Slim 7. Score: 5.0.
+- **[2026-05-11 14:29:55]** `[Backend]`: Sincronización de mercado completada exitosamente.
+- **[2026-05-11 14:36:20]** `[Sistema]`: Boot-up secuencial completado. Health check OK. Núcleo operativo.
+- **[2026-05-11 14:36:21]** `[DevOps]`: Validación de métricas pre-vuelo.
+- **[2026-05-11 14:36:21]** `[DevOps]`: Ejecutando suite de pruebas unitarias en el Frontend.
+- **[2026-05-11 14:36:22]** `[DevOps]`: ✅ Pruebas aprobadas. Código íntegro.
+- **[2026-05-11 14:36:22]** `[Backend]`: Iniciando cacería en Modo Sigilo Global.
+- **[2026-05-11 14:36:23]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en HP_AR.
+- **[2026-05-11 14:36:29]** `[Backend]`: Pausa táctica de 5s para evitar detección WAF en MongoDB_Internal_Source.
+- **[2026-05-11 14:36:34]** `[Vertex AI]`: Análisis IA: Legion Slim 7. Score: 5.0.
+- **[2026-05-11 14:36:34]** `[Backend]`: Sincronización de mercado completada exitosamente.
+- **[2026-05-22 23:48:59]** `[Sistema]`: Boot-up secuencial internacional completado. Health Check OK. Pipeline en línea.
+- **[2026-05-22 23:48:59]** `[DevOps]`: Validación de métricas de salud pre-vuelo.
+- **[2026-05-22 23:48:59]** `[DevOps]`: Disparando suite de testing automatizada del Frontend.
+- **[2026-05-22 23:49:08]** `[DevOps_Alerta]`: ❌ Quiebre en pruebas frontend: 
+- **[2026-05-22 23:49:08]** `[Backend]`: Iniciando cacería paralela distribuida.
+- **[2026-05-22 23:49:09]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en HP_Global.
+- **[2026-05-22 23:49:15]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en Dell_Global.
+- **[2026-05-22 23:49:21]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en MongoDB_Internal_Source.
+- **[2026-05-22 23:49:26]** `[Vertex AI]`: Evaluación Neuronal Completada: Legion Slim 7. Score asignado: 5.0.
+- **[2026-05-22 23:49:26]** `[Backend]`: Sincronización internacional de mercado completada.
+- **[2026-05-22 23:49:26]** `[Sistema]`: Ciclo agéntico de cacería internacional completado con éxito en 26.85s
+- **[2026-05-22 23:58:28]** `[Sistema]`: Boot-up secuencial internacional completado. Health Check OK. Pipeline en línea.
+- **[2026-05-22 23:58:28]** `[DevOps]`: Validación de métricas de salud pre-vuelo.
+- **[2026-05-22 23:58:28]** `[DevOps]`: Disparando suite de testing automatizada del Frontend.
+- **[2026-05-22 23:58:30]** `[DevOps_Alerta]`: ❌ Quiebre en pruebas frontend: 
+- **[2026-05-22 23:58:30]** `[Backend]`: Iniciando cacería paralela distribuida.
+- **[2026-05-22 23:58:31]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en HP_Global.
+- **[2026-05-22 23:58:38]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en Dell_Global.
+- **[2026-05-22 23:58:43]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en MongoDB_Internal_Source.
+- **[2026-05-22 23:58:48]** `[Vertex AI]`: Evaluación Neuronal Completada: Legion Slim 7. Score asignado: 5.0.
+- **[2026-05-22 23:58:48]** `[Backend]`: Sincronización internacional de mercado completada.
+- **[2026-05-22 23:58:48]** `[Sistema]`: Ciclo agéntico de cacería internacional completado con éxito en 19.86s
+- **[2026-05-23 00:04:53]** `[Sistema]`: Boot-up secuencial internacional completado. Health Check OK. Pipeline en línea.
+- **[2026-05-23 00:04:53]** `[DevOps]`: Validación de métricas de salud pre-vuelo.
+- **[2026-05-23 00:04:53]** `[DevOps]`: Disparando suite de testing automatizada del Frontend.
+- **[2026-05-23 00:04:55]** `[DevOps_Alerta]`: ❌ Quiebre en pruebas frontend: 
+- **[2026-05-23 00:04:55]** `[Backend]`: Iniciando cacería paralela distribuida.
+- **[2026-05-23 00:04:58]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en HP_Global.
+- **[2026-05-23 00:05:03]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en Dell_Global.
+- **[2026-05-23 00:05:09]** `[Backend]`: Pausa táctica de 5s para mitigar políticas WAF en MongoDB_Internal_Source.
+- **[2026-05-23 00:05:21]** `[Vertex AI]`: Evaluación Neuronal Completada: Legion Slim 7. Score asignado: 1.0.
+- **[2026-05-23 00:05:21]** `[Backend]`: Sincronización internacional de mercado completada.
+- **[2026-05-23 00:05:21]** `[Sistema]`: Ciclo agéntico de cacería internacional completado con éxito en 27.60s
+
+- **[2026-05-31 08:43:34]** `[Ingeniería]`: REFACTORIZACIÓN MASIVA A v4.0 COMPLETADA.
+  - `[Limpieza]`: Se eliminó la lógica de scoring en Next.js y el acoplamiento SQL en Rust.
+  - `[Infraestructura]`: Se re-generaron los 4 Dockerfiles bajo el estándar Alpine/Slim para optimizar tiempos de despliegue.
+  - `[Seguridad]`: Visibilidad de archivos restaurada en el IDE para garantizar auditorías transparentes.
+
+- **[2026-05-31 08:45:55]** `[Ingeniería]`: ACTUALIZACIÓN ESTRATÉGICA DE ROADMAP (v4.0).
+  - `[Documentación]`: Se reescribió el archivo `redesign_plan.md` para reflejar las Fases 1 a 4 de la nueva arquitectura de microservicios.
+  - `[Inteligencia]`: Se dotó al `MasterOrchestratorAgent` de la capacidad de leer `redesign_plan.md`. Ahora la IA tiene consciencia de su propio estado de desarrollo y de las funciones pendientes (Promo Forecaster, JSON-LD SEO).
+
+- **[2026-05-31 09:14:19]** `[DevOps]`: CORRECCIÓN DE ENTORNO DE DESARROLLO (VS CODE).
+  - `[Fix]`: Se resolvió el bug de case-sensitivity renombrando `.Vscode` a `.vscode`.
+  - `[UI]`: Se actualizó `settings.json` para ocultar dependencias (`node_modules`, `target`, `__pycache__`, `.venv`), cachés y archivos `.lock`.
+  - `[Performance]`: Se excluyeron carpetas pesadas del indexador de búsqueda (search) y del observador de cambios (watcher) para ahorrar CPU/RAM del desarrollador.
+
+- **[2026-05-31 09:14:47]** `[Ingeniería]`: ACTUALIZACIÓN DE SCHEMAS A v4.0.
+  - `[laptop.json]`: Se modificó el contrato de datos para reflejar que `deal_score` es ahora responsabilidad de Rust, mientras que los metadatos SEO y UX provienen de Python.
+  - `[retailers.json]`: Se purgó la configuración de cronjobs de Rust. Ahora incluye directivas (`python_module_target`) para que el `MasterOrchestratorAgent` de Python invoque dinámicamente las funciones de scraping correctas.
+
+- **[2026-06-05]** `[Ingeniería]`: HARDENING DE CONSISTENCIA v4.1 (Auditoría exhaustiva Docs vs Código).
+  - `[Cloud SQL]`: Corregido `deal_score` (escala 0-100 → 1.0-10.0), país alineado con moneda, enum `currency_type` completado (USD/ARS → +EUR/MXN/BRL/COP/CLP), `hardware_news.country_code` agregado y catálogo + noticias multi-región (AR/US/ES/MX) sembrados. Confirmada tabla `price_histories` (plural).
+  - `[Rails]`: Serializer reescrito como espejo exacto de `laptop.ts` (currency, `applied_exchange_rate`, `discount_pct` calculado, `ai_score_label`, `price_trend`, `category`, `seo`). Noticias filtradas por país. Persistencia guarda tipo de cambio y categoría.
+  - `[Rust]`: Reparado el `ScoreResult` que impedía compilar (`cargo check` ✅), `serde(default)` en campos financieros y nueva ruta `POST /api/v1/benchmarks/run`.
+  - `[Python]`: Nueva capa `src/providers/` — `VertexProvider` (primario), `AntigravityProvider` (fallback) y `ProviderRouter` con failover. MercadoLibre con `site_id` LATAM correcto y marca real. `lxml` + `google-cloud-aiplatform` agregados.
+  - `[Web]`: i18n completo (textos a diccionarios es/en/pt), divisas/USD desde backend, imágenes AVIF/WebP de alta calidad (q90-95), slider de noticias rediseñado con imágenes editoriales, tags de afiliado BR/CO/CL e idioma por geolocalización.
+  - `[Infra]`: `docker-compose` híbrido (cloud por defecto / `docker-compose.local.yml`), `MONGO_URI`/`MONGODB_URI` unificado, credenciales Vertex montadas en el contenedor.
+  - `[DevOps_Alerta]`: ⚠️ Vertex AI devuelve HTTP 403 `dunning` por facturación del proyecto GCP `clicks-and-go` (798903122073). Sistema operando con Antigravity hasta regularizar billing.
+
+- **[2026-06-06/07]** `[Ingeniería]`: RUST ENGINE v4.3 — AUDITORÍA Y OPTIMIZACIÓN TOTAL.
+  - `[hardware_scorer.rs v4.3]`: Intel Core Ultra 5/7/9 (Meteor Lake/Arrow Lake/Lunar Lake) añadidos. Apple M4 Pro/Max/Ultra correctamente clasificados. RTX 4050 añadido (bug silencioso: score 0.0 antes). Snapdragon X Elite (Flagship 2.0) / X Plus (High 1.5). RTX 2060/2070/2080 para laptops legacy. Elite tier ahora 2.5 (i9-HX, M4 Ultra, Core Ultra 9). 64 GB RAM → bonus 2.5. `cpu_score()` / `gpu_score()` extraídos como funciones `#[inline]` públicas reutilizables.
+  - `[concurrency_router.rs]`: `process_batch()` toma ownership directo del `Vec` (sin `&`). `specs_batch.truncate()` en lugar de `.to_vec()` — elimina clone innecesario. Error logging para panics en `spawn_blocking`. Función `score_one()` extraída como `#[inline]` free function.
+  - `[hardware_canonicalizer.rs]` NUEVO: 447 líneas. Normalización cross-retailer de CPU/GPU. `HardwareTier` enum (Unknown/Budget/Entry/Mid/High/Flagship/Elite). `build_gemini_context()` genera narrativa estructurada para Gemini. `combined_tier_str()` con match directo (evita 2 heap allocs vía `format!`).
+  - `[price_sentinel.rs]` NUEVO: 177 líneas. Moving average + desviación estándar. z-score |z| > 2.0 OR |pct| > 20% = anomalía. `confidence_from_z()` con `ln_1p` scaling. Flash sale heuristic (precio anterior > 15% mayor). Campo `gemini_trigger: bool`.
+  - `[legal_differ.rs]` NUEVO: 215 líneas. FNV-1a 64-bit hash (zero deps). CRITICAL/HIGH/MEDIUM keyword arrays. `risk_score: u8` (0–100). `gemini_priority: "SKIP"|"NORMAL"|"URGENT"`. `gemini_brief` — resumen compacto para inyección en prompt. Ahorra ~98% de tokens en auditorías legales.
+  - `[link_validator.rs]` NUEVO: 212 líneas. Tokio concurrente con `Arc<Semaphore>` (MAX_CONCURRENT = 20). HEAD requests manuales con seguimiento de redirecciones (máx 5 hops, 508 en loop). Timeout 12s por link. Veredictos: "OK"|"BROKEN"|"MISSING_TAG"|"REDIRECT_LOOP"|"TIMEOUT".
+  - `[main.rs v4.3]`: 4 nuevas rutas (`POST /api/v1/hardware/canonicalize`, `POST /api/v1/price/anomalies`, `POST /api/v1/legal/diff`, `POST /api/v1/links/validate`). `HealthCache` (TTL 5s para ping MongoDB). HTTP client tuning: `connect_timeout(5s)`, `pool_max_idle_per_host(10)`, `pool_idle_timeout(90s)`, `tcp_keepalive(60s)`. `CompressionLayer::new()` (gzip/deflate −70% payload). Body limit 4 MB. Versión "4.3".
+  - `[Cargo.toml]`: `reqwest` actualizado a 0.12 con `rustls-tls` + `http2` — elimina dependencias duplicadas de `hyper 0.14` / `rustls 0.21`. `tower-http` con feature `compression-gzip`. Perfil `dev` con `opt-level=0`, `debug=1`, `incremental=true`.
+  - `[Bug E0277 Fix]`: `std::sync::MutexGuard<HealthCache>` era mantenido vivo cruzando el `.await` del ping a MongoDB → futuro `!Send` → axum rechazaba el handler. Fix: lock suelto antes del bloque `else` (solo lee cache), ping async sin guard, segundo lock solo para escribir resultado. `cargo check` ✅ limpio.
+
+- **[2026-06-06/07]** `[Ingeniería]`: AGENTE LEGAL COMPLIANCE ("Abogado Digital") — SISTEMA DE MONITOREO EXHAUSTIVO DE ToS.
+  - `[legal_agent.py]` NUEVO: ~400 líneas. `LegalComplianceAgent` con 12 URLs monitoreadas (Awin ToS, Awin CoC, CJ Publisher Agreement, CJ ToS, Amazon Associates, MercadoLibre API Terms, HP/Dell/Lenovo/Asus affiliate pages, Awin/CJ privacy policies). Descarga texto, SHA-256 hash, compara con snapshot en MongoDB. Llama a Rust `/api/v1/legal/diff` primero; si `gemini_priority == "SKIP"` omite Gemini por completo. Solo envía `gemini_brief` a Gemini (no el texto completo). Postea alertas HIGH/CRITICAL a Rails `hardware_news`. Colecciones MongoDB: `legal_snapshots`, `legal_alerts`, `legal_state`.
+  - `[master_orchestrator.py]`: Legal Agent integrado como **step 0** (antes de NewsRadar). Log CRITICAL si encuentra alertas críticas.
+  - `[main.py]`: Dos nuevos endpoints: `POST /api/v1/legal/audit` (mode=full|check) y `GET /api/v1/legal/status`.
+  - `[antigravity_provider.py]`: `TASK_LEGAL_AUDIT` dispatch añadido. `_legal_audit()` con señales CRITICAL ("terminate", "suspend account", "ban"…), HIGH ("commission rate", "cookie window"…), MEDIUM ("updated", "amended"…). Detecta `significant_shrink`: texto actual < 85% del anterior.
+  - `[base.py]`: Constante `TASK_LEGAL_AUDIT = "legal_audit"` añadida.
+  - `[scheduler-legal.yaml]` NUEVO: `legal-audit-daily` (cron `0 3 * * *`, mode=full) + `legal-audit-6h` (cron `0 */6 * * *`, mode=check — se auto-regula por MongoDB state).
+
+- **[2026-06-06/07]** `[Ingeniería]`: CATÁLOGO SQL v1.0 — PREPARACIÓN PARA APROBACIÓN DE AFILIADOS.
+  - `[seeds_catalog.sql]` NUEVO: ~300 líneas. 25 retailers (AR/US/ES/MX/BR) con `ON CONFLICT (slug, country_code) DO NOTHING`. 40 laptops completos con `ON CONFLICT (slug) DO UPDATE` (idempotente). 40 registros en `price_histories` con importes correctos por moneda. `metadata_extra` JSONB con `category`, `ai_badge`, `ui_accent_color`, `seo_title`, `seo_description`, `condition`. Resultado de ejecución: INSERT 0 25 (retailers) → 40 (laptops) → 40 (price_histories).
+  - `[cloudrun-rust.yaml]`: Eliminado emoji `☁️` del comentario línea 2 — causaba warning non-ASCII en YAML. Los 2 warnings restantes son del schema `serving.knative.dev/v1` en Cloud Code (inofensivos).
+
+- **[2026-06-05]** `[Ingeniería]`: REDISEÑO UI/UX CONSUMER + ESTABILIZACIÓN DOCKER (Sesiones de diseño y debugging post-v4.1).
+  - `[Frontend — Imágenes]`: Reemplazado `<Image fill>` de Next.js por `<img>` HTML nativo en `HardwareNewsSlider`. Causa raíz: Next.js proxea imágenes externas vía `/_next/image` (server-side); la VM GCP no alcanza `images.unsplash.com` → fetch fallaba silenciosamente → se mostraban íconos placeholder. Con `<img>` el browser fetcha directamente.
+  - `[Frontend — HardwareNewsSlider]`: Reescritura completa. Flechas circulares modernas (ghost oscuro izquierda / azul sólido derecha), micro-animación `translateX` en hover, skeleton shimmer mientras carga, mapeo `CAT_IMAGES` por categoría, `onError` con fallback.
+  - `[Frontend — i18n]`: `Navbar.tsx` tenía "Noticias" hardcodeado (×2 — desktop y mobile). `layout.tsx` footer tenía "Privacidad/Términos/Cookies/Estado de Latencia/copyright" hardcodeados en español. Todos reemplazados con claves `dict.navbar.*` y `dict.footer.*`. Diccionarios es/en/pt reescritos ×2 con copy humanizado.
+  - `[UX — Copy Consumer]`: Eliminado todo lenguaje técnico/agéntico del UI público. "Auditoría Neuronal" → "Precios verificados"; "Frontera Financiera" → "Mejor precio del mercado"; "Seguridad Zero-Trust" → "Solo tiendas confiables"; "Motor Rust" / "Agente Python" → ausentes de cualquier texto visible. Principio: el usuario ve una plataforma de comparación de precios, no un sistema agéntico.
+  - `[UX — Layout]`: Sección de laptops (catálogo + deals) reordenada por encima de noticias — primer contenido visible tras el Hero. Agregadas secciones nuevas: `StatsBanner` (40K+ laptops / 100+ updates / 12 países / 24/7), `WhyTrustUs` (4 pilares con íconos consumer), `HowItWorks` (3 pasos sin jerga técnica), `CTA Banner`.
+  - `[CSS]`: `scroll-padding-top: 6rem` en selector `html` de `globals.css` — evita que la navbar fija tape el destino al navegar por anclas (`#ofertas`, `#productos`, `#noticias`).
+  - `[Bug — next.config.ts]`: Faltaba `export default nextConfig` al final del archivo. `output: 'standalone'` estaba declarado pero nunca exportado → Next.js ignoraba la config y usaba defaults → Docker build fallaba en `COPY .next/standalone: not found`.
+  - `[Bug — LanguageSelector]`: Eliminado `useSearchParams()` de Next.js 14+ que requería Suspense boundary. Simplificado a `usePathname` + `useRouter`.
+  - `[Docker — Healthcheck]`: `wget localhost:3000` resolvía `localhost` a `::1` (IPv6) pero Next.js standalone escucha en `0.0.0.0` (solo IPv4) → connection refused → contenedor marcado `(unhealthy)` → reinicio en loop → sitio quedaba cargando indefinidamente. Fix: `127.0.0.1:3000` + `start-period` extendido a 15s. Contenedor en estado `(healthy)`. Sitio accesible en `http://34.44.182.166/es`.
+
+- **[2026-06-07]** `[Ingeniería]`: REESTRUCTURACIÓN UI v2 + NEWSRADAR v2 (Esta sesión).
+  - `[page.tsx — Limpieza secciones]`: CTA Banner ("¿Listo para encontrar tu próxima laptop?") eliminado. `HowItWorks` eliminado por redundante. `WhyTrustUs` movido entre `StatsBanner` y el catálogo (posición: abajo del buscador). `AIDealsSection` restaurada bajo `id="ofertas"` — navbar "Mejores Ofertas" vuelve a funcionar. Orden final de página: Hero → Stats → WhyTrustUs → Catálogo (`#productos`) → Mejores Ofertas (`#ofertas`) → Noticias (`#noticias`).
+  - `[news_radar.py v2]`: Reescritura total. Feeds: 2 → 11 fuentes especializadas (Tom's Hardware, The Verge, Ars Technica, Engadget, TechRadar, CNET, Wired, Xataka ES, NotebookCheck, Digital Trends, Laptop Mag). Ítems por feed: 3 → 6. Filtro por keywords hardware/tech — descarta artículos off-topic (Dragon Ball, moda, entretenimiento). Parser XML: `"xml"` (fallaba sin lxml) → `"lxml-xml"` con fallback a `"html.parser"`.
+  - `[requirements.txt]`: `lxml>=5.0.0` agregado — dependencia requerida por BeautifulSoup para parsear RSS con `lxml-xml`.
+  - `[main.py]`: `_news_radar_loop()` coroutine en lifespan — arranca 30s después del boot (espera a Rails) y repite cada 6 horas automáticamente vía `asyncio.create_task`. Sin intervención manual necesaria.
+  - `[notebooks_controller.rb]`: LIMIT noticias 10 → 20 para mostrar más artículos en el slider.
+  - `[Resultado DB]`: 3 noticias → 96 en Cloud SQL. API devuelve 20 artículos reales de hardware/laptops. Loop automático ya corriendo.

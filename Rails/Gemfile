@@ -1,0 +1,34 @@
+source "https://rubygems.org"
+
+# Núcleo de Rails (API mode)
+gem "rails", "~> 7.1.3"
+
+# 🗄️ Driver oficial de PostgreSQL para conexión en C
+gem "pg", "~> 1.1"
+
+# 🚀 Servidor web concurrente de grado empresarial
+gem "puma", ">= 5.0"
+
+# 🌐 Configuración estricta de CORS (Permitir tráfico interno)
+gem "rack-cors"
+
+# 🔴 Caché distribuido — Memorystore Redis en GCP (fallback: memory_store si no hay REDIS_URL)
+gem "redis", "~> 5.0"
+
+# 🛡️ Rate limiting y bloqueo de bots/DDoS a nivel Rack
+gem "rack-attack", "~> 6.7"
+
+# ⚡ Turbo Serializador JSON (Escrito en C, reduce CPU un 30%)
+gem "oj", "~> 3.16"
+
+# ⏱️ Sincronización estricta de zonas horarias en Docker
+gem "tzinfo-data"
+
+# Optimización de tiempo de arranque en frío
+gem "bootsnap", require: false
+
+# 🛠️ Entorno de Desarrollo y Pruebas
+group :development, :test do
+  gem "debug", platforms: %i[ mri mingw x64_mingw ]
+  gem "dotenv-rails"
+end

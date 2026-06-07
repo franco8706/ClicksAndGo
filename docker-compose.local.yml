@@ -1,0 +1,90 @@
+# =========================================================
+# 🧪 CLICKS & GO - OVERRIDE DE DESARROLLO LOCAL
+# Levanta Postgres y MongoDB en contenedores y reapunta los
+# microservicios a ellos (en vez de Cloud SQL / Atlas).
+# Uso:
+#   docker compose -f docker-compose.yaml -f docker-compose.local.yml up
+# =========================================================
+volumes:
+  pgdata:
+  mongodata:
+
+services:
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: clicks_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=clicksandgo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 🗄️ Carga automática del esquema + semillas en el primer arranque
+      - ./Infra/db/esquema_postgres.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./Infra/db/seeds.sql:/docker-entrypoint-initdb.d/02_seeds.sql:ro
+    networks:
+      - clicksandgo_net
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d clicksandgo" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb_lake:
+    image: mongo:7.0
+    container_name: clicks_mongo
+    restart: unless-stopped
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - clicksandgo_net
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: [ "CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rails_backend:
+    environment:
+      - RAILS_ENV=production
+      - DATABASE_URL=postgres://postgres:postgres@postgres_db:5432/clicksandgo
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-llave_maestra_temporal_para_docker_1234567890}
+      - PORT=3000
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  python_ai:
+    environment:
+      - RAILS_API_URL=http://rails_backend:3000
+      - RUST_API_URL=http://rust_engine:8080/api/v1/score/batch
+      - RUST_BENCHMARK_URL=http://rust_engine:8080/api/v1/benchmarks/run
+      - MONGO_URI=mongodb://mongodb_lake:27017
+      - MONGODB_URI=mongodb://mongodb_lake:27017
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-vertex.json
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_LOCATION=${GCP_LOCATION:-us-central1}
+      - PORT=5001
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      mongodb_lake:
+        condition: service_healthy
+      rails_backend:
+        condition: service_healthy
+      rust_engine:
+        condition: service_started
+
+  rust_engine:
+    environment:
+      - RUST_LOG=info
+      - MONGO_URI=mongodb://mongodb_lake:27017
+      - PORT=8080
+    depends_on:
+      mongodb_lake:
+        condition: service_healthy

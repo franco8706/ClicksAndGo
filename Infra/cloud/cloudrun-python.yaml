@@ -1,0 +1,66 @@
+# =========================================================
+# ☁️ CLOUD RUN — Python AI Engine (El Cerebro)
+# Deploy: gcloud run services replace Infra/cloud/cloudrun-python.yaml --region us-central1
+# =========================================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: clicks-python
+  labels:
+    app: clicks-and-go
+    tier: ai-engine
+  annotations:
+    run.googleapis.com/ingress: internal
+spec:
+  template:
+    metadata:
+      annotations:
+        # El scraper puede ir a 0 cuando no hay misiones activas (ahorro de costos)
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "5"
+        run.googleapis.com/vpc-access-connector: projects/clicks-and-go/locations/us-central1/connectors/clicks-connector
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+      # El orquestador corre tareas pesadas — 1 request a la vez por instancia es suficiente
+      containerConcurrency: 1
+      # Las misiones de scraping pueden tardar hasta 5 minutos
+      timeoutSeconds: 300
+      containers:
+      - image: us-central1-docker.pkg.dev/clicks-and-go/clicks-and-go/python:latest
+        ports:
+        - name: http1
+          containerPort: 5001
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+        env:
+        - name: PORT
+          value: "5001"
+        - name: GCP_PROJECT_ID
+          value: clicks-and-go
+        - name: GCP_LOCATION
+          value: us-central1
+        # La service account del contenedor autentica Vertex AI automáticamente
+        # No se necesita montar gcp-vertex.json en Cloud Run
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: ""
+        - name: RAILS_API_URL
+          # Actualizar con la URL real de Cloud Run de Rails tras el primer deploy
+          value: https://clicks-rails-HASH-uc.a.run.app
+        - name: RUST_API_URL
+          value: https://clicks-rust-HASH-uc.a.run.app/api/v1/score/batch
+        - name: RUST_BENCHMARK_URL
+          value: https://clicks-rust-HASH-uc.a.run.app/api/v1/benchmarks/run
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: MONGODB_URI
+              key: latest
+        livenessProbe:
+          httpGet:
+            path: /health
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3

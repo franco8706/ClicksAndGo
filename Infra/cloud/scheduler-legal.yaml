@@ -1,0 +1,59 @@
+# =====================================================================
+# CLOUD SCHEDULER — Legal Compliance Agent
+#
+# Dos jobs con frecuencias distintas:
+#
+#   legal-audit-daily   → Dispara a las 03:00 UTC todos los días.
+#                         Ciclo normal: analiza las 12 fuentes monitoreadas.
+#
+#   legal-audit-6h      → Dispara cada 6 horas (00/06/12/18 UTC).
+#                         El endpoint /api/v1/legal/audit?mode=check primero
+#                         consulta MongoDB: si el último ciclo no tuvo HIGH/CRITICAL,
+#                         sale inmediatamente sin gastar cuota de IA.
+#                         Si hubo HIGH/CRITICAL → hace re-auditoría completa.
+#
+# Deploy:
+#   gcloud scheduler jobs create http legal-audit-daily \
+#     --schedule="0 3 * * *" \
+#     --uri="$(PYTHON_SERVICE_URL)/api/v1/legal/audit?mode=full" \
+#     --http-method=POST \
+#     --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+#     --location=us-central1
+#
+#   gcloud scheduler jobs create http legal-audit-6h \
+#     --schedule="0 */6 * * *" \
+#     --uri="$(PYTHON_SERVICE_URL)/api/v1/legal/audit?mode=check" \
+#     --http-method=POST \
+#     --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+#     --location=us-central1
+# =====================================================================
+
+jobs:
+
+  - name: legal-audit-daily
+    schedule: "0 3 * * *"
+    timeZone: "UTC"
+    description: "Auditoría legal completa diaria — analiza ToS y privacidad de todas las redes de afiliados"
+    httpTarget:
+      uri: "${PYTHON_SERVICE_URL}/api/v1/legal/audit?mode=full"
+      httpMethod: POST
+      oidcToken:
+        serviceAccountEmail: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+    retryConfig:
+      retryCount: 3
+      minBackoffDuration: "30s"
+      maxBackoffDuration: "120s"
+
+  - name: legal-audit-6h
+    schedule: "0 */6 * * *"
+    timeZone: "UTC"
+    description: "Re-chequeo acelerado — activo sólo si el ciclo anterior detectó HIGH/CRITICAL"
+    httpTarget:
+      uri: "${PYTHON_SERVICE_URL}/api/v1/legal/audit?mode=check"
+      httpMethod: POST
+      oidcToken:
+        serviceAccountEmail: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+    retryConfig:
+      retryCount: 2
+      minBackoffDuration: "15s"
+      maxBackoffDuration: "60s"

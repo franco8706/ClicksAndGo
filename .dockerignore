@@ -1,0 +1,54 @@
+# =============================================
+# Secretos — nunca dentro de una imagen
+# =============================================
+.env
+.env.*
+**/.env
+**/.env.*
+gcp-vertex.json
+**/*service_account*.json
+*.pem
+*.key
+*.p12
+
+# =============================================
+# Control de versiones / IDE / docs
+# =============================================
+.git
+.gitignore
+.vscode
+.idea
+.Agents
+Docs
+Schema
+**/*.md
+*.md
+
+# =============================================
+# Dependencias y artefactos de build
+# =============================================
+**/node_modules
+**/.next
+**/target
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.venv
+**/venv
+**/.pytest_cache
+**/*.tsbuildinfo
+**/tmp
+**/log
+**/coverage
+**/*.log
+**/logs
+
+# =============================================
+# Overrides e infraestructura de despliegue
+# =============================================
+docker-compose.yaml
+docker-compose.local.yml
+docker-compose.override.yml
+Infra/
+/package-lock.json
+repomix-output.txt

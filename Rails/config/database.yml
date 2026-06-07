@@ -1,0 +1,47 @@
+# =========================================================
+# 🗄️ CONFIGURACIÓN DE BASE DE DATOS (PostgreSQL / Cloud SQL)
+# =========================================================
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  
+  # 🚀 AUTO-ESCALADO DEL POOL DE CONEXIONES
+  # Sincronizado estrictamente con los hilos de Puma.
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 10 } %>
+  
+  # ⏱️ TOLERANCIA A LATENCIA (Zero-Trust)
+  # Tiempo máximo (5s) que un hilo esperará por una conexión libre antes de abortar.
+  timeout: 5000
+  
+  # 🧹 RECOLECTOR DE BASURA (Reaping Frequency)
+  # Cada 10 segundos, Rails matará cualquier conexión a BD que se haya 
+  # quedado "zombie" si un hilo crashea. Evita el colapso del servidor.
+  reaping_frequency: 10
+
+  # 👁️ OBSERVABILIDAD DE INFRAESTRUCTURA
+  # Firma las queries. Si hay un cuello de botella, el DBA sabrá que viene de este microservicio.
+  application_name: clicks_rails_guardian
+
+  # Credenciales base inyectadas desde Docker (.env)
+  host: <%= ENV.fetch("POSTGRES_HOST") { 'postgres_db' } %>
+  username: <%= ENV.fetch("POSTGRES_USER") { 'postgres' } %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD") { 'postgres' } %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB") { 'clicksandgo' } %>_dev
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB") { 'clicksandgo' } %>_test
+
+# 🛡️ ENTORNO DE PRODUCCIÓN (Zero-Trust Cloud SQL)
+production:
+  <<: *default
+  
+  # En producción pura, anulamos el host/username/password individual
+  # y forzamos a Rails a conectarse vía URL cifrada.
+  url: <%= ENV['DATABASE_URL'] %>
+  
+  # Forzar uso de Prepared Statements para acelerar consultas repetitivas (N+1 mitigado).
+  prepared_statements: true

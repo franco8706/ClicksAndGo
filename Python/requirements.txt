@@ -1,0 +1,29 @@
+# ==============================================================
+# 🧠 NÚCLEO COGNITIVO E INTELIGENCIA ARTIFICIAL
+# ==============================================================
+# Proveedor primario: Vertex AI (Google Cloud, auth por service account)
+google-cloud-aiplatform>=1.71.0
+# SDK alternativo (Gemini Developer API) — opcional, ya no requerido por el código
+google-generativeai>=0.8.0
+
+# ==============================================================
+# 🕸️ EXTRACCIÓN DE DATOS Y RED (Scraping & APIs)
+# ==============================================================
+requests>=2.31.0
+urllib3>=2.0.0          # Gestión robusta del Pool de Conexiones TCP
+aiohttp>=3.9.3          
+beautifulsoup4>=4.12.3
+lxml>=5.0.0
+           
+# ==============================================================
+# 🗄️ DATA LAKE (Almacenamiento Crudo)
+# ==============================================================
+pymongo>=4.6.2          
+
+# ==============================================================
+# 🚀 SERVIDOR Y ENRUTAMIENTO (Grado Enterprise)
+# ==============================================================
+fastapi>=0.110.0
+pydantic>=2.6.0
+uvicorn[standard]>=0.28.0 
+gunicorn>=21.2.0        # NUEVO: Gestor de procesos maestro para producción

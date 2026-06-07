@@ -1,0 +1,47 @@
+[package]
+name = "clicks-agent"
+version = "0.3.0"
+edition = "2021"
+
+[dependencies]
+# 1. Servidor API y Enrutamiento Web
+axum = "0.7"
+# cors + compression-gzip: reduce payload JSON ~70% sin ningún cambio en handlers
+tower-http = { version = "0.6", features = ["cors", "compression-gzip"] }
+
+# 2. Motor Asíncrono y Web Scraping
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+# reqwest 0.12 usa hyper 1.x (mismo que axum) — elimina hyper 0.14 y rustls 0.21 del binario
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "http2"] }
+scraper = "0.18"
+
+# 3. Persistencia de Telemetría
+mongodb = "3.1.0"
+dotenvy = "0.15"
+
+# 4. Serialización y Procesamiento JSON
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+# 5. Procesamiento Matemático Masivo (CPU-Bound)
+rayon = "1.10.0"
+
+# =====================================================================
+# PERFIL RELEASE — Compilación para producción (Cloud Run)
+# =====================================================================
+[profile.release]
+opt-level    = 3         # Todas las optimizaciones LLVM
+lto          = "fat"     # Link-Time Optimization cross-crate
+codegen-units = 1        # Un solo CodeGen unit = máxima inlining cross-module
+panic        = "abort"   # Sin stack unwinding → binario más pequeño y rápido
+strip        = true      # Elimina símbolos de debug del binario final
+overflow-checks = false  # Aritmética sin guards en release (medido y seguro aquí)
+
+# =====================================================================
+# PERFIL DEV — Compilación incremental rápida para desarrollo
+# =====================================================================
+[profile.dev]
+opt-level = 0
+debug     = 1            # Símbolos mínimos (más rápido que debug=2)
+incremental = true       # Recompila solo lo que cambió

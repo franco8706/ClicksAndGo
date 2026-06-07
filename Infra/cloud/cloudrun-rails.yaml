@@ -1,0 +1,78 @@
+# =========================================================
+# ☁️ CLOUD RUN — Rails Backend (El Guardián Transaccional)
+# Deploy: gcloud run services replace Infra/cloud/cloudrun-rails.yaml --region us-central1
+# =========================================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: clicks-rails
+  labels:
+    app: clicks-and-go
+    tier: backend
+  annotations:
+    # Solo accesible desde dentro de GCP (Next.js, Python, Rust)
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+spec:
+  template:
+    metadata:
+      annotations:
+        # Mínimo 1 instancia activa siempre (elimina cold-start del backend crítico)
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "20"
+        # Conexión directa a Cloud SQL sin IP pública expuesta (más seguro y rápido)
+        # Formato: PROJECT_ID:REGION:INSTANCE_NAME — ajustá con tu nombre de instancia real
+        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:CLOUD_SQL_INSTANCE_NAME
+        # Conector VPC para acceder a Memorystore Redis por IP privada
+        run.googleapis.com/vpc-access-connector: projects/clicks-and-go/locations/us-central1/connectors/clicks-connector
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      # Service account con permisos de Cloud SQL Client + Secret Manager
+      serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+      containerConcurrency: 80
+      timeoutSeconds: 30
+      containers:
+      - image: us-central1-docker.pkg.dev/clicks-and-go/clicks-and-go/rails:latest
+        ports:
+        - name: http1
+          containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+        env:
+        - name: RAILS_ENV
+          value: production
+        - name: WEB_CONCURRENCY
+          value: "2"
+        - name: RAILS_MAX_THREADS
+          value: "5"
+        - name: PORT
+          value: "3000"
+        # Secretos inyectados desde Secret Manager (nunca hardcodeados)
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: DATABASE_URL
+              key: latest
+        - name: SECRET_KEY_BASE
+          valueFrom:
+            secretKeyRef:
+              name: SECRET_KEY_BASE
+              key: latest
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: REDIS_URL
+              key: latest
+        startupProbe:
+          httpGet:
+            path: /up
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 12
+        livenessProbe:
+          httpGet:
+            path: /up
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          failureThreshold: 3

@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "version": "4.0",
+    "description": "Mapa Estratégico de Redes de Afiliación (MarketHunter Orchestrator)",
+    "last_updated": "2026-06-02"
+  },
+  "global_settings": {
+    "api_timeout_ms": 15000,
+    "max_retries": 3,
+    "user_agent_fallback": "ClicksAndGo_Enterprise_Agent/4.0",
+    "concurrency_limit": 10
+  },
+  "retailers": [
+    {
+      "name": "Mercado Libre LATAM",
+      "slug": "mercadolibre",
+      "is_active": true,
+      "python_module_target": "MercadoLibreAPI",
+      "supported_countries": [
+        {
+          "code": "AR",
+          "currency": "ARS",
+          "site_id": "MLA"
+        },
+        {
+          "code": "MX",
+          "currency": "MXN",
+          "site_id": "MLM"
+        },
+        {
+          "code": "BR",
+          "currency": "BRL",
+          "site_id": "MLB"
+        },
+        {
+          "code": "CO",
+          "currency": "COP",
+          "site_id": "MCO"
+        },
+        {
+          "code": "CL",
+          "currency": "CLP",
+          "site_id": "MLC"
+        }
+      ],
+      "affiliate_config": {
+        "network": "MERCADOLIBRE_PARTNERS",
+        "tracking_tag": "clicksandgo-latam-20"
+      }
+    },
+    {
+      "name": "Awin Network Europe",
+      "slug": "awin_eu",
+      "is_active": true,
+      "python_module_target": "AwinNetworkAPI",
+      "supported_countries": [
+        {
+          "code": "ES",
+          "currency": "EUR",
+          "brands": [
+            "HP",
+            "Lenovo",
+            "Acer"
+          ]
+        }
+      ],
+      "affiliate_config": {
+        "network": "AWIN",
+        "tracking_tag": "clicksandgo-es-awin"
+      }
+    },
+    {
+      "name": "CJ Affiliate USA",
+      "slug": "cj_us",
+      "is_active": true,
+      "python_module_target": "CJAffiliateAPI",
+      "supported_countries": [
+        {
+          "code": "US",
+          "currency": "USD",
+          "brands": [
+            "Dell",
+            "Lenovo"
+          ]
+        }
+      ],
+      "affiliate_config": {
+        "network": "COMMISSION_JUNCTION",
+        "tracking_tag": "clicksandgo-us-cj"
+      }
+    },
+    {
+      "name": "Amazon Global Associates",
+      "slug": "amazon",
+      "is_active": false,
+      "python_module_target": "AmazonPAAPI",
+      "supported_countries": [
+        {
+          "code": "US",
+          "currency": "USD"
+        },
+        {
+          "code": "ES",
+          "currency": "EUR"
+        },
+        {
+          "code": "MX",
+          "currency": "MXN"
+        }
+      ],
+      "affiliate_config": {
+        "network": "AMAZON_ASSOCIATES",
+        "tracking_tag": "clickgo08-20"
+      }
+    }
+  ]
+}
