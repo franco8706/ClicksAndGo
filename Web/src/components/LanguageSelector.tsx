@@ -24,7 +24,7 @@ export default function LanguageSelector() {
   return (
     <div className="relative group w-[124px]" data-agent-target="language-selector">
       <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
-        <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors duration-300" />
+        <Globe size={14} className="text-gray-400 group-hover:text-blue-400 transition-colors duration-300" />
       </div>
 
       <select
@@ -39,7 +39,7 @@ export default function LanguageSelector() {
       </select>
 
       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-        <ChevronDown size={12} className="text-gray-500 group-hover:text-blue-400 transition-colors duration-300" />
+        <ChevronDown size={12} className="text-gray-400 group-hover:text-blue-400 transition-colors duration-300" />
       </div>
     </div>
   );

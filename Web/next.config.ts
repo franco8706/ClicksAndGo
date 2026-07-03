@@ -1,10 +1,18 @@
 import type { NextConfig } from "next";
 
+// 🧪 En desarrollo desactivamos los headers de caché agresiva y la
+// optimización de imágenes: el propio Next.js advierte que estos headers
+// rompen el hot-reload, y el optimizador corre del lado del servidor
+// (que en entornos sin salida a internet no alcanza los CDN de las tiendas).
+// En producción/CDN todo esto se reactiva.
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
 
   async headers() {
+    if (!isProd) return [];
     return [
       {
         // Catálogo principal: CDN cachea 60s, sirve stale hasta 5 min mientras revalida
@@ -30,13 +38,6 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Imágenes optimizadas: CDN las cachea agresivamente
-        source: '/_next/image(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=2678400, immutable' },
-        ],
-      },
-      {
         // JS/CSS buildados (hash inmutable en el nombre): caché permanente
         source: '/_next/static/(.*)',
         headers: [
@@ -47,6 +48,9 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    // 🖼️ En dev entregamos la imagen directa (la carga el navegador del usuario);
+    // en producción se optimiza vía el servidor/CDN.
+    unoptimized: !isProd,
     // 🖼️ Formatos modernos: AVIF/WebP entregan alta calidad con menor peso (mejor LCP)
     formats: ['image/avif', 'image/webp'],
     // Calidades permitidas (Next 16 exige declararlas explícitamente)
@@ -57,13 +61,20 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.lenovo.com' },
       { protocol: 'https', hostname: '**.hp.com' },
+      { protocol: 'https', hostname: '**.www8-hp.com' },
       { protocol: 'https', hostname: '**.dell.com' },
       { protocol: 'https', hostname: '**.mlstatic.com' },
       { protocol: 'https', hostname: 'm.media-amazon.com' },
       { protocol: 'https', hostname: '**.awin1.com' },
       { protocol: 'https', hostname: '**.static.pub' },
       { protocol: 'https', hostname: '**.cdn-apple.com' },
-      { protocol: 'https', hostname: '**.hptstore.com' }
+      { protocol: 'https', hostname: '**.hptstore.com' },
+      { protocol: 'https', hostname: '**.msi.com' },
+      { protocol: 'https', hostname: '**.asus.com' },
+      { protocol: 'https', hostname: '**.acer.com' },
+      { protocol: 'https', hostname: 'www.apple.com' },
+      { protocol: 'https', hostname: '**.razer.com' },
+      { protocol: 'https', hostname: 'hybrismediaprod.blob.core.windows.net' }
     ],
   },
 };

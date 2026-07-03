@@ -8,6 +8,7 @@ gcp-vertex.json
 *.pem
 *.key
 *.p12
+.claude/settings.local.json
 
 # =========================================================
 # Next.js / Node

@@ -10,7 +10,9 @@ Esta es la única fuente de verdad arquitectónica del ecosistema. Todo agente o
 ### 1. Frontend (Next.js 15+ / React 19) -> La Fachada Pura
 * **Misión:** Capa de presentación ultrarrápida (SSR). Renderiza la UI basándose en los diccionarios (i18n) para SEO dinámico.
 * **Prohibición de APIs Internas:** La carpeta `/api/` en Next.js fue **eliminada**. Los Server Components hacen `fetch` directamente a la URL interna del microservicio de Rails (`http://rails_backend:3000`).
-* **Proxy Edge Perimetral:** El archivo `middleware.ts` intercepta `x-vercel-ip-country` para inyectar la región y ofuscar las rutas de afiliados mediante el gateway seguro `/out`.
+* **Proxy Edge Perimetral (v4.4):** `middleware.ts` resuelve el país con cadena de prioridad: override `?geo=XX` → cookie `cg_geo` (30 días) → cabeceras de plataforma (`x-vercel-ip-country`/`cf-ipcountry`) → **lookup de IP real** (ip-api.com, agnóstico de nube — funciona en AWS/EC2) → fallback US. El gateway `/out` tiene **allowlist estricta de dominios** (retailers + redes verificadas — anti open-redirect) y todos los enlaces de afiliado llevan `rel="sponsored noopener noreferrer"`.
+* **Cumplimiento afiliados:** Divulgación de afiliados visible en el footer (FTC/RGPD) + páginas legales reales en `/{locale}/legal/{privacy|terms|cookies|affiliates}` (es/en/pt) servidas desde `src/lib/legalContent.ts`.
+* **Tipografía v4.4:** Inter (cuerpo) + **Space Grotesk** (titulares h1–h3, vía `--font-display`). Contraste elevado: mínimos de gris en `text-gray-400`.
 * **Prohibición Total:** El frontend tiene estrictamente prohibido ejecutar lógica de Agentes IA, calcular divisas o conectarse a bases de datos. Su contrato de datos es `laptop.ts` (espejo exacto del JSON de Rails).
 * **Orden de página v2 (2026-06-07):** Hero → StatsBanner → WhyTrustUs → Catálogo (`#productos`, con `CatalogSection` client component y filtros) → AIDealsSection (`#ofertas`, top-3 por deal_score) → Noticias (`#noticias`, `HardwareNewsSlider`) . Secciones eliminadas: CTA Banner, HowItWorks. Navbar: "Mejores Ofertas" → `#ofertas`, "Noticias" → `#noticias`, "Buscar" → `#productos`.
 
@@ -26,10 +28,17 @@ Esta es la única fuente de verdad arquitectónica del ecosistema. Todo agente o
   * **NewsRadar v2:** Scraper de 11 feeds RSS especializados en hardware/tech (Tom's Hardware, The Verge, Ars Technica, Engadget, TechRadar, CNET, Wired, Xataka ES, NotebookCheck, Digital Trends, Laptop Mag). 6 ítems/feed con filtro de keywords para descartar contenido off-topic. Parser `lxml-xml` (fallback `html.parser`). Se ejecuta automáticamente al boot (delay 30s) y cada 6h vía `_news_radar_loop()` en lifespan — sin cron externo. LIMIT de noticias en Rails: 20.
   * **BenchmarkScraper:** Extractor asíncrono masivo (`aiohttp` + `lxml`) para alimentar el motor matemático.
 * **Semantic Engine:** Consolida UX, UI (Tailwind) y SEO en una sola llamada al proveedor cognitivo para optimizar el presupuesto de tokens.
-* **Capa de Proveedores Cognitivos (v4.3):** Toda la IA pasa por `src/providers/` con una interfaz única (`LLMProvider`) y un `ProviderRouter` con failover automático. Constantes de tarea: `TASK_SCORE`, `TASK_SEO`, `TASK_NEWS`, `TASK_LEGAL_AUDIT`.
-  * **VertexProvider (primario):** Vertex AI sobre Google Cloud (`gemini-2.5-flash` / `gemini-2.5-pro`), autenticado por **service account** (`GOOGLE_APPLICATION_CREDENTIALS`), mismo proyecto/billing/region (`GCP_PROJECT_ID`, `GCP_LOCATION`). Salida JSON estructurada estricta.
-  * **AntigravityProvider (fallback):** Heurística determinista de **costo cero**. Soporta `TASK_LEGAL_AUDIT` con detección de señales CRITICAL/HIGH/MEDIUM y `significant_shrink` (texto actual < 85% del anterior). Garantiza Zero-Downtime cognitivo.
+* **Capa de Proveedores Cognitivos (v4.4 — cascada de 3 niveles):** Toda la IA pasa por `src/providers/` con una interfaz única (`LLMProvider`) y un `ProviderRouter` con failover automático en cascada. Constantes de tarea: `TASK_SCORE`, `TASK_SEO`, `TASK_NEWS`, `TASK_LEGAL_AUDIT`.
+  * **VertexProvider (nivel 1 — primario):** Vertex AI sobre Google Cloud (`gemini-2.5-flash` / `gemini-2.5-pro`), autenticado por **service account** (`GOOGLE_APPLICATION_CREDENTIALS`), mismo proyecto/billing/region (`GCP_PROJECT_ID`, `GCP_LOCATION`). Salida JSON estructurada estricta. Requiere billing GCP activo; se reactiva solo al volver el billing.
+  * **GeminiProvider (nivel 2 — secundario):** Gemini API de AI Studio por **API key** (`GEMINI_API_KEY`) — free tier, **sin billing GCP** y agnóstico de nube (funciona desde AWS). Implementado con stdlib (`urllib`), cero dependencias nuevas. Mismo contrato JSON estricto que Vertex.
+  * **AntigravityProvider (nivel 3 — fallback):** Heurística determinista de **costo cero**. Soporta `TASK_LEGAL_AUDIT` con detección de señales CRITICAL/HIGH/MEDIUM y `significant_shrink` (texto actual < 85% del anterior). Garantiza Zero-Downtime cognitivo.
 * **Propiedad Exclusiva:** Python es el **único** con permisos para leer/escribir en la carpeta `/Docs` (Maneja cuotas y Bitácora).
+
+### 3.5 App Móvil (React Native / Expo) -> La Fachada de Bolsillo (v5.0)
+* **Misión:** Cliente Android/iOS en `Mobile/` que consume la **misma API de Rails** que la web (cero lógica de negocio propia). TypeScript + Expo, tema oscuro espejo de la identidad web.
+* **Geo compartida:** Arranca llamando a `GET /api/v1/geo` (Rails) — el mismo punto de verdad de país/moneda/idioma para todas las plataformas. Selector manual de región con persistencia de sesión.
+* **Regla de afiliación inquebrantable:** El botón de compra abre `{WEB_BASE_URL}/out?url=...` — el gateway blindado de la web (allowlist + inyección de tags). **Prohibido** abrir `affiliate_raw` directo: se pierde la comisión y la trazabilidad legal.
+* **Config de entorno:** `Mobile/src/config.ts` (`API_BASE_URL`, `WEB_BASE_URL`). Identificadores de tienda: `com.clicksandgo.app`.
 
 ### 4. Motor Físico (Rust / Axum) -> Calculadora Multinúcleo, Telemetría y Coprocesador Gemini
 * **Misión:** Ultra baja latencia. API REST puerto 8080. Versión actual: **v4.3**.

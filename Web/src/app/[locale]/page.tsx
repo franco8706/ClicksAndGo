@@ -32,7 +32,7 @@ function StatsBanner({ dict }: { dict: any }) {
               <div className="text-4xl sm:text-5xl font-black text-white mb-2 tracking-tight group-hover:text-blue-400 transition-colors duration-300">
                 {num}
               </div>
-              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{label}</div>
+              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</div>
             </div>
           ))}
         </div>
@@ -90,7 +90,7 @@ function WhyTrustUs({ dict }: { dict: any }) {
                 {icon}
               </div>
               <h3 className="text-white font-black text-sm mb-2">{title}</h3>
-              <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+              <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
@@ -140,7 +140,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* 1. Hero */}
       <HeroSection dict={dict} />
 
-      {/* 2. Stats */}
+      {/* 2. Radar de noticias geolocalizado — arriba, estilo NVIDIA.
+          Cambia según la ubicación (país) detectada del visitante. */}
+      {news.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+          <div id="noticias" className="scroll-mt-28">
+            <HardwareNewsSlider news={news} dict={dict} />
+          </div>
+        </section>
+      )}
+
+      {/* 3. Stats */}
       <StatsBanner dict={dict} />
 
       {/* 3. Why trust us — arriba del catálogo, abajo del buscador */}
@@ -179,15 +189,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <AIDealsSection laptops={laptops} countryCode={countryCode} dict={dict} />
         </div>
       </section>
-
-      {/* 6. News */}
-      {news.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <div id="noticias" className="border-b border-gray-800/50 scroll-mt-28">
-            <HardwareNewsSlider news={news} dict={dict} />
-          </div>
-        </section>
-      )}
     </main>
   );
 }

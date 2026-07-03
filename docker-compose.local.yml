@@ -10,7 +10,7 @@ volumes:
   mongodata:
 
 services:
-  postgres_db:
+  postgres-db:
     image: postgres:15-alpine
     container_name: clicks_postgres
     restart: unless-stopped
@@ -22,7 +22,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       # 🗄️ Carga automática del esquema + semillas en el primer arranque
       - ./Infra/db/esquema_postgres.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ./Infra/db/seeds.sql:/docker-entrypoint-initdb.d/02_seeds.sql:ro
+      - ./Infra/db/seeds_catalog.sql:/docker-entrypoint-initdb.d/02_seeds.sql:ro
     networks:
       - clicksandgo_net
     ports:
@@ -52,11 +52,13 @@ services:
   rails_backend:
     environment:
       - RAILS_ENV=production
-      - DATABASE_URL=postgres://postgres:postgres@postgres_db:5432/clicksandgo
+      - DATABASE_URL=postgres://postgres:postgres@postgres-db:5432/clicksandgo
       - SECRET_KEY_BASE=${SECRET_KEY_BASE:-llave_maestra_temporal_para_docker_1234567890}
       - PORT=3000
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
-      postgres_db:
+      postgres-db:
         condition: service_healthy
 
   python_ai:
@@ -69,9 +71,11 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-vertex.json
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_LOCATION=${GCP_LOCATION:-us-central1}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - PORT=5001
     depends_on:
-      postgres_db:
+      postgres-db:
         condition: service_healthy
       mongodb_lake:
         condition: service_healthy

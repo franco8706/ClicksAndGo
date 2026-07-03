@@ -92,7 +92,7 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
 
       {/* ── Results count ──────────────────────────────────────────────── */}
       {filtered.length > 0 && (
-        <p className="text-gray-600 text-[11px] font-black uppercase tracking-widest mb-6">
+        <p className="text-gray-500 text-[11px] font-black uppercase tracking-widest mb-6">
           {filtered.length} laptops
         </p>
       )}
@@ -116,7 +116,7 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
           <h3 className="text-lg font-bold text-gray-200 mb-2">
             {dict.common?.noResults || "Sin Resultados"}
           </h3>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             {dict.common?.scanning || "Buscando"} {countryCode}…
           </p>
         </div>

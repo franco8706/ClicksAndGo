@@ -58,6 +58,9 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-vertex.json
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_LOCATION=${GCP_LOCATION:-us-central1}
+      # 🔷 Gemini API por API key (AI Studio) — inteligencia real sin billing GCP
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - PORT=5001
     volumes:
       - ./gcp-vertex.json:/app/gcp-vertex.json:ro

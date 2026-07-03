@@ -102,7 +102,7 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
 
         {/* Price */}
         <div className="mt-auto mb-5">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">
             {dict.card?.final_price || "Precio Verificado"}
           </span>
           <div className="flex flex-col">
@@ -110,7 +110,7 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
               {formatCurrencyString(currentPriceLocal, laptop.currency)}
             </span>
             {usdReference && (
-              <span className="text-xs font-semibold text-gray-500 mt-2 block">
+              <span className="text-xs font-semibold text-gray-400 mt-2 block">
                 {dict.card?.usd_ref || "Ref"}: U$D{" "}
                 {usdReference.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
@@ -123,14 +123,14 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
           <a
             href={monetizedUrl!}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             className="w-full mb-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black text-xs py-4 rounded-xl flex items-center justify-center gap-2 transition-colors uppercase tracking-widest shadow-lg shadow-blue-600/20"
           >
             <ShoppingCart size={14} />
             {dict.card?.buy_at || "Comprar en"} {retailerName}
           </a>
         ) : (
-          <div className="w-full mb-3 bg-gray-800/50 text-gray-600 font-black text-xs py-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700/50 cursor-not-allowed select-none">
+          <div className="w-full mb-3 bg-gray-800/50 text-gray-500 font-black text-xs py-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700/50 cursor-not-allowed select-none">
             <ShoppingCart size={14} />
             {dict.card?.unavailable || "Enlace no disponible"}
           </div>
@@ -142,7 +142,7 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
           className={`flex items-center justify-center py-3 rounded-2xl transition-all duration-200 border cursor-pointer ${
             isExpanded
               ? "text-blue-400 bg-blue-950/50 border-blue-700/50"
-              : "text-gray-500 bg-gray-900/30 hover:bg-gray-800/40 border-gray-800/60 hover:border-gray-700/60 hover:text-gray-300"
+              : "text-gray-400 bg-gray-900/30 hover:bg-gray-800/40 border-gray-800/60 hover:border-gray-700/60 hover:text-gray-300"
           }`}
         >
           <span className="text-xs font-bold uppercase tracking-widest mr-2">

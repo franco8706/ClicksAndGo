@@ -89,12 +89,24 @@ Objetivo: Tener contenido real en la BD para cumplir los requisitos de aprobaci�
 - [x] **seeds_catalog.sql:** 25 retailers (AR/US/ES/MX/BR), 40 laptops con metadata SEO completa, 40 price_histories. Scripts idempotentes.
 - [x] **cloudrun-rust.yaml:** Eliminado emoji que causaba warning YAML non-ASCII.
 - [x] **Stats honestos:** `StatsBanner` actualizado — 40K+/100+/12 reemplazados por 5 países / 100% gratis / Actualización diaria / 24/7 disponible (es/en/pt). Evita riesgo de baneo por afirmaciones falsas.
-- [ ] **Páginas legales:** Privacy Policy, Terms of Service, Cookies (links en footer aún `href="#"`).
-- [ ] **Affiliate disclosure:** En product cards y footer (requerido FTC/RGPD).
-- [ ] **Deploy a Cloud Run:** Sin URL pública no hay aprobación de afiliados (bloqueante crítico).
-- [ ] **Resolver Vertex AI 403 billing** en GCP console (proyecto `clicks-and-go` / 798903122073).
-- [ ] **Registrar en redes de afiliados:** Awin, CJ Affiliate, Amazon Associates (manual).
-- [ ] **Configurar API keys** en `.env` y Secret Manager tras aprobación.
+- [x] **Páginas legales:** Privacy/Terms/Cookies/Affiliates en `/{locale}/legal/{slug}` (es/en/pt) — `src/lib/legalContent.ts` (2026-07-02).
+- [x] **Affiliate disclosure:** Visible en footer en los 3 idiomas (FTC/RGPD) + página dedicada `/legal/affiliates` (2026-07-02).
+- [ ] ~~Deploy a Cloud Run~~ → **Deploy a AWS EC2** (ver `Infra/aws/`): billing GCP irrecuperable; migración decidida 2026-07-02.
+- [ ] ~~Resolver Vertex AI 403 billing~~ → Mitigado con **GeminiProvider por API key** (nivel 2 de la cascada, sin billing GCP). Vertex se reactiva solo si algún día vuelve el billing.
+- [ ] **Registrar en redes de afiliados:** Awin, CJ Affiliate, Amazon Associates (manual — requiere URL pública en AWS).
+- [ ] **Configurar API keys** en `.env` (GEMINI_API_KEY ya cableada en compose) tras aprobación.
+
+## 🟢 FASE 4.5: Migración AWS + Blindaje de Afiliados + Cascada Cognitiva (2026-07-02 — Completado)
+Objetivo: Independizarse del billing caído de GCP y dejar el sistema de afiliados a prueba de bans.
+
+- [x] **Geo por IP real:** `middleware.ts` con cadena override `?geo` → cookie `cg_geo` → headers de plataforma → lookup ip-api.com → US. Funciona en cualquier nube (AWS incluido).
+- [x] **Allowlist `/out`:** El gateway de afiliados solo redirige a dominios de retailers/redes verificadas (cierra open-redirect — riesgo de ban y phishing).
+- [x] **`rel="sponsored"`:** En todos los enlaces monetizados (LaptopCard, AIDealsSection, detalle de laptop).
+- [x] **GeminiProvider (nivel 2):** Gemini API por API key (AI Studio, free tier, sin billing GCP), stdlib-only. Router en cascada Vertex → Gemini → Antigravity. `GEMINI_API_KEY`/`GEMINI_MODEL` cableados en ambos compose.
+- [x] **Noticias geolocalizadas arriba (estilo NVIDIA):** slider movido bajo el Hero, carrusel con auto-avance 3.5s (pausa en hover, respeta reduced-motion). Semillas `Infra/db/seeds_news.sql` (5 globales + regionales AR/ES/US/MX/BR).
+- [x] **Tipografía:** Space Grotesk en titulares (`--font-display`), contraste elevado un paso (text-gray-500/600 → 400/500), footer más legible.
+- [x] **Infra AWS:** `Infra/aws/README.md` + `deploy-ec2.sh` (EC2 Ubuntu + Docker Compose, stack completo con DBs en contenedores).
+- [ ] **Dominio + HTTPS en AWS** (Elastic IP + Caddy/ALB) — requerido para aprobación de afiliados.
 
 ## 🟢 FASE 4.4: UI Restructure v2 + NewsRadar v2 (2026-06-07 — Completado)
 Objetivo: Simplificar la página eliminando secciones redundantes, restaurar navegación desde navbar, y hacer que las noticias sean reales y se actualicen automáticamente.

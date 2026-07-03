@@ -72,7 +72,7 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
   return (
     <div className="relative w-full max-w-2xl mx-auto">
       <div className={`relative flex items-center rounded-2xl border transition-all duration-300 ease-out ${isFocused ? "border-blue-500 bg-gray-900/90 shadow-[0_0_30px_rgba(59,130,246,0.25)] ring-4 ring-blue-500/10" : "border-gray-800/80 bg-gray-900/40 shadow-2xl shadow-black/40"}`}>
-        <Search size={20} className={`ml-5 shrink-0 transition-colors duration-300 ${isFocused ? "text-blue-400" : "text-gray-500"}`} />
+        <Search size={20} className={`ml-5 shrink-0 transition-colors duration-300 ${isFocused ? "text-blue-400" : "text-gray-400"}`} />
 
         <input
           ref={inputRef}
@@ -88,12 +88,12 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
         <div className="flex items-center gap-3 mr-4">
           {query && (
             <button onClick={() => setQuery("")} className="p-2 rounded-xl hover:bg-gray-800 transition-colors cursor-pointer" aria-label="Limpiar búsqueda">
-              <X size={18} className="text-gray-500 hover:text-gray-300" />
+              <X size={18} className="text-gray-400 hover:text-gray-300" />
             </button>
           )}
           <div className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 bg-gray-950 border border-gray-800 rounded-lg select-none">
-            <Command size={10} className="text-gray-500" />
-            <span className="text-[10px] font-bold text-gray-500">K</span>
+            <Command size={10} className="text-gray-400" />
+            <span className="text-[10px] font-bold text-gray-400">K</span>
           </div>
         </div>
       </div>
@@ -101,7 +101,7 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
       {isOpen && (
         <div className="absolute top-full mt-3 left-0 right-0 z-50 glass-effect rounded-2xl overflow-hidden shadow-2xl shadow-black border border-gray-800/80 animate-hero-entry">
           <div className="px-5 py-3 border-b border-gray-800/60 bg-gray-950/40">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-black">
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black">
               {dict.hero?.suggestions || "Sugerencias Inteligentes"}
             </p>
           </div>
@@ -116,7 +116,7 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-200 group-hover:text-blue-400 transition-colors">{suggestion.query}</p>
-                <p className="text-[10px] text-gray-500 font-black uppercase mt-0.5 tracking-wide">{suggestion.result_counts} opciones verificadas</p>
+                <p className="text-[10px] text-gray-400 font-black uppercase mt-0.5 tracking-wide">{suggestion.result_counts} opciones verificadas</p>
               </div>
             </button>
           ))}

@@ -15,8 +15,10 @@
   --color-brand-border: #1e293b;      /* slate-800 para divisiones perimetrales sutiles */
   --color-brand-glow: rgba(16, 185, 129, 0.15); /* Aura verde de alta fidelidad */
 
-  /* Tipografía Estricta Inter (Inyectada de forma asíncrona desde layout.tsx) */
+  /* Tipografía: Inter para cuerpo (legibilidad) + Space Grotesk para titulares
+     (geométrica, techy — identidad de alto impacto). Inyectadas desde layout.tsx */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   
   /* Radios geométricos adaptados v3.6 */
   --radius-card: 0.75rem;
@@ -72,6 +74,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  /* 🅰️ Titulares con la fuente display (Space Grotesk) — look techy tipo NVIDIA.
+     Tracking levemente negativo para peso visual en tamaños grandes. */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
   /* Personalización premium del cursor de selección de texto */

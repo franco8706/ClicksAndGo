@@ -134,7 +134,13 @@
     "privacyLink": "Privacidad",
     "termsLink": "Términos",
     "cookiesLink": "Cookies",
-    "copyright": "© 2026 Clicks & Go. Todos los derechos reservados."
+    "copyright": "© 2026 Clicks & Go. Todos los derechos reservados.",
+    "affiliateDisclosure": "Divulgación de afiliados: Clicks & Go participa en programas de afiliados (como Amazon Associates, Awin, CJ y Mercado Libre). Cuando comprás a través de nuestros enlaces, podemos recibir una comisión sin costo adicional para vos. Esto nos permite mantener el servicio gratuito. Nuestras comparaciones y puntuaciones son independientes del monto de la comisión.",
+    "affiliateShort": "Este sitio contiene enlaces de afiliados. Podemos recibir una comisión por compras realizadas a través de ellos, sin costo extra para vos.",
+    "aboutLink": "Sobre nosotros",
+    "howLink": "Cómo funciona",
+    "affiliateLink": "Programa de afiliados",
+    "contactLink": "Contacto"
   },
   "condition": {
     "new": "Nuevo",
