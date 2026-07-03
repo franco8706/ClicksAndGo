@@ -69,7 +69,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
 
-        <a href={`/${locale}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-blue-400 mb-10 group transition-colors">
+        <a href={`/${locale}`} className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-blue-400 mb-10 group transition-colors">
           <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           {dict.common?.allLaptops || "Volver al catálogo"}
         </a>
@@ -106,7 +106,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
 
             <div className="p-10 rounded-[3rem] border border-gray-800/80 bg-gray-900/30 backdrop-blur shadow-2xl relative overflow-hidden">
               <div className="flex flex-col mb-8">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">
                   {dict.common?.finalPrice || "Precio Final Verificado"}
                 </p>
                 <div className="flex items-baseline gap-3">
@@ -114,7 +114,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <a href={monetizedUrl} target="_blank" rel="sponsored noopener noreferrer" className="btn-primary flex items-center justify-center gap-3 w-full py-5 rounded-2xl text-white font-black text-xl shadow-lg">
+              <a href={monetizedUrl} target="_blank" rel="noopener noreferrer" className="btn-primary flex items-center justify-center gap-3 w-full py-5 rounded-2xl text-white font-black text-xl shadow-lg">
                 {dict.common?.viewDeal || "Ir a la Tienda"}
                 <ShoppingCart size={22} className="stroke-[2.5]" />
               </a>
@@ -140,7 +140,7 @@ function SpecItem({ icon, label, value }: { readonly icon: React.ReactNode; read
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{label}</p>
         <p className="text-sm font-bold text-gray-200 truncate">{value}</p>
       </div>
     </div>

@@ -3,22 +3,30 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cpu, Search, Menu, X } from "lucide-react";
+import { Cpu, LayoutDashboard } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
+
+interface UserSession {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+}
 
 interface NavbarProps {
   readonly dict: any;
   readonly currentLocale?: string;
+  readonly session?: UserSession | null;
 }
 
-export default function Navbar({ dict, currentLocale: forcedLocale }: NavbarProps) {
+export default function Navbar({ dict, currentLocale: forcedLocale, session }: NavbarProps) {
   const pathname = usePathname();
   const currentLocale = forcedLocale || pathname?.split("/")[1] || "es";
 
   const getHref = (path: string) => `/${currentLocale}${path}`;
 
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -28,14 +36,16 @@ export default function Navbar({ dict, currentLocale: forcedLocale }: NavbarProp
 
   return (
     <nav
-      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ease-out border-b ${scrolled
-        ? "glass-effect border-gray-800/50 py-3 shadow-xl shadow-black/20"
-        : "bg-transparent border-transparent py-5"
-        }`}
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ease-out border-b ${
+        scrolled
+          ? "glass-effect border-gray-800/50 py-3 shadow-xl shadow-black/20"
+          : "bg-transparent border-transparent py-5"
+      }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
+          {/* Logo */}
           <Link
             href={getHref("/")}
             className="flex items-center gap-3 group transition-transform active:scale-95 shrink-0 select-none"
@@ -48,61 +58,61 @@ export default function Navbar({ dict, currentLocale: forcedLocale }: NavbarProp
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href={getHref("/")} className="nav-link text-white hover:text-blue-400 text-sm font-bold tracking-wide">
-              {dict.navbar?.home || "Productos"}
-            </Link>
-
-            <Link href={getHref("/#ofertas")} className="nav-link text-white hover:text-blue-400 text-sm font-bold tracking-wide">
-              {dict.navbar?.promotions || "Ofertas IA"}
-            </Link>
-
-            <Link href={getHref("/#noticias")} className="nav-link text-white hover:text-blue-400 text-sm font-bold tracking-wide">
-              {dict.navbar?.news || "Noticias"}
-            </Link>
-          </div>
-
-          <div className="hidden md:flex items-center space-x-6">
+          {/* Auth buttons + language — desktop */}
+          <div className="hidden md:flex items-center gap-4">
             <LanguageSelector />
 
-            <Link
-              href={getHref("/#productos")}
-              className="bg-white text-black px-5 py-3 rounded-xl text-xs font-black hover:bg-gray-100 transition-all duration-200 uppercase tracking-widest flex items-center gap-2 shadow-lg active:scale-98 select-none"
-            >
-              <Search size={14} className="stroke-[2.5]" />
-              {dict.nav?.cta || "Buscar"}
-            </Link>
+            {session?.user ? (
+              /* Usuario logueado → botón Panel */
+              <Link
+                href={getHref("/panel")}
+                className="flex items-center gap-2 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 shadow-lg shadow-blue-500/20 active:scale-95 select-none"
+              >
+                <LayoutDashboard size={15} />
+                {dict.auth?.panel || dict.navbar?.panel || "Mi Panel"}
+              </Link>
+            ) : (
+              /* Visitante → login + register */
+              <>
+                <Link
+                  href={getHref("/login")}
+                  className="text-white/80 hover:text-white text-sm font-semibold tracking-wide transition-colors px-4 py-2"
+                >
+                  {dict.navbar?.login || "Iniciar sesión"}
+                </Link>
+                <Link
+                  href={getHref("/register")}
+                  className="bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 shadow-lg shadow-blue-500/20 active:scale-95 select-none"
+                >
+                  {dict.navbar?.register || "Registrarse"}
+                </Link>
+              </>
+            )}
           </div>
 
-          <div className="md:hidden flex items-center gap-4">
+          {/* Mobile: language + auth */}
+          <div className="md:hidden flex items-center gap-3">
             <LanguageSelector />
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-white hover:text-blue-400 p-2 transition-colors"
-              aria-label="Alternar menú"
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            {session?.user ? (
+              <Link
+                href={getHref("/panel")}
+                className="flex items-center gap-1.5 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
+              >
+                <LayoutDashboard size={13} />
+                {dict.auth?.panel || "Panel"}
+              </Link>
+            ) : (
+              <Link
+                href={getHref("/register")}
+                className="bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
+              >
+                {dict.navbar?.register || "Registrarse"}
+              </Link>
+            )}
           </div>
 
         </div>
       </div>
-
-      {mobileMenuOpen && (
-        <div className="md:hidden glass-effect absolute top-full left-0 right-0 border-b border-gray-800/80 shadow-2xl animate-hero-entry">
-          <div className="px-4 pt-2 pb-6 space-y-1">
-            <Link href={getHref("/")} onClick={() => setMobileMenuOpen(false)} className="block text-white hover:text-blue-400 py-4 text-base font-bold border-b border-gray-800/40">
-              Productos
-            </Link>
-            <Link href={getHref("/#ofertas")} onClick={() => setMobileMenuOpen(false)} className="block text-white hover:text-blue-400 py-4 text-base font-bold border-b border-gray-800/40">
-              Ofertas IA
-            </Link>
-            <Link href={getHref("/#noticias")} onClick={() => setMobileMenuOpen(false)} className="block text-white hover:text-blue-400 py-4 text-base font-bold">
-              {dict.navbar?.news || "Noticias"}
-            </Link>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

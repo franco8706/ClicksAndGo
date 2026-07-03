@@ -55,6 +55,7 @@ class NewsRadarAgent:
                             "title":       item["title"][:250],
                             "summary":     evaluated["summary"],
                             "impact_score": evaluated["impact_score"],
+                            "source_url":  item.get("url"),
                             "recorded_at": datetime.datetime.utcnow().isoformat(),
                         })
             except Exception as e:
@@ -94,15 +95,20 @@ class NewsRadarAgent:
                 break
             title_tag = item.find("title")
             desc_tag  = item.find("description") or item.find("summary") or item.find("content")
+            link_tag  = item.find("link") or item.find("id")
             title   = title_tag.get_text(strip=True) if title_tag else ""
             raw_txt = BeautifulSoup(desc_tag.get_text(), "html.parser").get_text() if desc_tag else ""
+            # Extrae URL: puede ser texto del tag o atributo href
+            if link_tag:
+                article_url = (link_tag.get("href") or link_tag.get_text(strip=True)) or None
+            else:
+                article_url = None
             if not title or len(raw_txt) < 20:
                 continue
-            # Solo artículos con al menos una keyword de hardware/tech
             combined = (title + " " + raw_txt).lower()
             if not any(kw in combined for kw in self._tech_keywords):
                 continue
-            results.append({"title": title, "summary": raw_txt})
+            results.append({"title": title, "summary": raw_txt, "url": article_url})
 
         return results
 

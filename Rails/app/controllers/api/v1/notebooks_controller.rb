@@ -39,7 +39,7 @@ module Api
         result = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
           country = ActiveRecord::Base.connection.quote(country_raw)
           sql = <<-SQL
-            SELECT category, title, summary, impact_score AS "impactScore", recorded_at AS "recordedAt"
+            SELECT category, title, summary, impact_score AS "impactScore", recorded_at AS "recordedAt", source_url AS "sourceUrl"
             FROM hardware_news
             WHERE country_code = #{country} OR country_code IS NULL
             ORDER BY recorded_at DESC LIMIT 20

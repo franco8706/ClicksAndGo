@@ -80,7 +80,7 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
               onClick={() => handleFilterChange(key)}
               className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-200 border cursor-pointer select-none ${
                 isActive
-                  ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
+                  ? "bg-blue-600/45 backdrop-blur-sm border-blue-500/40 text-white shadow-lg shadow-blue-500/10"
                   : "border-gray-800/80 text-gray-400 bg-gray-900/30 hover:border-blue-500/40 hover:text-blue-400"
               }`}
             >
@@ -92,14 +92,14 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
 
       {/* ── Results count ──────────────────────────────────────────────── */}
       {filtered.length > 0 && (
-        <p className="text-gray-500 text-[11px] font-black uppercase tracking-widest mb-6">
+        <p className="text-gray-600 text-[11px] font-black uppercase tracking-widest mb-6">
           {filtered.length} laptops
         </p>
       )}
 
       {/* ── Grid ───────────────────────────────────────────────────────── */}
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
           {filtered.map((laptop) => (
             <LaptopCard
               key={laptop.id}
@@ -116,7 +116,7 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
           <h3 className="text-lg font-bold text-gray-200 mb-2">
             {dict.common?.noResults || "Sin Resultados"}
           </h3>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-500 text-sm">
             {dict.common?.scanning || "Buscando"} {countryCode}…
           </p>
         </div>

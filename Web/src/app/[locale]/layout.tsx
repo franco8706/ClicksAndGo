@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
-import Link from "next/link"; // 🚀 FIX: Importado para mantener la navegación SPA sin recargar la página
+import { Barlow, Barlow_Condensed } from "next/font/google";
+import Link from "next/link";
 import "../globals.css";
 
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Cpu, Mail, ShieldCheck, MessageSquare, Briefcase, Code2 } from "lucide-react";
+import { auth } from "@/auth";
 
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
 
-const inter = Inter({
+const barlow = Barlow({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-barlow",
   display: "swap",
 });
 
-// 🅰️ Fuente display geométrica para titulares — identidad techy de alto impacto
-const spaceGrotesk = Space_Grotesk({
+const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
-  variable: "--font-space",
+  weight: ["600", "700", "800", "900"],
+  variable: "--font-barlow-condensed",
   display: "swap",
-  weight: ["500", "600", "700"],
 });
 
 interface LayoutProps {
@@ -57,12 +58,14 @@ export default async function RootLayout({ children, params }: LayoutProps) {
   const { locale } = await params;
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
 
+  const session = await auth().catch(() => null);
+
   return (
-    <html lang={locale} className={`${inter.variable} ${spaceGrotesk.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang={locale} className={`${barlow.variable} ${barlowCondensed.variable} scroll-smooth`} suppressHydrationWarning>
       <body className="antialiased font-sans min-h-screen flex flex-col transition-colors selection-premium">
         <ThemeProvider>
 
-          <Navbar dict={dict} currentLocale={locale} />
+          <Navbar dict={dict} currentLocale={locale} session={session} />
 
           <main className="flex-grow flex flex-col">
             {children}
@@ -82,8 +85,8 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                       Clicks <span className="text-blue-500">&</span> Go
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed text-gray-300">{dict.footer?.description}</p>
-                  <p className="text-xs text-gray-400 leading-relaxed">{dict.footer?.disclaimer}</p>
+                  <p className="text-sm leading-relaxed text-gray-400">{dict.footer?.description}</p>
+                  <p className="text-[11px] text-gray-600 leading-relaxed">{dict.footer?.disclaimer}</p>
                 </div>
 
                 <div>
@@ -98,12 +101,12 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                 </div>
 
                 <div>
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{dict.footer?.resources || "La empresa"}</h4>
+                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{dict.footer?.resources || "Recursos"}</h4>
                   <ul className="space-y-2.5 text-sm">
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-400 transition-colors">{dict.footer?.howLink || "Cómo funciona"}</Link></li>
-                    <li><Link href={`/${locale}/legal/affiliates`} className="hover:text-blue-400 transition-colors">{dict.footer?.affiliateLink || "Programa de afiliados"}</Link></li>
-                    <li><Link href={`/${locale}/legal/privacy`} className="hover:text-blue-400 transition-colors">{dict.footer?.privacyLink || "Privacidad"}</Link></li>
-                    <li><Link href={`/${locale}/legal/terms`} className="hover:text-blue-400 transition-colors">{dict.footer?.termsLink || "Términos"}</Link></li>
+                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">API / GraphQL</span></li>
+                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">{dict.footer?.statusLink || "Estado del Sistema"}</span></li>
+                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">Rust Axum Engine</span></li>
+                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">Zero-Trust Security</span></li>
                   </ul>
                 </div>
 
@@ -112,35 +115,28 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-center gap-3">
                       <Mail size={14} className="text-blue-500 shrink-0" />
-                      <span className="truncate text-gray-200 font-medium">info@clicksandgo.com</span>
+                      <span className="truncate text-gray-300 font-medium">info@clicksandgo.com</span>
                     </li>
                     <li className="flex items-center gap-3">
                       <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                      <span className="text-xs font-bold tracking-wide text-gray-300">{dict.features?.audit || "Precios verificados"}</span>
+                      <span className="text-xs font-bold tracking-wide text-gray-400">Auditoría Clicks & Go v4.0</span>
                     </li>
                     <li className="flex space-x-4 pt-3">
-                      <Link href="#" aria-label="Comunidad" className="text-gray-400 hover:text-white transition-colors"><MessageSquare size={18} /></Link>
-                      <Link href="#" aria-label="Negocios" className="text-gray-400 hover:text-white transition-colors"><Briefcase size={18} /></Link>
-                      <Link href="#" aria-label="Desarrollo" className="text-gray-400 hover:text-white transition-colors"><Code2 size={18} /></Link>
+                      <Link href="#" aria-label="Comunidad" className="text-gray-500 hover:text-white transition-colors"><MessageSquare size={18} /></Link>
+                      <Link href="#" aria-label="Negocios" className="text-gray-500 hover:text-white transition-colors"><Briefcase size={18} /></Link>
+                      <Link href="#" aria-label="Desarrollo" className="text-gray-500 hover:text-white transition-colors"><Code2 size={18} /></Link>
                     </li>
                   </ul>
                 </div>
 
               </div>
 
-              {/* ⚖️ Divulgación de afiliados — visible en todas las páginas (FTC / RGPD) */}
-              <div className="border-t border-gray-900 pt-6 pb-2">
-                <p className="text-xs text-gray-400 leading-relaxed max-w-4xl">
-                  {dict.footer?.affiliateDisclosure}
-                </p>
-              </div>
-
-              <div className="border-t border-gray-900 mt-6 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 gap-4">
+              <div className="border-t border-gray-900 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
                 <p>{dict.footer?.copyright || "© 2026 Clicks & Go. All rights reserved."}</p>
                 <div className="flex space-x-6">
-                  <Link href={`/${locale}/legal/privacy`} className="hover:text-white transition-colors">{dict.footer?.privacyLink || "Privacy"}</Link>
-                  <Link href={`/${locale}/legal/terms`} className="hover:text-white transition-colors">{dict.footer?.termsLink || "Terms"}</Link>
-                  <Link href={`/${locale}/legal/cookies`} className="hover:text-white transition-colors">{dict.footer?.cookiesLink || "Cookies"}</Link>
+                  <Link href={`/${locale}/privacidad`} className="hover:text-white transition-colors">{dict.footer?.privacyLink || "Privacy"}</Link>
+                  <Link href={`/${locale}/terminos`} className="hover:text-white transition-colors">{dict.footer?.termsLink || "Terms"}</Link>
+                  <Link href="#" className="hover:text-white transition-colors">{dict.footer?.cookiesLink || "Cookies"}</Link>
                 </div>
               </div>
 

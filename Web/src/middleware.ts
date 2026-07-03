@@ -38,42 +38,6 @@ const COUNTRY_LOCALE_MAP: Record<string, string> = {
   ES: 'es', AR: 'es', MX: 'es', CO: 'es', CL: 'es',
 };
 
-// =====================================================================
-// 🛡️ ALLOWLIST DE DOMINIOS DE SALIDA (/out)
-// El gateway de afiliados SOLO redirige a retailers y redes verificadas.
-// Cierra el open-redirect (abuso de /out?url=... hacia sitios arbitrarios)
-// — motivo de baneo en redes de afiliados y riesgo legal/phishing.
-// Sincronizar con Schema/retailers.json al sumar un retailer nuevo.
-// =====================================================================
-const ALLOWED_OUT_DOMAINS = [
-  // Marketplaces / redes
-  'mercadolibre.com.ar', 'mercadolibre.com.mx', 'mercadolibre.com.br',
-  'mercadolibre.com.co', 'mercadolibre.cl', 'mercadolibre.com',
-  'mercadolivre.com.br',
-  'amazon.com', 'amazon.es', 'amazon.com.mx', 'amazon.com.br',
-  // Redirectores de redes de afiliados (Awin / CJ)
-  'awin1.com', 'anrdoezrs.net', 'jdoqocy.com', 'tkqlhce.com', 'dpbolvw.net',
-  // Tiendas oficiales de marca (programa retailer directo)
-  'lenovo.com', 'hp.com', 'dell.com', 'asus.com', 'acer.com',
-  'apple.com', 'msi.com', 'razer.com', 'samsung.com',
-];
-
-// Coincidencia exacta o de subdominio (store.lenovo.com ✔, evil-lenovo.com ✘)
-function isAllowedOutUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
-    const host = url.hostname.toLowerCase();
-    return ALLOWED_OUT_DOMAINS.some(
-      (d) => host === d || host.endsWith(`.${d}`)
-    );
-  } catch {
-    return false;
-  }
-}
-
-const GEO_COOKIE = 'cg_geo';
-
 function getLocale(request: NextRequest): string {
   const negotiatorHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
@@ -85,107 +49,21 @@ function getLocale(request: NextRequest): string {
   }
 }
 
-// 🌐 Normaliza a código ISO de 2 letras en mayúsculas
-const normCountry = (v: string) => v.toUpperCase().trim().substring(0, 2);
-
-// 🌐 Extrae la IP pública real del visitante (detrás de proxies/CDN/Cloud Run)
-function getClientIp(request: NextRequest): string | null {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0].trim();
-  return request.headers.get('x-real-ip');
-}
-
-// 🌐 Descarta IPs privadas/locales que no sirven para geolocalizar
-function isPublicIp(ip: string | null): ip is string {
-  if (!ip) return false;
-  if (ip === '::1' || ip.startsWith('127.') || ip.startsWith('10.')) return false;
-  if (ip.startsWith('192.168.') || ip.startsWith('::ffff:')) return false;
-  // 172.16.0.0 – 172.31.255.255
-  const m = ip.match(/^172\.(\d+)\./);
-  if (m && +m[1] >= 16 && +m[1] <= 31) return false;
-  return true;
-}
-
-// 🛰️ Geolocalización por IP (best-effort). Funciona en cualquier host —
-// incluido Cloud Run, que NO inyecta cabeceras de país como Vercel/Cloudflare.
-// Falla rápido y en silencio si no hay salida a internet (fallback a US).
-async function lookupCountryByIp(ip: string): Promise<string | null> {
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 1500);
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode`, {
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.countryCode ? normCountry(data.countryCode) : null;
-  } catch {
-    return null;
-  }
-}
-
-// =====================================================================
-// 🌍 RESOLUCIÓN DE PAÍS (prioridad, con caché en cookie)
-//   1. Override explícito ?geo=XX  (pruebas + preferencia del usuario)
-//   2. Cookie cg_geo               (elección previamente resuelta)
-//   3. Cabeceras de plataforma     (Vercel / Cloudflare — gratis)
-//   4. Geolocalización por IP       (Cloud Run / hosts sin geo-headers)
-//   5. Fallback a US
-// Devuelve el país y si debe persistirse en cookie.
-// =====================================================================
-async function resolveCountry(
-  request: NextRequest
-): Promise<{ country: string; persist: boolean }> {
-  const clamp = (c: string) => (SUPPORTED_COUNTRIES.includes(c) ? c : 'US');
-
-  // 1. Override manual
-  const override = request.nextUrl.searchParams.get('geo');
-  if (override) {
-    const c = normCountry(override);
-    if (SUPPORTED_COUNTRIES.includes(c)) return { country: c, persist: true };
-  }
-
-  // 2. Cookie previa
-  const cookie = request.cookies.get(GEO_COOKIE)?.value;
-  if (cookie) {
-    const c = normCountry(cookie);
-    if (SUPPORTED_COUNTRIES.includes(c)) return { country: c, persist: false };
-  }
-
-  // 3. Cabeceras de plataforma (Vercel / Cloudflare)
-  const header =
-    request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry');
-  if (header) return { country: clamp(normCountry(header)), persist: true };
-
-  // 4. Geolocalización por IP
-  const ip = getClientIp(request);
-  if (isPublicIp(ip)) {
-    const looked = await lookupCountryByIp(ip);
-    if (looked) return { country: clamp(looked), persist: true };
-  }
-
-  // 5. Fallback
-  return { country: 'US', persist: false };
-}
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // 🌍 País resuelto por override / cookie / cabeceras / IP
-  const { country: countryCode, persist: persistGeo } = await resolveCountry(request);
+  // Extracción del código de país por IP (Vercel, Cloudflare o Fallback a US)
+  const rawCountry = request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry') || 'US';
+  let countryCode = rawCountry.toUpperCase().trim().substring(0, 2);
 
-  // Adjunta la cookie de país a cualquier respuesta (persistencia de la elección)
-  const applyGeoCookie = (res: NextResponse) => {
-    if (persistGeo) {
-      res.cookies.set(GEO_COOKIE, countryCode, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30 días
-        sameSite: 'lax',
-      });
-    }
-    return res;
-  };
+  // =====================================================================
+  // ⚡ ANTIGRAVITY UX: Fallback de catálogo vacío
+  // Si la IP del usuario pertenece a un país no soportado, lo redirigimos
+  // al catálogo con mayor probabilidad de envío internacional (US)
+  // =====================================================================
+  if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
+    countryCode = 'US';
+  }
 
   // =====================================================================
   // 🛒 PASARELA DE AFILIACIÓN INTELIGENTE (/out)
@@ -194,12 +72,11 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/out')) {
     const targetUrl = searchParams.get('url');
 
-    // Guard 1: URL debe ser absoluta y válida para evitar redirects rotos
-    // Guard 2: SOLO dominios de retailers/redes verificadas (anti open-redirect)
-    if (!targetUrl || targetUrl === '#' || !targetUrl.startsWith('http') || !isAllowedOutUrl(targetUrl)) {
-      return applyGeoCookie(NextResponse.redirect(
+    // Guard: URL debe ser absoluta y válida para evitar redirects rotos
+    if (!targetUrl || targetUrl === '#' || !targetUrl.startsWith('http')) {
+      return NextResponse.redirect(
         new URL(`/${getLocale(request)}`, request.url), 307
-      ));
+      );
     }
 
     let monetizedUrl = targetUrl;
@@ -227,11 +104,11 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      return applyGeoCookie(NextResponse.redirect(new URL(monetizedUrl).toString(), 307));
+      return NextResponse.redirect(new URL(monetizedUrl).toString(), 307);
     } catch {
-      return applyGeoCookie(NextResponse.redirect(
+      return NextResponse.redirect(
         new URL(`/${getLocale(request)}`, request.url), 307
-      ));
+      );
     }
   }
 
@@ -261,7 +138,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-    return applyGeoCookie(response);
+    return response;
   }
 
   // Si no tiene locale, elegimos idioma acorde a la UBICACIÓN del usuario (geo-first)
@@ -270,8 +147,7 @@ export async function middleware(request: NextRequest) {
   const detectedLocale = geoLocale && locales.includes(geoLocale) ? geoLocale : getLocale(request);
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = `/${detectedLocale}${pathname}`;
-  // Conservamos el override ?geo si vino, para que persista tras el redirect de idioma
-  return applyGeoCookie(NextResponse.redirect(redirectUrl, 307));
+  return NextResponse.redirect(redirectUrl, 307);
 }
 
 export const config = {

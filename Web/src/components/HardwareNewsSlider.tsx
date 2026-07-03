@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Radio } from "lucide-react";
 import { HardwareNews } from "@/types/laptop";
 
@@ -88,7 +88,7 @@ function NewsCard({ item, colorIdx, readMoreLabel }: {
           {item.title}
         </h3>
 
-        <p className="text-gray-400 text-xs leading-relaxed line-clamp-3">
+        <p className="text-gray-500 text-xs leading-relaxed line-clamp-3">
           {item.summary}
         </p>
 
@@ -105,33 +105,10 @@ function NewsCard({ item, colorIdx, readMoreLabel }: {
 // ── Main component ───────────────────────────────────────────────────────────
 export default function HardwareNewsSlider({ news, dict }: Props) {
   const sliderRef = useRef<HTMLDivElement>(null);
-  // 🎠 Pausa el auto-avance mientras el usuario interactúa (hover / touch)
-  const pausedRef = useRef(false);
 
   const scroll = (dir: "left" | "right") => {
     sliderRef.current?.scrollBy({ left: dir === "left" ? -380 : 380, behavior: "smooth" });
   };
-
-  // 🎠 Carrusel automático: avanza solo cada 3.5s y vuelve al inicio en loop.
-  // Se pausa al pasar el mouse y respeta 'prefers-reduced-motion'.
-  useEffect(() => {
-    if (!news || news.length <= 1) return;
-    if (typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const id = setInterval(() => {
-      const el = sliderRef.current;
-      if (!el || pausedRef.current) return;
-      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
-      if (atEnd) {
-        el.scrollTo({ left: 0, behavior: "smooth" });
-      } else {
-        el.scrollBy({ left: 380, behavior: "smooth" });
-      }
-    }, 3500);
-
-    return () => clearInterval(id);
-  }, [news]);
 
   if (!news || news.length === 0) return null;
 
@@ -179,10 +156,6 @@ export default function HardwareNewsSlider({ news, dict }: Props) {
       {/* ── Scroll track ── */}
       <div
         ref={sliderRef}
-        onMouseEnter={() => { pausedRef.current = true; }}
-        onMouseLeave={() => { pausedRef.current = false; }}
-        onTouchStart={() => { pausedRef.current = true; }}
-        onTouchEnd={() => { pausedRef.current = false; }}
         className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-3 scrollbar-none"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >

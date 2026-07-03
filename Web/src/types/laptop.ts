@@ -110,6 +110,7 @@ export interface HardwareNews {
   readonly summary: string;
   readonly impactScore: ImpactScore;
   readonly recordedAt: string;
+  readonly sourceUrl?: string;  // URL del artículo original — alias "sourceUrl" en el SELECT de Rails
 }
 
 // =====================================================================

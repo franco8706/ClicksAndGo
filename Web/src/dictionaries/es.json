@@ -33,7 +33,9 @@
     "news": "Noticias",
     "categories": "Cómo funciona",
     "updated": "Actualizado",
-    "realTime": "EN VIVO"
+    "realTime": "EN VIVO",
+    "login": "Iniciar sesión",
+    "register": "Registrarse"
   },
   "nav": {
     "cta": "Buscar"
@@ -43,7 +45,10 @@
     "aiTag": "Encuentra la laptop perfecta para vos",
     "title1": "Tu Próxima Laptop,",
     "title2": "Al Mejor Precio",
-    "subtitle": "Comparamos miles de ofertas en las principales tiendas para que encuentres la laptop perfecta al precio más bajo garantizado.",
+    "titleSub": "Con Análisis Experto",
+    "ctaCatalog": "Ver Catálogo",
+    "ctaDeals": "Mejores Ofertas",
+    "subtitle": "Comparamos miles de ofertas en las principales tiendas para que encuentres la mejor laptop en precio-calidad.",
     "searchPlaceholder": "¿Para qué vas a usar tu laptop?",
     "suggestions": "Búsquedas populares",
     "tags": [
@@ -96,11 +101,20 @@
   "card": {
     "final_price": "Precio Verificado",
     "view_deal": "Ver Oferta",
-    "hide_details": "Ocultar",
+    "view_description": "Ver descripción",
+    "hide_description": "Ocultar descripción",
     "buy_at": "Comprar en",
     "usd_ref": "Ref USD",
     "ram": "GB RAM",
-    "ssd": "GB SSD"
+    "ssd": "GB SSD",
+    "unavailable": "Enlace no disponible",
+    "descGaming": "Ideal para gaming exigente, streaming en vivo y aplicaciones que demandan máxima potencia gráfica. Con su procesador de alto rendimiento y GPU dedicada, brinda experiencias fluidas en títulos AAA, diseño 3D e inteligencia artificial acelerada por hardware.",
+    "descBusiness": "Diseñada para profesionales exigentes. Perfecta para videoconferencias HD, documentos pesados, hojas de cálculo complejas y multitarea sin límites. Conectividad completa, batería de larga duración y pantalla de alta fidelidad para un día de trabajo impecable.",
+    "descWorkstation": "Potencia real para usuarios que trabajan con datos masivos, renders 3D, modelos CAD o simulaciones científicas. La combinación de procesador multinúcleo y GPU profesional garantiza resultados precisos incluso bajo las cargas más sostenidas e intensas.",
+    "descCreator": "La opción ideal para creativos digitales. Perfecta para editar video en 4K, procesar fotografía RAW, diseñar en Adobe Suite o trabajar con proyectos de audio profesional. Su pantalla de alta precisión y equilibrio CPU-GPU eliminan cualquier cuello de botella.",
+    "descUltrabook": "Elegante, silenciosa y extremadamente portátil, pensada para el profesional en movimiento. Se adapta a oficinas compartidas, viajes frecuentes y trabajo remoto. Batería de larga autonomía y diseño ultraliviano que no sacrifica rendimiento ni conectividad.",
+    "descBudget": "La elección inteligente para quien busca el mejor precio sin renunciar a la calidad. Ideal para trabajo de oficina, navegación fluida, clases online y entretenimiento cotidiano. Rendimiento estable y confiable para todas las tareas del día a día.",
+    "descStudent": "La compañera académica perfecta. Diseñada para tomar apuntes ágiles, investigar, organizar proyectos universitarios y cumplir plazos. Liviana para llevar a clases, con batería que aguanta toda la jornada y agilidad para múltiples pestañas abiertas."
   },
   "featuredDeal": "Mejor relación precio-calidad",
   "greatOpportunity": "Gran oferta",
@@ -134,13 +148,7 @@
     "privacyLink": "Privacidad",
     "termsLink": "Términos",
     "cookiesLink": "Cookies",
-    "copyright": "© 2026 Clicks & Go. Todos los derechos reservados.",
-    "affiliateDisclosure": "Divulgación de afiliados: Clicks & Go participa en programas de afiliados (como Amazon Associates, Awin, CJ y Mercado Libre). Cuando comprás a través de nuestros enlaces, podemos recibir una comisión sin costo adicional para vos. Esto nos permite mantener el servicio gratuito. Nuestras comparaciones y puntuaciones son independientes del monto de la comisión.",
-    "affiliateShort": "Este sitio contiene enlaces de afiliados. Podemos recibir una comisión por compras realizadas a través de ellos, sin costo extra para vos.",
-    "aboutLink": "Sobre nosotros",
-    "howLink": "Cómo funciona",
-    "affiliateLink": "Programa de afiliados",
-    "contactLink": "Contacto"
+    "copyright": "© 2026 Clicks & Go. Todos los derechos reservados."
   },
   "condition": {
     "new": "Nuevo",
@@ -152,5 +160,42 @@
     "GOOD": "Buen precio",
     "REGULAR": "Precio normal",
     "LOW": "Precio elevado"
+  },
+  "auth": {
+    "loginTitle": "Iniciar sesión",
+    "loginSubtitle": "Para guardar favoritos y recibir alertas de precio",
+    "registerTitle": "Crear cuenta",
+    "registerSubtitle": "Es gratis y sin tarjeta de crédito",
+    "orEmail": "o con tu email",
+    "orSocial": "o con red social",
+    "emailLabel": "Email",
+    "emailPlaceholder": "tu@email.com",
+    "sendLink": "Enviar enlace de acceso",
+    "sendError": "Algo salió mal. Intentá de nuevo.",
+    "linkSentTitle": "Revisá tu bandeja de entrada",
+    "linkSentDesc": "Te enviamos el enlace de acceso. Expira en 10 minutos.",
+    "loginGoogle": "Continuar con Google",
+    "loginMicrosoft": "Continuar con Microsoft",
+    "loginFacebook": "Continuar con Facebook",
+    "noAccount": "¿No tenés cuenta?",
+    "hasAccount": "¿Ya tenés cuenta?",
+    "createAccount": "Crear cuenta",
+    "signIn": "Iniciar sesión",
+    "panel": "Mi Panel",
+    "signOut": "Cerrar sesión",
+    "panelTitle": "Mi Panel",
+    "profileSection": "Perfil",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "phone": "Teléfono",
+    "phoneNote": "Solo para recuperación de cuenta",
+    "city": "Ciudad",
+    "saveProfile": "Guardar cambios",
+    "saveError": "Error al guardar. Intentá de nuevo.",
+    "profileSaved": "¡Perfil actualizado correctamente!",
+    "memberSince": "Miembro desde",
+    "favoritesSection": "Mis favoritos",
+    "noFavorites": "Aún no guardaste ninguna laptop",
+    "privacyNote": "Al continuar aceptás nuestra Política de Privacidad y Términos de Uso."
   }
 }

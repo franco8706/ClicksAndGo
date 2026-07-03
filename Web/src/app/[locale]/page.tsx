@@ -6,7 +6,6 @@ import type { Laptop, HardwareNews } from "@/types/laptop";
 import HeroSection from "@/components/HeroSection";
 import CatalogSection from "@/components/CatalogSection";
 import AIDealsSection from "@/components/AIDealsSection";
-import HardwareNewsSlider from "@/components/HardwareNewsSlider";
 
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
@@ -32,7 +31,7 @@ function StatsBanner({ dict }: { dict: any }) {
               <div className="text-4xl sm:text-5xl font-black text-white mb-2 tracking-tight group-hover:text-blue-400 transition-colors duration-300">
                 {num}
               </div>
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{label}</div>
             </div>
           ))}
         </div>
@@ -73,7 +72,10 @@ function WhyTrustUs({ dict }: { dict: any }) {
           <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">
             {dict.features?.eyebrow || "Nuestra promesa"}
           </span>
-          <h2 className="text-4xl sm:text-5xl font-black text-white mt-3 tracking-tight">
+          <h2
+            className="text-5xl sm:text-6xl font-bold text-white mt-3"
+            style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
+          >
             {dict.features?.title || "¿Por qué confiar en Clicks & Go?"}
           </h2>
           <p className="text-gray-400 mt-4 max-w-xl mx-auto text-sm leading-relaxed">
@@ -89,7 +91,7 @@ function WhyTrustUs({ dict }: { dict: any }) {
               <div className="w-11 h-11 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center mb-5 group-hover:border-blue-500/30 transition-colors">
                 {icon}
               </div>
-              <h3 className="text-white font-black text-sm mb-2">{title}</h3>
+              <h3 className="text-white font-semibold text-sm mb-2">{title}</h3>
               <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
             </div>
           ))}
@@ -137,41 +139,26 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/8 rounded-full blur-[140px] pointer-events-none z-0" />
       <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-600/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
-      {/* 1. Hero */}
-      <HeroSection dict={dict} />
+      {/* 1. Hero + ticker de noticias integrado */}
+      <HeroSection dict={dict} news={news} />
 
-      {/* 2. Radar de noticias geolocalizado — arriba, estilo NVIDIA.
-          Cambia según la ubicación (país) detectada del visitante. */}
-      {news.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <div id="noticias" className="scroll-mt-28">
-            <HardwareNewsSlider news={news} dict={dict} />
-          </div>
-        </section>
-      )}
-
-      {/* 3. Stats */}
-      <StatsBanner dict={dict} />
-
-      {/* 3. Why trust us — arriba del catálogo, abajo del buscador */}
-      <div className="relative z-10 mt-4">
+      {/* 2. Why trust us */}
+      <div className="relative z-10">
         <WhyTrustUs dict={dict} />
       </div>
 
       {/* 4. Laptop catalog with filters */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div id="productos" className="mt-6 mb-8 scroll-mt-28">
-          <div className="mb-8">
-            <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">
-              {dict.catalog?.eyebrow || "Lo mejor disponible"}
+          {/* Badge live — reemplaza el header del catálogo */}
+          <div className="mb-6 flex items-center gap-3 px-5 py-2.5 bg-emerald-950/30 border border-emerald-900/40 select-none w-fit">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <h2 className="text-4xl sm:text-5xl font-black text-white mt-2 tracking-tight">
-              {dict.catalog?.title || "Laptops"}
-            </h2>
-            <p className="text-gray-400 text-sm mt-3">
-              {dict.catalog?.subtitle || "El mejor precio encontrado para cada modelo en tu región"}{" "}
-              <span className="text-blue-400 font-bold">({countryCode})</span>
-            </p>
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+              {dict.hero?.verifiedDeals || "Precios auditados en tiempo real"}
+            </span>
           </div>
 
           <CatalogSection
@@ -189,6 +176,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <AIDealsSection laptops={laptops} countryCode={countryCode} dict={dict} />
         </div>
       </section>
+
     </main>
   );
 }

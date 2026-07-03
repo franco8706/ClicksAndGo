@@ -89,24 +89,12 @@ Objetivo: Tener contenido real en la BD para cumplir los requisitos de aprobaci�
 - [x] **seeds_catalog.sql:** 25 retailers (AR/US/ES/MX/BR), 40 laptops con metadata SEO completa, 40 price_histories. Scripts idempotentes.
 - [x] **cloudrun-rust.yaml:** Eliminado emoji que causaba warning YAML non-ASCII.
 - [x] **Stats honestos:** `StatsBanner` actualizado — 40K+/100+/12 reemplazados por 5 países / 100% gratis / Actualización diaria / 24/7 disponible (es/en/pt). Evita riesgo de baneo por afirmaciones falsas.
-- [x] **Páginas legales:** Privacy/Terms/Cookies/Affiliates en `/{locale}/legal/{slug}` (es/en/pt) — `src/lib/legalContent.ts` (2026-07-02).
-- [x] **Affiliate disclosure:** Visible en footer en los 3 idiomas (FTC/RGPD) + página dedicada `/legal/affiliates` (2026-07-02).
-- [ ] ~~Deploy a Cloud Run~~ → **Deploy a AWS EC2** (ver `Infra/aws/`): billing GCP irrecuperable; migración decidida 2026-07-02.
-- [ ] ~~Resolver Vertex AI 403 billing~~ → Mitigado con **GeminiProvider por API key** (nivel 2 de la cascada, sin billing GCP). Vertex se reactiva solo si algún día vuelve el billing.
-- [ ] **Registrar en redes de afiliados:** Awin, CJ Affiliate, Amazon Associates (manual — requiere URL pública en AWS).
-- [ ] **Configurar API keys** en `.env` (GEMINI_API_KEY ya cableada en compose) tras aprobación.
-
-## 🟢 FASE 4.5: Migración AWS + Blindaje de Afiliados + Cascada Cognitiva (2026-07-02 — Completado)
-Objetivo: Independizarse del billing caído de GCP y dejar el sistema de afiliados a prueba de bans.
-
-- [x] **Geo por IP real:** `middleware.ts` con cadena override `?geo` → cookie `cg_geo` → headers de plataforma → lookup ip-api.com → US. Funciona en cualquier nube (AWS incluido).
-- [x] **Allowlist `/out`:** El gateway de afiliados solo redirige a dominios de retailers/redes verificadas (cierra open-redirect — riesgo de ban y phishing).
-- [x] **`rel="sponsored"`:** En todos los enlaces monetizados (LaptopCard, AIDealsSection, detalle de laptop).
-- [x] **GeminiProvider (nivel 2):** Gemini API por API key (AI Studio, free tier, sin billing GCP), stdlib-only. Router en cascada Vertex → Gemini → Antigravity. `GEMINI_API_KEY`/`GEMINI_MODEL` cableados en ambos compose.
-- [x] **Noticias geolocalizadas arriba (estilo NVIDIA):** slider movido bajo el Hero, carrusel con auto-avance 3.5s (pausa en hover, respeta reduced-motion). Semillas `Infra/db/seeds_news.sql` (5 globales + regionales AR/ES/US/MX/BR).
-- [x] **Tipografía:** Space Grotesk en titulares (`--font-display`), contraste elevado un paso (text-gray-500/600 → 400/500), footer más legible.
-- [x] **Infra AWS:** `Infra/aws/README.md` + `deploy-ec2.sh` (EC2 Ubuntu + Docker Compose, stack completo con DBs en contenedores).
-- [ ] **Dominio + HTTPS en AWS** (Elastic IP + Caddy/ALB) — requerido para aprobación de afiliados.
+- [x] **Páginas legales:** `/{locale}/privacidad` y `/{locale}/terminos` creadas — 10 secciones c/u en es/en/pt. Links del footer actualizados a rutas reales.
+- [ ] **Affiliate disclosure:** En product cards y footer (requerido FTC/RGPD).
+- [ ] **Deploy a Cloud Run:** Sin URL pública no hay aprobación de afiliados (bloqueante crítico).
+- [ ] **Resolver Vertex AI 403 billing** en GCP console (proyecto `clicks-and-go` / 798903122073).
+- [ ] **Registrar en redes de afiliados:** Awin, CJ Affiliate, Amazon Associates (manual).
+- [ ] **Configurar API keys** en `.env` y Secret Manager tras aprobación.
 
 ## 🟢 FASE 4.4: UI Restructure v2 + NewsRadar v2 (2026-06-07 — Completado)
 Objetivo: Simplificar la página eliminando secciones redundantes, restaurar navegación desde navbar, y hacer que las noticias sean reales y se actualicen automáticamente.
@@ -120,3 +108,22 @@ Objetivo: Simplificar la página eliminando secciones redundantes, restaurar nav
 - [x] **Auto-loop 6h:** `_news_radar_loop()` en lifespan de `main.py` — corre al arrancar y cada 6 horas. Sin cron externo necesario.
 - [x] **Rails LIMIT 20:** `hardware_news` devuelve 20 artículos (antes 10).
 - [x] **Resultado:** DB 3 → 96 noticias reales de hardware. Slider muestra contenido fresh de fuentes reconocidas.
+
+## 🟢 FASE 5: Autenticación v1.0 — OAuth + Magic Links (2026-06-09 — Completado)
+Objetivo: Sistema de registro e inicio de sesión completo con OAuth (Google/Microsoft/Facebook) y magic links por email (Resend), sin contraseñas.
+
+- [x] **Migración SQL:** `Infra/db/migration_auth_v1.sql` — columnas `last_name`, `phone`, `city` en tabla `users`; tablas `sessions` y `verification_tokens`. Ejecutada exitosamente en Cloud SQL.
+- [x] **`Web/src/lib/db.ts`:** Singleton Pool de PostgreSQL (`pg@8.13`) con SSL en producción y connection pooling (max 10, idle 30s, connect 3s).
+- [x] **`Web/src/auth.ts`:** NextAuth.js v5 (`5.0.0-beta.31`) con adapter custom `ClicksAdapter()` — necesario porque `@auth/pg-adapter` oficial usa camelCase con comillas SQL (`"emailVerified"`) mientras nuestro esquema usa snake_case (`email_verified`). Providers condicionales: solo activa Google/Microsoft/Facebook/Resend si las env vars correspondientes están seteadas (no crashea si falta alguna).
+- [x] **`Web/src/app/api/auth/[...nextauth]/route.ts`:** Route Handler con `runtime = "nodejs"` (pg no es Edge-compatible).
+- [x] **`/login` y `/register`:** Server Components con Server Actions para OAuth sign-in y magic link. Inline `"use server"` functions capturan `locale` del scope del componente. Client Component `MagicLinkForm.tsx` usa `useActionState` (React 19).
+- [x] **`/panel`:** Dashboard protegido — `auth()` → redirect a `/login` si no hay sesión. Query directa a DB para datos de perfil. `ProfileForm.tsx` (Client Component) con `useActionState` para actualizar nombre/apellido/teléfono/ciudad.
+- [x] **Navbar:** Botón "Mi Panel" con ícono `LayoutDashboard` cuando hay sesión activa; "Iniciar sesión" + "Registrarse" para visitantes. Session pasada como prop desde `layout.tsx` (Server Component) sin SessionProvider.
+- [x] **Diccionarios i18n:** Sección `auth` completa en es/en/pt (30+ claves: loginTitle, registerTitle, emailLabel, linkSentTitle, panelTitle, profileSection, firstName, lastName, phone, city, etc.).
+- [x] **Páginas legales:** `/{locale}/privacidad` y `/{locale}/terminos` — 10 secciones c/u en es/en/pt cubriendo GDPR/LGPD/Ley 25.326. ShieldCheck/FileText icons, dark theme glassmorphism.
+- [x] **Footer links:** `/{locale}/privacidad` y `/{locale}/terminos` apuntando a rutas reales (antes `href="#"`).
+- [x] **`.env`:** `AUTH_SECRET` generado (`openssl rand -base64 32`), `AUTH_URL=http://localhost`, placeholders para todos los providers OAuth.
+- [ ] **Configurar credentials OAuth** (manual): Google Console, Azure App Registration (multi-tenant), Facebook Developers.
+- [ ] **Resend:** Verificar dominio `clicksandgo.com`, obtener API key, setear `AUTH_RESEND_KEY`.
+- [ ] **AAIP:** Registro en Agencia de Acceso a la Información Pública (Ley 25.326, Argentina) — responsabilidad del usuario.
+- [ ] **`AUTH_URL`:** Cambiar a `https://clicksandgo.com` al deployar a Cloud Run.

@@ -33,7 +33,9 @@
     "news": "News",
     "categories": "How it works",
     "updated": "Updated",
-    "realTime": "LIVE"
+    "realTime": "LIVE",
+    "login": "Log in",
+    "register": "Sign up"
   },
   "nav": {
     "cta": "Search"
@@ -43,7 +45,10 @@
     "aiTag": "Find the perfect laptop for you",
     "title1": "Your Next Laptop,",
     "title2": "At the Best Price",
-    "subtitle": "We compare thousands of deals across top stores so you find the perfect laptop at the lowest guaranteed price.",
+    "titleSub": "Expert Analysis Included",
+    "ctaCatalog": "View Catalog",
+    "ctaDeals": "Best Deals",
+    "subtitle": "We compare thousands of deals across top stores so you find the best laptop in price-quality.",
     "searchPlaceholder": "What will you use your laptop for?",
     "suggestions": "Popular searches",
     "tags": [
@@ -96,11 +101,20 @@
   "card": {
     "final_price": "Verified Price",
     "view_deal": "View Deal",
-    "hide_details": "Hide",
+    "view_description": "View description",
+    "hide_description": "Hide description",
     "buy_at": "Buy at",
     "usd_ref": "USD Ref",
     "ram": "GB RAM",
-    "ssd": "GB SSD"
+    "ssd": "GB SSD",
+    "unavailable": "Link unavailable",
+    "descGaming": "Perfect for demanding games, live streaming and GPU-accelerated workloads requiring peak power. With its high-performance processor and dedicated graphics card, it delivers smooth gameplay in AAA titles, 3D design and AI-accelerated rendering at any resolution.",
+    "descBusiness": "Engineered for professionals who need real-world performance without compromise. Ideal for HD video calls, heavy documents, complex spreadsheets and demanding multitasking. Robust connectivity, long-lasting battery and a high-fidelity display for flawless workdays.",
+    "descWorkstation": "True workstation power for users handling massive datasets, 3D renders, CAD models or scientific simulations. Its multi-core processor and professional GPU combination delivers precise results even under the most sustained and intense computing workloads.",
+    "descCreator": "The ideal choice for digital creatives. Perfect for editing 4K video, processing RAW photography, designing in Adobe Suite or managing professional audio projects. Its accurate display and balanced CPU-GPU remove every bottleneck from your creative workflow.",
+    "descUltrabook": "Elegant, quiet and incredibly portable, built for professionals always on the move. Fits seamlessly into coworking spaces, business trips and remote work setups. Long battery life and an ultralight chassis without sacrificing performance or connectivity.",
+    "descBudget": "The smart pick for those who want the best price without compromising quality. Ideal for office work, smooth browsing, online classes and everyday entertainment. Stable and reliable performance for every task you throw at it throughout the day.",
+    "descStudent": "The perfect academic companion. Built for quick note-taking, research, organizing university projects and meeting deadlines. Light enough for campus life, with all-day battery and the multitasking agility needed to keep up with every open tab and app."
   },
   "featuredDeal": "Best value for money",
   "greatOpportunity": "Great deal",
@@ -134,13 +148,7 @@
     "privacyLink": "Privacy",
     "termsLink": "Terms",
     "cookiesLink": "Cookies",
-    "copyright": "© 2026 Clicks & Go. All rights reserved.",
-    "affiliateDisclosure": "Affiliate disclosure: Clicks & Go participates in affiliate programs (such as Amazon Associates, Awin, CJ and Mercado Libre). When you buy through our links, we may earn a commission at no extra cost to you. This keeps the service free. Our comparisons and scores are independent of commission amounts.",
-    "affiliateShort": "This site contains affiliate links. We may earn a commission on purchases made through them, at no extra cost to you.",
-    "aboutLink": "About us",
-    "howLink": "How it works",
-    "affiliateLink": "Affiliate program",
-    "contactLink": "Contact"
+    "copyright": "© 2026 Clicks & Go. All rights reserved."
   },
   "condition": {
     "new": "Brand new",
@@ -152,5 +160,42 @@
     "GOOD": "Good price",
     "REGULAR": "Average price",
     "LOW": "Above average"
+  },
+  "auth": {
+    "loginTitle": "Log in",
+    "loginSubtitle": "To save favorites and get price alerts",
+    "registerTitle": "Create account",
+    "registerSubtitle": "Free, no credit card required",
+    "orEmail": "or with your email",
+    "orSocial": "or with social account",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "sendLink": "Send access link",
+    "sendError": "Something went wrong. Please try again.",
+    "linkSentTitle": "Check your inbox",
+    "linkSentDesc": "We sent you an access link. It expires in 10 minutes.",
+    "loginGoogle": "Continue with Google",
+    "loginMicrosoft": "Continue with Microsoft",
+    "loginFacebook": "Continue with Facebook",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "createAccount": "Create account",
+    "signIn": "Log in",
+    "panel": "My Panel",
+    "signOut": "Sign out",
+    "panelTitle": "My Panel",
+    "profileSection": "Profile",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "phone": "Phone",
+    "phoneNote": "Used only for account recovery",
+    "city": "City",
+    "saveProfile": "Save changes",
+    "saveError": "Failed to save. Please try again.",
+    "profileSaved": "Profile updated successfully!",
+    "memberSince": "Member since",
+    "favoritesSection": "My favorites",
+    "noFavorites": "You haven't saved any laptops yet",
+    "privacyNote": "By continuing you agree to our Privacy Policy and Terms of Use."
   }
 }

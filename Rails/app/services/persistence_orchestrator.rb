@@ -114,6 +114,7 @@ class PersistenceOrchestrator
         news.impact_score = valid_scores.include?(impact) ? impact : 'MEDIUM'
         
         news.recorded_at = item[:recorded_at] || Time.current
+        news.source_url  = item[:source_url] if item[:source_url].present?
         news.save!
       end
     end

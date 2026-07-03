@@ -36,7 +36,7 @@ function DealRow({ laptop, countryCode, dict }: DealRowProps) {
           {laptop.name}
         </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
             {retailerName}
           </span>
           {isGranOportunidad && (
@@ -49,7 +49,7 @@ function DealRow({ laptop, countryCode, dict }: DealRowProps) {
       </div>
 
       <div className="text-right shrink-0">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
           {dict.deals?.youSave || "AHORRAS"}
         </p>
         <p className="text-lg md:text-xl font-black text-emerald-400">
@@ -63,7 +63,7 @@ function DealRow({ laptop, countryCode, dict }: DealRowProps) {
 
   if (hasValidUrl) {
     return (
-      <a href={monetizedUrl} target="_blank" rel="sponsored noopener noreferrer" className={rowClass}>
+      <a href={monetizedUrl} target="_blank" rel="noopener noreferrer" className={rowClass}>
         {inner}
       </a>
     );
@@ -96,14 +96,14 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
     <section className="w-full relative z-10">
       <div className="flex flex-col mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-blue-600/45 backdrop-blur-sm border border-blue-500/25 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg">🏷️</span>
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
             {dict.deals?.title || "Radar de Oportunidades"}
           </h2>
         </div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-14">
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-14">
           {dict.deals?.subtitle || "Selección algorítmica por Clicks & Go v4.0"}
         </p>
       </div>
