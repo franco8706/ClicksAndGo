@@ -13,7 +13,11 @@ Rails.application.routes.draw do
   # =========================================================
   namespace :api, defaults: { format: :json } do
     namespace :v1 do
-      
+
+      # 🌍 Geolocalización compartida (Web + App móvil):
+      # resuelve el país del visitante por IP en un solo lugar.
+      get :geo, to: "geo#show"
+
       # 💻 Dominio: Laptops / Notebooks
       resources :notebooks, only: [:index, :create] do
         collection do
