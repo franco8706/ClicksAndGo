@@ -11,6 +11,11 @@ import fs from "fs";
 function buildSsl(): false | { rejectUnauthorized: boolean; ca?: string } {
   if (process.env.NODE_ENV !== "production") return false;
 
+  // Cloud SQL vía socket unix (/cloudsql/…): el Auth Proxy ya cifra el tramo a
+  // la instancia; el socket local es plano, así que SSL no aplica (y rompería).
+  const url = process.env.DATABASE_URL ?? "";
+  if (url.includes("/cloudsql/") || /host=\/(?:cloudsql|var|tmp)/.test(url)) return false;
+
   const caContent = process.env.PG_SSL_CA_CONTENT;
   const caPath = process.env.PG_SSL_CA;
   const ca = caContent || (caPath && fs.existsSync(caPath) ? fs.readFileSync(caPath, "utf8") : undefined);

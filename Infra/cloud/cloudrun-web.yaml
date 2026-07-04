@@ -2,12 +2,7 @@
 # ☁️ CLOUD RUN — Next.js Frontend (La Fachada)
 # Deploy: gcloud run services replace Infra/cloud/cloudrun-web.yaml --region us-central1
 #
-# Para picos de 50k-80k usuarios, configurar Cloud CDN delante:
-#   gcloud compute backend-services update clicks-web-backend --enable-cdn
-#   gcloud compute backend-services update clicks-web-backend \
-#     --cache-mode=CACHE_ALL_STATIC \
-#     --default-ttl=60 \
-#     --max-ttl=3600
+# Para picos de tráfico, poner Cloud CDN delante (ya hay un LB: clicks-lb).
 # =========================================================
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -17,22 +12,22 @@ metadata:
     app: clicks-and-go
     tier: frontend
   annotations:
-    # Único servicio público — el resto es interno
+    # Único servicio realmente público (frontend). Detrás del LB clicks-lb.
     run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
       annotations:
-        # 💰 Pre-lanzamiento / tráfico bajo: 1 instancia caliente alcanza y
-        # evita cold-start visible. Subir a 2+ cuando el tráfico lo justifique.
-        autoscaling.knative.dev/minScale: "1"
+        # 💰 Pre-lanzamiento: escala a 0 para gasto casi nulo (1ª visita ~2-4s de
+        # cold-start). Poner "1" para mantener el frontend siempre caliente en prod.
+        autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "50"
-        # 💰 CPU facturada solo durante requests (no 24/7). El SSR de Next no
-        # necesita CPU entre requests → ahorro grande en horas valle.
+        # 💰 CPU facturada solo durante requests.
         run.googleapis.com/cpu-throttling: "true"
+        # NextAuth (adaptador pg) conecta a Cloud SQL por socket unix.
+        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
-      # Next.js SSR aguanta ~80 requests concurrentes por instancia con standalone output
       containerConcurrency: 80
       timeoutSeconds: 30
       containers:
@@ -47,11 +42,25 @@ spec:
         env:
         - name: NODE_ENV
           value: production
-        - name: PORT
-          value: "3000"
         - name: RAILS_API_URL
-          # Actualizar con la URL interna de Cloud Run de Rails tras el primer deploy
-          value: https://clicks-rails-HASH-uc.a.run.app
+          value: https://clicks-rails-798903122073.us-central1.run.app
+        # URL pública para NextAuth (protección de host-header). Cambiar al dominio
+        # final (https://clicksandgo.com) cuando se conecte por el LB.
+        - name: AUTH_URL
+          value: https://clicks-web-798903122073.us-central1.run.app
+        - name: AUTH_TRUST_HOST
+          value: "true"
+        # Secretos desde Secret Manager
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: AUTH_SECRET
+              key: latest
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: DATABASE_URL
+              key: latest
         startupProbe:
           httpGet:
             path: /

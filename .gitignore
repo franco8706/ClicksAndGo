@@ -75,3 +75,11 @@ Thumbs.db
 docker-compose.override.yml
 repomix-output.txt
 
+# =========================================================
+# Backups/archivos pesados — nunca al repo (usar Drive/almacenamiento externo)
+# =========================================================
+*.zip
+*.tar.gz
+*.tar
+ClicksAndGo-backup*
+

@@ -10,25 +10,21 @@ metadata:
     app: clicks-and-go
     tier: backend
   annotations:
-    # Solo accesible desde dentro de GCP (Next.js, Python, Rust)
-    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    # Pre-lanzamiento: público a nivel red (lo consume el frontend Next.js).
+    # Endurecer con IAM (roles/run.invoker) + tokens de identidad antes del launch.
+    run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
       annotations:
-        # Mínimo 1 instancia activa siempre (elimina cold-start del backend crítico).
-        # 💰 Para bajar aún más el costo en pre-lanzamiento, poné "0" y tolerá
-        # el cold-start del primer request (~2-4s). Con tráfico real, dejá "1".
-        autoscaling.knative.dev/minScale: "1"
+        # 💰 Escala a 0 en pre-lanzamiento (se acepta ~2-4s de cold-start en la
+        # 1ª visita). Subir a "1" cuando el tráfico lo justifique.
+        autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "20"
         # 💰 CPU facturada solo durante requests (Rails no hace trabajo de fondo).
         run.googleapis.com/cpu-throttling: "true"
-        # Conexión directa a Cloud SQL sin IP pública expuesta (más seguro y rápido)
-        # Formato: PROJECT_ID:REGION:INSTANCE_NAME — ajustá con tu nombre de instancia real
-        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:CLOUD_SQL_INSTANCE_NAME
-        # Conector VPC para acceder a Memorystore Redis por IP privada
-        run.googleapis.com/vpc-access-connector: projects/clicks-and-go/locations/us-central1/connectors/clicks-connector
-        run.googleapis.com/vpc-access-egress: private-ranges-only
+        # Conexión a Cloud SQL vía socket unix (Auth Proxy embebido, sin IP pública)
+        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db
     spec:
       # Service account con permisos de Cloud SQL Client + Secret Manager
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
@@ -50,8 +46,8 @@ spec:
           value: "2"
         - name: RAILS_MAX_THREADS
           value: "5"
-        - name: PORT
-          value: "3000"
+        # 🗄️ Cache en memoria (Redis eliminado por costo — ver cache_store.rb).
+        # Al no definir REDIS_URL, Rails usa :memory_store automáticamente.
         # Secretos inyectados desde Secret Manager (nunca hardcodeados)
         - name: DATABASE_URL
           valueFrom:
@@ -62,11 +58,6 @@ spec:
           valueFrom:
             secretKeyRef:
               name: SECRET_KEY_BASE
-              key: latest
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: REDIS_URL
               key: latest
         startupProbe:
           httpGet:

@@ -10,12 +10,14 @@ metadata:
     app: clicks-and-go
     tier: math-engine
   annotations:
-    run.googleapis.com/ingress: internal
+    # Público a nivel red, pero protegido: los backends deben endurecerse con
+    # IAM (roles/run.invoker) antes del lanzamiento real. Pre-lanzamiento: abierto.
+    run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
       annotations:
-        # Rust arranca en <100ms — puede ir a 0 sin problema de cold-start
+        # Rust arranca en <100ms — escala a 0 sin cold-start perceptible
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "10"
         # 💰 CPU facturada solo durante requests.
@@ -36,8 +38,6 @@ spec:
             cpu: "2"
             memory: 256Mi
         env:
-        - name: PORT
-          value: "8080"
         - name: RUST_LOG
           value: info
         - name: BENCHMARK_CPU_URL

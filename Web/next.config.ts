@@ -63,7 +63,15 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**.awin1.com' },
       { protocol: 'https', hostname: '**.static.pub' },
       { protocol: 'https', hostname: '**.cdn-apple.com' },
-      { protocol: 'https', hostname: '**.hptstore.com' }
+      { protocol: 'https', hostname: '**.hptstore.com' },
+      // Dominios adicionales presentes en el catálogo sembrado (evitan 500 en SSR)
+      { protocol: 'https', hostname: '**.www8-hp.com' },
+      { protocol: 'https', hostname: '**.msi.com' },
+      { protocol: 'https', hostname: '**.asus.com' },
+      { protocol: 'https', hostname: '**.acer.com' },
+      { protocol: 'https', hostname: 'www.apple.com' },
+      { protocol: 'https', hostname: '**.razer.com' },
+      { protocol: 'https', hostname: 'hybrismediaprod.blob.core.windows.net' }
     ],
   },
 };

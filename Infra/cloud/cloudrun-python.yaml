@@ -10,19 +10,18 @@ metadata:
     app: clicks-and-go
     tier: ai-engine
   annotations:
-    run.googleapis.com/ingress: internal
+    # Lo despierta Cloud Scheduler (OIDC). Endurecer con IAM antes del launch.
+    run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
       annotations:
         # 💰 Escala a 0 cuando no hay misiones — el NewsRadar ya NO corre en un
-        # loop interno (ver NEWS_LOOP_ENABLED=false abajo); lo dispara Cloud
-        # Scheduler (scheduler-news.yaml). Así no pagamos una instancia 24/7.
+        # loop interno (NEWS_LOOP_ENABLED=false); lo dispara Cloud Scheduler
+        # (scheduler-news.yaml). Así no pagamos una instancia 24/7.
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "5"
         run.googleapis.com/cpu-throttling: "true"
-        run.googleapis.com/vpc-access-connector: projects/clicks-and-go/locations/us-central1/connectors/clicks-connector
-        run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
       # El orquestador corre tareas pesadas — 1 request a la vez por instancia es suficiente
@@ -39,27 +38,25 @@ spec:
             cpu: "2"
             memory: 1Gi
         env:
-        - name: PORT
-          value: "5001"
         # 💰 Loop interno apagado en Cloud Run — Cloud Scheduler dispara /trigger/news.
-        # Permite minScale=0 (el loop while-True obligaría a una instancia siempre viva).
         - name: NEWS_LOOP_ENABLED
           value: "false"
         - name: GCP_PROJECT_ID
           value: clicks-and-go
         - name: GCP_LOCATION
           value: us-central1
+        # 💰 Tope diario de llamadas a IA de pago; al superarlo cae a Antigravity (costo cero)
+        - name: AI_DAILY_LIMIT
+          value: "500"
         # La service account del contenedor autentica Vertex AI automáticamente
-        # No se necesita montar gcp-vertex.json en Cloud Run
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: ""
         - name: RAILS_API_URL
-          # Actualizar con la URL real de Cloud Run de Rails tras el primer deploy
-          value: https://clicks-rails-HASH-uc.a.run.app
+          value: https://clicks-rails-798903122073.us-central1.run.app/api/v1/notebooks
         - name: RUST_API_URL
-          value: https://clicks-rust-HASH-uc.a.run.app/api/v1/score/batch
+          value: https://clicks-rust-798903122073.us-central1.run.app/api/v1/score/batch
         - name: RUST_BENCHMARK_URL
-          value: https://clicks-rust-HASH-uc.a.run.app/api/v1/benchmarks/run
+          value: https://clicks-rust-798903122073.us-central1.run.app/api/v1/benchmarks/run
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:
