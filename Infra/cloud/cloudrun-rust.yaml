@@ -18,6 +18,8 @@ spec:
         # Rust arranca en <100ms — puede ir a 0 sin problema de cold-start
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "10"
+        # 💰 CPU facturada solo durante requests.
+        run.googleapis.com/cpu-throttling: "true"
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
       # Axum es async y ultra-eficiente — aguanta 100 requests concurrentes por instancia

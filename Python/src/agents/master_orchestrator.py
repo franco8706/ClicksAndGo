@@ -18,7 +18,10 @@ class MasterOrchestratorAgent:
     Controla presupuestos de IA, logs Zero-Trust y delega tareas críticas a Rust y Rails.
     """
     def __init__(self):
-        self.DAILY_LIMIT = 500
+        # 💰 Tope diario de llamadas a IA de pago (Vertex/Gemini). Al superarlo,
+        # el router cae a Antigravity (costo cero). Configurable por entorno
+        # para ajustar el gasto sin tocar código (ej. AI_DAILY_LIMIT=100 en prod).
+        self.DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "500"))
         
         # 🌐 Endpoints de Microservicios Internos
         self.rust_batch_url = os.getenv("RUST_API_URL", "http://rust_engine:8080/api/v1/score/batch")

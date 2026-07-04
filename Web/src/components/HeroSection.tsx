@@ -142,10 +142,22 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
    Ticker — muestra noticias reales si están disponibles
    Cada item: [FUENTE en azul] [Titular en blanco]
 ───────────────────────────────────────────────────────── */
+// 🛡️ Solo http(s): las URLs de noticias vienen de feeds RSS externos.
+// Evita inyección de esquemas peligrosos (javascript:, data:, vbscript:).
+function safeHttpUrl(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function NewsTicker({ news }: { news?: HardwareNews[] }) {
   const items: { source: string; headline: string; url?: string }[] =
     news && news.length > 0
-      ? news.map((n) => ({ source: n.category, headline: n.title, url: n.sourceUrl }))
+      ? news.map((n) => ({ source: n.category, headline: n.title, url: safeHttpUrl(n.sourceUrl) }))
       : STATIC_TICKER;
 
   const doubled = [...items, ...items];
@@ -179,7 +191,7 @@ function NewsTicker({ news }: { news?: HardwareNews[] }) {
               key={i}
               href={item.url}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener noreferrer nofollow"
               className="flex items-center shrink-0 group cursor-pointer"
             >
               {inner}

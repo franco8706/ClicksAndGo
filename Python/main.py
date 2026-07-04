@@ -33,9 +33,17 @@ async def _news_radar_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     orchestrator.log_action("API_Gateway", "Arrancando microservicio Python v4.3...")
-    task = asyncio.create_task(_news_radar_loop())
+    # 💰 Optimización de costo Cloud Run: el loop interno obliga a mantener
+    # una instancia encendida 24/7 (incompatible con minScale=0). En la nube
+    # se apaga (NEWS_LOOP_ENABLED=false) y Cloud Scheduler dispara
+    # /api/v1/tasks/news-radar cada 6h — el servicio escala a cero sin tráfico.
+    # En la VM / docker-compose queda activo por defecto (comportamiento actual).
+    task = None
+    if os.getenv("NEWS_LOOP_ENABLED", "true").lower() != "false":
+        task = asyncio.create_task(_news_radar_loop())
     yield
-    task.cancel()
+    if task:
+        task.cancel()
     orchestrator.log_action("API_Gateway", "Apagado graceful. Cerrando conexiones...")
     if hasattr(orchestrator, 'mongo_client'):
         orchestrator.mongo_client.close()

@@ -63,7 +63,7 @@ function DealRow({ laptop, countryCode, dict }: DealRowProps) {
 
   if (hasValidUrl) {
     return (
-      <a href={monetizedUrl} target="_blank" rel="noopener noreferrer" className={rowClass}>
+      <a href={monetizedUrl} target="_blank" rel="sponsored noopener noreferrer" className={rowClass}>
         {inner}
       </a>
     );

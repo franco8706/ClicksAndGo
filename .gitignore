@@ -3,6 +3,7 @@
 # =========================================================
 .env
 .env.*
+!.env.example
 gcp-vertex.json
 **/*service_account*.json
 *.pem

@@ -114,7 +114,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <a href={monetizedUrl} target="_blank" rel="noopener noreferrer" className="btn-primary flex items-center justify-center gap-3 w-full py-5 rounded-2xl text-white font-black text-xl shadow-lg">
+              <a href={monetizedUrl} target="_blank" rel="sponsored noopener noreferrer" className="btn-primary flex items-center justify-center gap-3 w-full py-5 rounded-2xl text-white font-black text-xl shadow-lg">
                 {dict.common?.viewDeal || "Ir a la Tienda"}
                 <ShoppingCart size={22} className="stroke-[2.5]" />
               </a>

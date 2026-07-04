@@ -159,7 +159,7 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
           <a
             href={monetizedUrl!}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             className="w-full mb-3 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 active:bg-blue-700/65 border border-blue-500/30 text-white font-semibold text-[11px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors uppercase tracking-wider shadow-md shadow-blue-500/15"
           >
             <ShoppingCart size={12} />

@@ -15,9 +15,12 @@ spec:
   template:
     metadata:
       annotations:
-        # El scraper puede ir a 0 cuando no hay misiones activas (ahorro de costos)
+        # 💰 Escala a 0 cuando no hay misiones — el NewsRadar ya NO corre en un
+        # loop interno (ver NEWS_LOOP_ENABLED=false abajo); lo dispara Cloud
+        # Scheduler (scheduler-news.yaml). Así no pagamos una instancia 24/7.
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "5"
+        run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/vpc-access-connector: projects/clicks-and-go/locations/us-central1/connectors/clicks-connector
         run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
@@ -38,6 +41,10 @@ spec:
         env:
         - name: PORT
           value: "5001"
+        # 💰 Loop interno apagado en Cloud Run — Cloud Scheduler dispara /trigger/news.
+        # Permite minScale=0 (el loop while-True obligaría a una instancia siempre viva).
+        - name: NEWS_LOOP_ENABLED
+          value: "false"
         - name: GCP_PROJECT_ID
           value: clicks-and-go
         - name: GCP_LOCATION

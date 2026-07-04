@@ -11,6 +11,12 @@ class Rack::Attack
     req.ip if req.get? && req.path.include?("hardware_news")
   end
 
+  # Geo: 60 req/min por IP. Dispara un lookup HTTP externo (ip-api) cacheado;
+  # el throttle evita que un atacante fuerce miles de lookups no cacheados.
+  throttle("geo/ip", limit: 60, period: 60) do |req|
+    req.ip if req.get? && req.path.start_with?("/api/v1/geo")
+  end
+
   # ── Throttles de escritura ─────────────────────────────────────────────────
   # POST desde Python (scraper): límite más generoso por IP interna
   throttle("write/ip", limit: 30, period: 60) do |req|

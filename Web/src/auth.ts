@@ -190,6 +190,12 @@ function ClicksAdapter(): Adapter {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: ClicksAdapter(),
 
+  // 🛡️ Requerido en self-hosted (fuera de Vercel). La defensa contra
+  // host-header injection en los callbacks OAuth / magic-links viene de
+  // fijar AUTH_URL en el entorno (ej. https://clicksandgo.com) — el flujo
+  // usa esa URL canónica en vez del Host header entrante.
+  trustHost: true,
+
   providers: [
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
       ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]

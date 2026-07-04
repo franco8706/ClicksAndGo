@@ -1,3 +1,7 @@
+require 'ipaddr'
+require 'net/http'
+require 'uri'
+
 module Api
   module V1
     # =========================================================
@@ -62,7 +66,19 @@ module Api
 
       def client_ip
         forwarded = request.headers['X-Forwarded-For'].to_s.split(',').first.to_s.strip
-        forwarded.presence || request.remote_ip
+        candidate = forwarded.presence || request.remote_ip
+        # 🛡️ SSRF guard: X-Forwarded-For lo controla el cliente. Aceptamos
+        # SOLO una IP válida — así nunca entra un valor como "@evil.com" que
+        # desviaría el host del lookup vía userinfo de la URL.
+        valid_ip?(candidate) ? candidate : nil
+      end
+
+      def valid_ip?(str)
+        return false if str.blank?
+        IPAddr.new(str)
+        true
+      rescue IPAddr::InvalidAddressError
+        false
       end
 
       def private_ip?(ip)
@@ -71,6 +87,7 @@ module Api
       end
 
       def lookup_country_by_ip(ip)
+        # ip ya viene validada por valid_ip? (formato IP puro) — sin interpolación peligrosa
         uri = URI("http://ip-api.com/json/#{ip}?fields=countryCode")
         response = Net::HTTP.start(uri.host, uri.port, open_timeout: 1.5, read_timeout: 1.5) do |http|
           http.get(uri.request_uri)

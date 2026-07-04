@@ -16,9 +16,13 @@ spec:
   template:
     metadata:
       annotations:
-        # Mínimo 1 instancia activa siempre (elimina cold-start del backend crítico)
+        # Mínimo 1 instancia activa siempre (elimina cold-start del backend crítico).
+        # 💰 Para bajar aún más el costo en pre-lanzamiento, poné "0" y tolerá
+        # el cold-start del primer request (~2-4s). Con tráfico real, dejá "1".
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "20"
+        # 💰 CPU facturada solo durante requests (Rails no hace trabajo de fondo).
+        run.googleapis.com/cpu-throttling: "true"
         # Conexión directa a Cloud SQL sin IP pública expuesta (más seguro y rápido)
         # Formato: PROJECT_ID:REGION:INSTANCE_NAME — ajustá con tu nombre de instancia real
         run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:CLOUD_SQL_INSTANCE_NAME

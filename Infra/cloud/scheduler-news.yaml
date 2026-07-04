@@ -1,0 +1,33 @@
+# =====================================================================
+# CLOUD SCHEDULER — NewsRadar
+#
+# Reemplaza el loop interno de Python (_news_radar_loop) en Cloud Run.
+# Con el loop apagado (NEWS_LOOP_ENABLED=false), el servicio Python puede
+# escalar a 0 y solo se despierta cuando este job lo invoca cada 6 horas.
+# 💰 Sin esto, Python necesitaría una instancia encendida 24/7.
+#
+# Deploy:
+#   gcloud scheduler jobs create http news-radar-6h \
+#     --schedule="30 */6 * * *" \
+#     --uri="$(PYTHON_SERVICE_URL)/api/v1/tasks/news-radar" \
+#     --http-method=POST \
+#     --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+#     --location=us-central1
+# =====================================================================
+
+jobs:
+
+  - name: news-radar-6h
+    # Desfasado 30 min del legal audit para no despertar picos simultáneos
+    schedule: "30 */6 * * *"
+    timeZone: "UTC"
+    description: "Escaneo de feeds RSS de hardware cada 6h — dispara el NewsRadar en Python (Cloud Run scale-to-zero)"
+    httpTarget:
+      uri: "${PYTHON_SERVICE_URL}/api/v1/tasks/news-radar"
+      httpMethod: POST
+      oidcToken:
+        serviceAccountEmail: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+    retryConfig:
+      retryCount: 2
+      minBackoffDuration: "30s"
+      maxBackoffDuration: "120s"

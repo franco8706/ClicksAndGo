@@ -211,3 +211,14 @@ npm error A complete log of this run can be found in: /home/codespace/.npm/_logs
   - `[main.py]`: `_news_radar_loop()` coroutine en lifespan — arranca 30s después del boot (espera a Rails) y repite cada 6 horas automáticamente vía `asyncio.create_task`. Sin intervención manual necesaria.
   - `[notebooks_controller.rb]`: LIMIT noticias 10 → 20 para mostrar más artículos en el slider.
   - `[Resultado DB]`: 3 noticias → 96 en Cloud SQL. API devuelve 20 artículos reales de hardware/laptops. Loop automático ya corriendo.
+
+- **[2026-07-03]** `[Seguridad + Costos]`: AUDITORÍA DE VULNERABILIDADES + OPTIMIZACIÓN GCP (sobre la base de la VM).
+  - `[SEC-crítico] Open-redirect en /out`: el middleware de la VM redirigía a cualquier URL. Reincorporada la allowlist de dominios (retailers + redes verificadas) con match exacto/subdominio; revalidación tras la traducción de dominio. Bloquea phishing y baneo de afiliados. Verificado: lenovo ✔, evil.com ✘, lenovo.com.evil.com ✘.
+  - `[SEC] XSS/URI injection en ticker de noticias`: `sourceUrl` viene de feeds RSS externos y se usaba como href sin validar. Nuevo `safeHttpUrl()` — solo http(s). `rel="noopener noreferrer nofollow"` en el ticker; `rel="sponsored ..."` en todos los CTA de afiliado.
+  - `[SEC] Headers de seguridad globales`: CSP, HSTS (2 años), X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy — aplicados vía `applySecurityHeaders()` en el middleware.
+  - `[SEC] Auth (NextAuth v5)`: `trustHost: true` + doc de `AUTH_URL` (anti host-header injection en callbacks OAuth/magic-link). `.env.example` creado documentando AUTH_SECRET/AUTH_URL/proveedores (antes sin documentar).
+  - `[SEC] SSRF en geo_controller`: la IP del lookup salía de `X-Forwarded-For` (client-controlled) e iba interpolada a la URL de ip-api → un `@evil.com` desviaba el host. Añadido `valid_ip?` (IPAddr) que solo acepta IPs puras. Rate-limit `geo/ip` 60/min en Rack::Attack.
+  - `[SEC] pg SSL`: `rejectUnauthorized:false` fijo → ahora verifica el CA de Cloud SQL si se provee (PG_SSL_CA / PG_SSL_CA_CONTENT).
+  - `[COSTO] Cloud Run`: `cpu-throttling:true` en los 4 servicios (CPU facturada solo en requests). web minScale 2→1. Rails con nota para bajar a 0 en pre-lanzamiento.
+  - `[COSTO] NewsRadar`: el loop interno `while True` obligaba a Python a estar 24/7. Ahora es opt-out por `NEWS_LOOP_ENABLED` (default true → VM sin cambios; false en Cloud Run). Nuevo `scheduler-news.yaml` (Cloud Scheduler cada 6h) → Python escala a 0.
+  - `[COSTO] Tope IA configurable`: `AI_DAILY_LIMIT` (env, default 500) reemplaza el hardcode. Nueva guía `Infra/cloud/COSTOS.md` (presupuesto+alertas, Cloud SQL tier, apagar VM, control Vertex/Gemini).

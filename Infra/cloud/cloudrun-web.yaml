@@ -23,9 +23,13 @@ spec:
   template:
     metadata:
       annotations:
-        # Mínimo 2 instancias para absorber spikes sin cold-start visible al usuario
-        autoscaling.knative.dev/minScale: "2"
+        # 💰 Pre-lanzamiento / tráfico bajo: 1 instancia caliente alcanza y
+        # evita cold-start visible. Subir a 2+ cuando el tráfico lo justifique.
+        autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "50"
+        # 💰 CPU facturada solo durante requests (no 24/7). El SSR de Next no
+        # necesita CPU entre requests → ahorro grande en horas valle.
+        run.googleapis.com/cpu-throttling: "true"
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
       # Next.js SSR aguanta ~80 requests concurrentes por instancia con standalone output
