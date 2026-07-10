@@ -61,6 +61,13 @@ spec:
             secretKeyRef:
               name: DATABASE_URL
               key: latest
+        # 🛡️ Clave compartida para llamar /api/v1/users/** en Rails (perfil,
+        # favoritos, alertas) — nunca llega al navegador (server-only fetch).
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: INTERNAL_API_KEY
+              key: latest
         startupProbe:
           httpGet:
             path: /

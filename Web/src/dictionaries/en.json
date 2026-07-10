@@ -20,7 +20,10 @@
       "processor": "Processor",
       "memory": "RAM Memory",
       "storage": "SSD Storage"
-    }
+    },
+    "allProducts": "All",
+    "products": "products",
+    "productSingular": "product"
   },
   "news": {
     "title": "Tech News",
@@ -108,6 +111,7 @@
     "ram": "GB RAM",
     "ssd": "GB SSD",
     "unavailable": "Link unavailable",
+    "affiliateNote": "Affiliate link · we may earn a commission",
     "descGaming": "Perfect for demanding games, live streaming and GPU-accelerated workloads requiring peak power. With its high-performance processor and dedicated graphics card, it delivers smooth gameplay in AAA titles, 3D design and AI-accelerated rendering at any resolution.",
     "descBusiness": "Engineered for professionals who need real-world performance without compromise. Ideal for HD video calls, heavy documents, complex spreadsheets and demanding multitasking. Robust connectivity, long-lasting battery and a high-fidelity display for flawless workdays.",
     "descWorkstation": "True workstation power for users handling massive datasets, 3D renders, CAD models or scientific simulations. Its multi-core processor and professional GPU combination delivers precise results even under the most sustained and intense computing workloads.",
@@ -148,7 +152,8 @@
     "privacyLink": "Privacy",
     "termsLink": "Terms",
     "cookiesLink": "Cookies",
-    "copyright": "© 2026 Clicks & Go. All rights reserved."
+    "copyright": "© 2026 Clicks & Go. All rights reserved.",
+    "affiliateDisclosure": "Affiliate disclosure: Clicks & Go takes part in affiliate programs. If you buy through our links, we may earn a commission at no extra cost to you. This does not affect the prices you see or our recommendations."
   },
   "condition": {
     "new": "Brand new",
@@ -196,6 +201,93 @@
     "memberSince": "Member since",
     "favoritesSection": "My favorites",
     "noFavorites": "You haven't saved any laptops yet",
-    "privacyNote": "By continuing you agree to our Privacy Policy and Terms of Use."
+    "privacyNote": "By continuing you agree to our Privacy Policy and Terms of Use.",
+    "loginError": "We couldn't sign you in. Try again or use another method.",
+    "verifySent": "We sent you a sign-in link. Check your inbox (and spam folder)."
+  },
+  "dashboard": {
+    "overview": "Overview",
+    "savedItems": "Saved",
+    "activeAlerts": "Active alerts",
+    "detectedCountry": "Your region",
+    "favorites": "My favorites",
+    "favoritesEmpty": "You haven't saved any laptops yet. Tap the heart ♡ on any product in the catalog.",
+    "alerts": "Price alerts",
+    "alertsEmpty": "No alerts configured. Create them from your favorites with a target price.",
+    "alertsHint": "We'll notify you when the price drops below your target.",
+    "currentPrice": "Current price",
+    "targetPrice": "Target price",
+    "createAlert": "Create alert",
+    "deleteAlert": "Delete alert",
+    "remove": "Remove",
+    "viewProduct": "View product",
+    "goCatalog": "Browse catalog",
+    "alertTriggered": "Price reached!",
+    "alertWaiting": "Waiting for drop",
+    "preferredCountry": "Catalog country",
+    "autoByIp": "Automatic (based on your location)",
+    "countryHint": "Choose which country you want to see products and prices from. On automatic we use your location.",
+    "saveToFavorites": "Save to favorites",
+    "removeFromFavorites": "Remove from favorites",
+    "countries": {
+      "AR": "Argentina",
+      "US": "United States",
+      "ES": "Spain",
+      "MX": "Mexico",
+      "BR": "Brazil",
+      "CO": "Colombia",
+      "CL": "Chile"
+    }
+  },
+  "categories": {
+    "laptop": "Laptops",
+    "desktop": "Desktops",
+    "monitor": "Monitors",
+    "keyboard": "Keyboards",
+    "mouse": "Mice",
+    "headphones": "Headphones",
+    "webcam": "Webcams",
+    "printer": "Printers",
+    "supplies": "Supplies"
+  },
+  "specs": {
+    "cpu": "Processor",
+    "ram": "RAM",
+    "storage": "SSD",
+    "gpu": "GPU",
+    "screen": "Display",
+    "size": "Size",
+    "resolution": "Resolution",
+    "refresh": "Refresh",
+    "panel": "Panel",
+    "switch": "Switch",
+    "layout": "Layout",
+    "wireless": "Wireless",
+    "backlit": "Backlit",
+    "dpi": "DPI",
+    "sensor": "Sensor",
+    "buttons": "Buttons",
+    "form": "Type",
+    "driver": "Driver",
+    "anc": "Noise cancelling",
+    "fps": "FPS",
+    "mic": "Microphone",
+    "technology": "Technology",
+    "ppm": "Pages/min",
+    "color": "Color",
+    "wifi": "WiFi",
+    "suppliesKind": "Type",
+    "compatibility": "Compatibility",
+    "yield": "Yield"
+  },
+  "typeTagline": {
+    "desktop": "Desktop power for demanding work and gaming.",
+    "monitor": "More screen space and accurate color for your setup.",
+    "keyboard": "Precise, comfortable typing for long sessions.",
+    "mouse": "Precision and ergonomics for work and play.",
+    "headphones": "Immersive audio for music, calls and gaming.",
+    "webcam": "Sharp video calls and high-definition streaming.",
+    "printer": "Reliable printing for home or office.",
+    "supplies": "Genuine supplies at the best verified price."
   }
 }

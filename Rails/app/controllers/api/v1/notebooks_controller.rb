@@ -18,11 +18,18 @@ module Api
         else
           country = (params[:country].presence || 'US').upcase[0, 2]
           limit   = (params[:limit] || 40).to_i.clamp(1, 100)
-          result  = Rails.cache.fetch("notebooks/catalog/#{country}", expires_in: 60.seconds) do
-            Laptop.includes(:retailer, :latest_price)
-                  .where(country_code: country)
-                  .limit(limit)
-                  .map { |l| serialize_laptop(l) }
+          # 📦 Multi-producto: filtro opcional por tipo (?type=monitor|keyboard|...).
+          #    Sin `type` => todo el catálogo del país. `has_product_type?` degrada
+          #    con gracia si aún no se corrió migration_products_v3.sql.
+          type = params[:type].presence
+          type = nil unless has_product_type? && type
+          # 🛡️ El limit y el type DEBEN formar parte de la cache key: sin ellos, un
+          # request con ?limit=1 o ?type=X envenenaba el catálogo cacheado del país.
+          cache_key = "products/catalog/#{country}/#{type || 'all'}/#{limit}"
+          result = Rails.cache.fetch(cache_key, expires_in: 60.seconds) do
+            scope = Laptop.includes(:retailer, :latest_price).where(country_code: country)
+            scope = scope.where(product_type: type) if type
+            scope.limit(limit).map { |l| serialize_laptop(l) }
           end
         end
 
@@ -115,6 +122,11 @@ module Api
           name: laptop.modelo,
           condition: meta['condition'] || 'new',
 
+          # 📦 Multi-producto: tipo + specs genéricas (ver product.ts / migración v3)
+          product_type: product_type_for(laptop),
+          specs: build_specs(laptop),
+
+          # Campos dedicados de laptop (retrocompatibles; vacíos en otros tipos)
           hardware: {
             cpu: laptop.procesador,
             ram_gb: laptop.ram_gb,
@@ -157,6 +169,40 @@ module Api
             retailer: laptop.retailer&.slug
           })
         }
+      end
+
+      # ¿La columna product_type ya existe? (migración v3 aplicada)
+      def has_product_type?
+        Laptop.column_names.include?('product_type')
+      end
+
+      # 📦 Tipo de producto. `has_attribute?` protege entornos donde aún no se
+      # corrió migration_products_v3.sql (default seguro: 'laptop').
+      def product_type_for(laptop)
+        laptop.has_attribute?(:product_type) ? (laptop.product_type.presence || 'laptop') : 'laptop'
+      end
+
+      # 📦 Specs uniformes para el frontend (SPEC_SCHEMA en product.ts):
+      #  - laptop/desktop: se derivan de las columnas dedicadas.
+      #  - resto de tipos: se leen del JSONB `specs`.
+      # Así la card renderiza cualquier producto con un solo camino de código.
+      def build_specs(laptop)
+        stored = laptop.has_attribute?(:specs) ? (laptop.specs || {}) : {}
+        type   = product_type_for(laptop)
+
+        if %w[laptop desktop].include?(type)
+          base = {
+            cpu: laptop.procesador,
+            ram_gb: laptop.ram_gb,
+            storage_gb: laptop.disco_gb,
+            gpu: laptop.tarjeta_video
+          }
+          base[:display_inches] = laptop.display_inches.to_f if type == 'laptop' && laptop.display_inches.present?
+          # `specs` del JSONB pisa/complementa lo derivado (fuente de verdad si vino de ingesta).
+          base.merge(stored).compact
+        else
+          stored
+        end
       end
 
       # 🏷️ Etiqueta semántica derivada del score (escala estricta 1.0 - 10.0)

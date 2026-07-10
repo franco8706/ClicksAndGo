@@ -36,12 +36,26 @@ class PersistenceOrchestrator
       )
 
       # Mapeo de datos principales
-      laptop.slug = data[:slug] || "#{data[:brand].to_s.parameterize}-#{data[:name].to_s.parameterize}-#{SecureRandom.hex(3)}"
+      # 🛡️ El slug se asigna SOLO al crear (o si falta): regenerarlo en cada
+      # upsert rompía los permalinks /laptop/[slug] y la caché por slug en
+      # cada re-scrapeo (el hex aleatorio cambiaba el slug del mismo producto).
+      if laptop.new_record? || laptop.slug.blank?
+        laptop.slug = data[:slug] || "#{data[:brand].to_s.parameterize}-#{data[:name].to_s.parameterize}-#{SecureRandom.hex(3)}"
+      end
       laptop.marca = data[:brand]
       laptop.modelo = data[:name]
       laptop.country_code = data[:country_code]
-      
-      # Mapeo de Hardware
+
+      # 📦 Multi-producto: tipo + specs genéricas (migración v3).
+      # `has_attribute?` degrada con gracia si la columna aún no existe.
+      if laptop.has_attribute?(:product_type)
+        laptop.product_type = (data[:product_type].presence || 'laptop').to_s.downcase
+      end
+      if laptop.has_attribute?(:specs)
+        laptop.specs = data[:specs] if data[:specs].present?
+      end
+
+      # Mapeo de Hardware (laptops/desktops; nil para otros tipos)
       laptop.procesador = hardware[:cpu]
       laptop.ram_gb = hardware[:ram_gb]
       laptop.disco_gb = hardware[:storage_gb]

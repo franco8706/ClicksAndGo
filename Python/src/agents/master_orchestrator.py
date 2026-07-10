@@ -34,6 +34,10 @@ class MasterOrchestratorAgent:
         try:
             # Timeout estricto para no colgar el arranque si Mongo no está listo
             self.mongo_client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
+            # 🛡️ MongoClient es LAZY: el constructor nunca falla. Sin este ping,
+            # db_connected quedaba True aun sin Mongo y cada insert posterior
+            # lanzaba ServerSelectionTimeoutError rompiendo el pipeline.
+            self.mongo_client.admin.command("ping")
             self.db = self.mongo_client["clicks_and_go_db"]
             self.db_connected = True
         except Exception:
@@ -52,27 +56,36 @@ class MasterOrchestratorAgent:
 
     def _load_api_quota(self):
         if not self.db_connected: return 0
-        doc = self.db.ai_quota.find_one({"date": self._get_today_date_str()})
-        return doc["calls"] if doc else 0
+        try:
+            doc = self.db.ai_quota.find_one({"date": self._get_today_date_str()})
+            return doc["calls"] if doc else 0
+        except Exception:
+            return 0  # Mongo intermitente: asumimos cuota vacía en vez de romper
 
     def _save_api_quota(self, calls):
         if not self.db_connected: return
-        self.db.ai_quota.update_one(
-            {"date": self._get_today_date_str()},
-            {"$set": {"calls": calls}},
-            upsert=True
-        )
+        try:
+            self.db.ai_quota.update_one(
+                {"date": self._get_today_date_str()},
+                {"$set": {"calls": calls}},
+                upsert=True
+            )
+        except Exception:
+            pass  # best-effort: la cuota no debe tumbar el routing de IA
 
     def log_action(self, agent_name, action, status="SUCCESS"):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{agent_name}]: {action} - [{status}]"
         print(f"📝 {log_entry}")
         
-        # Telemetría Inmortal en MongoDB
+        # Telemetría Inmortal en MongoDB (best-effort: nunca rompe el pipeline)
         if self.db_connected:
-            self.db.agent_logs.insert_one({
-                "timestamp": timestamp, "agent": agent_name, "action": action, "status": status
-            })
+            try:
+                self.db.agent_logs.insert_one({
+                    "timestamp": timestamp, "agent": agent_name, "action": action, "status": status
+                })
+            except Exception:
+                pass
 
     def can_use_ai(self):
         current_calls = self._load_api_quota()
@@ -111,7 +124,10 @@ class MasterOrchestratorAgent:
 
         # 2. 📅 Inteligencia de Mercado (Calendario Exacto)
         forecaster = MarketIntelligenceAgent(orchestrator=self)
-        forecaster.update_global_calendar()
+        try:
+            forecaster.update_global_calendar()
+        except Exception as e:
+            self.log_action("MasterOrchestrator", f"Fallo en MarketIntelligence: {e}", "ERROR")
 
         # 3. 🧮 Delegación de Benchmarks a RUST (¡Seguridad de Memoria!)
         try:
@@ -149,9 +165,14 @@ class MasterOrchestratorAgent:
             hardware_payload = {
                 "items": [{
                     "sku": d["sku_original"],
-                    "cpu": d["hardware"]["cpu"],
-                    "gpu": d["hardware"]["gpu"],
-                    "ram_gb": d["hardware"]["ram_gb"],
+                    # 📦 Multi-producto: Rust decide el scorer según product_type.
+                    "product_type": d.get("product_type", "laptop"),
+                    "cpu": d.get("hardware", {}).get("cpu", ""),
+                    "gpu": d.get("hardware", {}).get("gpu", ""),
+                    "ram_gb": d.get("hardware", {}).get("ram_gb", 0),
+                    # Señales de reputación para el scorer genérico (no-laptops).
+                    "rating": float(d.get("specs", {}).get("rating", 0) or 0),
+                    "reviews": int(d.get("specs", {}).get("reviews", 0) or 0),
                     "current_price": float(d["financials"].get("current_price", 0)),
                     "original_price": float(d["financials"].get("original_price", 0)),
                     "exchange_rate": float(d["financials"].get("applied_exchange_rate", 1.0)),

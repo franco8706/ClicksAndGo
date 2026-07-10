@@ -20,6 +20,8 @@ class Laptop < ApplicationRecord
   # 🧠 Helpers y Scopes (Consultas rápidas indexadas para Next.js)
   scope :ofertas_destacadas, -> { where("deal_score >= ?", 8.5) }
   scope :por_pais, ->(codigo) { where(country_code: codigo.to_s.upcase) }
+  # 📦 Multi-producto: filtro por tipo (laptop|monitor|keyboard|...).
+  scope :por_tipo, ->(tipo) { where(product_type: tipo.to_s.downcase) }
 
   private
 
@@ -27,5 +29,9 @@ class Laptop < ApplicationRecord
     self.country_code = country_code.to_s.upcase.strip
     self.slug = slug.to_s.downcase.strip
     self.marca = marca.to_s.strip
+    # 📦 Normaliza el discriminador de producto si la columna ya existe (migración v3).
+    if has_attribute?(:product_type)
+      self.product_type = product_type.to_s.downcase.strip.presence || 'laptop'
+    end
   end
 end

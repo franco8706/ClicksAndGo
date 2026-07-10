@@ -1,67 +1,107 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import Image from "next/image";
-import { ShoppingCart, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
 import type { Laptop } from "@/types/laptop";
+import { SPEC_SCHEMA, formatSpec, type ProductType } from "@/types/product";
+import type { Dict } from "@/types/dictionary";
 
 interface LaptopCardProps {
   readonly laptop: Laptop;
-  readonly dict: any;
+  readonly dict: Dict;
   readonly locale: string;
   readonly isExpanded: boolean;
   readonly onToggle: () => void;
+  /** Estado de favorito del usuario logueado (undefined = sin sesión) */
+  readonly isFavorite?: boolean;
+  /** Server action para agregar/quitar de favoritos (redirige a login sin sesión) */
+  readonly toggleFavoriteAction?: (laptopId: string) => Promise<void>;
 }
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&q=85&auto=format&fit=crop";
 
-/* ── Generador de descripción determinista (siempre locale-aware) ──────────
-   Usa exclusivamente specs reales + claves del dict localizado.
-   ai_reasoning se omite: está almacenado en un idioma fijo en la BD.
+/* ── Specs por tipo de producto (multi-producto) ───────────────────────────
+   Lee `product.specs` (genérico, llenado por Rails para cualquier tipo) y,
+   como respaldo para laptops viejas, `product.hardware`. Devuelve pares
+   {label, value} ya localizados y formateados según SPEC_SCHEMA.
 ─────────────────────────────────────────────────────────────────────────── */
-function buildDescription(laptop: Laptop, dict: any): string {
-  const { cpu, ram_gb, storage_gb, gpu, display_inches, weight_kg, battery_wh } =
-    laptop.hardware;
-  const category = (
-    (laptop.intelligence as any)?.category ||
-    laptop.metadata_extra?.category ||
-    "business"
-  ).toLowerCase();
+function buildSpecEntries(product: Laptop, dict: Dict): { label: string; value: string }[] {
+  const type = (product.product_type || "laptop") as ProductType;
+  const schema = SPEC_SCHEMA[type] || SPEC_SCHEMA.laptop;
+  const source: Record<string, unknown> =
+    product.specs && Object.keys(product.specs).length > 0
+      ? (product.specs as Record<string, unknown>)
+      : ((product.hardware || {}) as Record<string, unknown>);
+  const specsDict = (dict.specs ?? {}) as Record<string, string>;
 
-  const USE_CASE: Record<string, string> = {
-    gaming:      dict.card?.descGaming      || "Ideal for gaming, streaming and GPU-accelerated applications.",
-    business:    dict.card?.descBusiness    || "Built for professional work, video calls and daily productivity.",
-    workstation: dict.card?.descWorkstation || "Designed for 3D rendering, data processing and heavy CPU/GPU workloads.",
-    creator:     dict.card?.descCreator     || "Ideal for video editing, RAW photo processing and digital design.",
-    ultrabook:   dict.card?.descUltrabook   || "Slim, quiet and portable — perfect for commuters and remote workers.",
-    budget:      dict.card?.descBudget      || "Solid price-to-performance for everyday tasks and web browsing.",
-    student:     dict.card?.descStudent     || "Perfect for note-taking, coursework, research and academic projects.",
-  };
-  const useCase = USE_CASE[category] || USE_CASE.business;
-
-  const gpuLower = (gpu || "").toLowerCase();
-  const hasDiscreteGpu =
-    gpuLower.length > 0 &&
-    !gpuLower.includes("intel uhd") &&
-    !gpuLower.includes("intel iris") &&
-    !gpuLower.includes("integrada") &&
-    !gpuLower.includes("integrated");
-
-  const gpuPart    = hasDiscreteGpu ? `, GPU ${gpu}` : "";
-  const screenPart = display_inches ? `, ${display_inches}"` : "";
-  const weightPart = !hasDiscreteGpu && weight_kg ? `, ${weight_kg} kg` : "";
-  const battPart   = !hasDiscreteGpu && !weight_kg && battery_wh ? `, ${battery_wh} Wh` : "";
-
-  const specs = `${cpu}, ${ram_gb} GB RAM, SSD ${storage_gb} GB${gpuPart}${screenPart}${weightPart}${battPart}.`;
-  return `${specs} ${useCase}`;
+  return schema.flatMap((f) => {
+    const value = formatSpec(f, source[f.key]);
+    if (!value) return [];
+    const label = specsDict[f.labelKey] || f.labelKey;
+    return [{ label, value }];
+  });
 }
 
-export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle }: LaptopCardProps) {
+/* ── Descripción determinista (locale-aware, multi-producto) ────────────────
+   Línea de specs + un caso de uso: para laptops/desktops se deriva de la
+   categoría UX; para el resto de tipos, un tagline por tipo.
+─────────────────────────────────────────────────────────────────────────── */
+function buildDescription(product: Laptop, dict: Dict): string {
+  const type = (product.product_type || "laptop") as ProductType;
+  const entries = buildSpecEntries(product, dict);
+  const specLine = entries
+    .map((e) => (e.value === "✓" ? e.label : `${e.label}: ${e.value}`))
+    .join(" · ");
+
+  const cardDict = (dict.card ?? {}) as Record<string, string>;
+
+  if (type === "laptop" || type === "desktop") {
+    const category = (
+      product.intelligence?.category ||
+      product.metadata_extra?.category ||
+      "business"
+    ).toLowerCase();
+    const USE_CASE: Record<string, string> = {
+      gaming:      cardDict.descGaming      || "Ideal para gaming, streaming y apps aceleradas por GPU.",
+      business:    cardDict.descBusiness    || "Pensada para trabajo profesional, videollamadas y productividad diaria.",
+      workstation: cardDict.descWorkstation || "Diseñada para render 3D, procesamiento de datos y cargas pesadas.",
+      creator:     cardDict.descCreator     || "Ideal para edición de video, foto RAW y diseño digital.",
+      ultrabook:   cardDict.descUltrabook   || "Delgada, silenciosa y portátil — perfecta para trabajo remoto.",
+      budget:      cardDict.descBudget      || "Gran relación precio/rendimiento para el día a día.",
+      student:     cardDict.descStudent     || "Perfecta para apuntes, cursada e investigación académica.",
+    };
+    return `${specLine}. ${USE_CASE[category] || USE_CASE.business}`;
+  }
+
+  const taglineDict = (dict.typeTagline ?? {}) as Record<string, string>;
+  const tagline = taglineDict[type] || "";
+  return tagline ? `${specLine}. ${tagline}` : `${specLine}.`;
+}
+
+/* Etiqueta corta del tipo de producto para el badge de la card. */
+function productTypeLabel(product: Laptop, dict: Dict): string {
+  const type = (product.product_type || "laptop") as ProductType;
+  const cats = (dict.categories ?? {}) as Record<string, string>;
+  return cats[type] || type;
+}
+
+export default function LaptopCard({
+  laptop, dict, isExpanded, onToggle, isFavorite, toggleFavoriteAction,
+}: LaptopCardProps) {
   const normalizeImg = (url?: string) =>
     (url || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
   const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
+  const [favPending, startFavTransition] = useTransition();
+
+  const handleToggleFavorite = () => {
+    if (!toggleFavoriteAction) return;
+    startFavTransition(async () => {
+      await toggleFavoriteAction(String(laptop.id));
+    });
+  };
 
   const currentPriceLocal = laptop.financials?.current_price || 0;
   const exchangeRate       = laptop.financials?.applied_exchange_rate;
@@ -82,41 +122,71 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
   const monetizedUrl = hasValidUrl ? `/out?url=${encodeURIComponent(rawUrl)}` : null;
 
   const description = buildDescription(laptop, dict);
+  const typeLabel   = productTypeLabel(laptop, dict);
 
   return (
     <div
-      className={`bg-[#0d1117]/80 rounded-[2rem] border transition-all duration-300 flex flex-col overflow-hidden shadow-2xl group ${
+      className={`bg-white rounded-md border transition-all duration-200 flex flex-col overflow-hidden shadow-sm hover:shadow-md group ${
         isExpanded
-          ? "border-blue-500/50 shadow-[0_0_32px_rgba(59,130,246,0.14)]"
+          ? "border-blue-400 shadow-md"
           : isGranOportunidad
-          ? "border-emerald-500/30 hover:border-emerald-400/50"
-          : "border-gray-800/80 hover:border-gray-700/60"
+          ? "border-emerald-300 hover:border-emerald-400"
+          : "border-[#e6e8ec] hover:border-[#d3d7dd]"
       }`}
     >
-      {/* ── Brand + Score ── */}
+      {/* ── Brand + tipo + Score ── */}
       <div className="p-5 pb-0 flex items-start justify-between">
-        <span className="text-blue-500 text-xs font-semibold uppercase tracking-widest">
-          {laptop.brand}
-        </span>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-blue-600 text-xs font-semibold uppercase tracking-widest">
+            {laptop.brand}
+          </span>
+          <span className="w-fit text-[9px] font-bold uppercase tracking-wider text-[#6b7280] bg-[#f5f6f8] border border-[#e6e8ec] rounded-[2px] px-1.5 py-0.5">
+            {typeLabel}
+          </span>
+        </div>
         <div
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-colors ${
             isGranOportunidad
-              ? "bg-emerald-950/80 border-emerald-800/60"
-              : "bg-gray-950/80 border-gray-800"
+              ? "bg-emerald-50 border-emerald-200"
+              : "bg-[#f5f6f8] border-[#e6e8ec]"
           }`}
         >
           <Star
             size={11}
-            className={isGranOportunidad ? "text-emerald-400 fill-emerald-400" : "text-gray-400"}
+            className={isGranOportunidad ? "text-emerald-500 fill-emerald-500" : "text-[#9aa1ac]"}
           />
-          <span className={`text-[10px] font-semibold tracking-wide ${isGranOportunidad ? "text-emerald-400" : "text-gray-300"}`}>
+          <span className={`text-[10px] font-semibold tracking-wide ${isGranOportunidad ? "text-emerald-700" : "text-[#414855]"}`}>
             {score.toFixed(1)}/10
           </span>
         </div>
       </div>
 
       {/* ── Imagen ── */}
-      <div className="relative aspect-video bg-gradient-to-b from-gray-900/30 to-gray-950/60 border-b border-gray-800/40 overflow-hidden">
+      <div className="relative aspect-video bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border-b border-[#e6e8ec] overflow-hidden">
+        {/* ♥ Guardar en favoritos (dashboard del usuario) */}
+        {toggleFavoriteAction && (
+          <button
+            onClick={handleToggleFavorite}
+            disabled={favPending}
+            title={
+              isFavorite
+                ? dict.dashboard?.removeFromFavorites || "Quitar de favoritos"
+                : dict.dashboard?.saveToFavorites || "Guardar en favoritos"
+            }
+            aria-label={
+              isFavorite
+                ? dict.dashboard?.removeFromFavorites || "Quitar de favoritos"
+                : dict.dashboard?.saveToFavorites || "Guardar en favoritos"
+            }
+            className={`absolute top-3 right-3 z-10 p-2 rounded-full border backdrop-blur-sm transition-all cursor-pointer active:scale-90 disabled:opacity-60 ${
+              isFavorite
+                ? "bg-red-50 border-red-200 text-red-500"
+                : "bg-white/80 border-[#e6e8ec] text-[#9aa1ac] hover:text-red-500 hover:border-red-200"
+            }`}
+          >
+            <Heart size={15} className={isFavorite ? "fill-current" : ""} />
+          </button>
+        )}
         <Image
           src={imgSrc}
           alt={`${laptop.brand} ${laptop.name}`}
@@ -132,21 +202,21 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
       <div className="p-5 flex flex-col flex-1">
 
         {/* Nombre */}
-        <h3 className="text-sm font-medium line-clamp-2 min-h-[2.8rem] mb-4 text-white/90 group-hover:text-blue-400 transition-colors leading-snug">
+        <h3 className="text-sm font-medium line-clamp-2 min-h-[2.8rem] mb-4 text-[#0a0e14] group-hover:text-blue-600 transition-colors leading-snug">
           {laptop.name}
         </h3>
 
         {/* Precio */}
         <div className="mt-auto mb-4">
-          <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1 block">
+          <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
             {dict.card?.final_price || "Precio Verificado"}
           </span>
           <div className="flex flex-col">
-            <span className="text-lg font-semibold text-white leading-none">
+            <span className="text-lg font-semibold text-[#0a0e14] leading-none">
               {formatCurrencyString(currentPriceLocal, laptop.currency)}
             </span>
             {usdReference && (
-              <span className="text-[10px] text-gray-500 mt-1 block">
+              <span className="text-[10px] text-[#9aa1ac] mt-1 block">
                 {dict.card?.usd_ref || "Ref"}: U$D{" "}
                 {usdReference.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
@@ -160,13 +230,22 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
             href={monetizedUrl!}
             target="_blank"
             rel="sponsored noopener noreferrer"
-            className="w-full mb-3 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 active:bg-blue-700/65 border border-blue-500/30 text-white font-semibold text-[11px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors uppercase tracking-wider shadow-md shadow-blue-500/15"
+            className="w-full mb-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-[11px] py-2.5 rounded-[2px] flex items-center justify-center gap-1.5 transition-colors uppercase tracking-wider"
           >
             <ShoppingCart size={12} />
             {dict.card?.buy_at || "Comprar en"} {retailerName}
           </a>
-        ) : (
-          <div className="w-full mb-3 bg-gray-800/50 text-gray-600 font-semibold text-[11px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-gray-700/50 cursor-not-allowed select-none uppercase tracking-wider">
+        ) : null}
+
+        {/* Divulgación de afiliado (FTC/RGPD) — visible y contigua al enlace */}
+        {hasValidUrl && (
+          <p className="text-[9px] text-[#9aa1ac] text-center mb-3 -mt-1 leading-tight">
+            {dict.card?.affiliateNote || "Enlace de afiliado · podemos ganar una comisión"}
+          </p>
+        )}
+
+        {!hasValidUrl && (
+          <div className="w-full mb-3 bg-[#f5f6f8] text-[#9aa1ac] font-semibold text-[11px] py-2.5 rounded-[2px] flex items-center justify-center gap-1.5 border border-[#e6e8ec] cursor-not-allowed select-none uppercase tracking-wider">
             <ShoppingCart size={12} />
             {dict.card?.unavailable || "Enlace no disponible"}
           </div>
@@ -175,10 +254,10 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
         {/* Botón "Ver descripción" */}
         <button
           onClick={onToggle}
-          className={`flex items-center justify-center py-2.5 rounded-xl transition-all duration-200 border cursor-pointer ${
+          className={`flex items-center justify-center py-2.5 rounded-[2px] transition-all duration-200 border cursor-pointer ${
             isExpanded
-              ? "text-blue-400 bg-blue-950/50 border-blue-700/50"
-              : "text-gray-500 bg-gray-900/30 hover:bg-gray-800/40 border-gray-800/60 hover:border-gray-700/60 hover:text-gray-300"
+              ? "text-blue-600 bg-blue-50 border-blue-200"
+              : "text-[#6b7280] bg-[#f5f6f8] hover:bg-[#eef0f3] border-[#e6e8ec] hover:border-[#d3d7dd] hover:text-[#0a0e14]"
           }`}
         >
           <span className="text-[11px] font-semibold uppercase tracking-wider mr-1.5">
@@ -192,14 +271,14 @@ export default function LaptopCard({ laptop, dict, locale, isExpanded, onToggle 
 
       {/* ── Panel de descripción expandido ── */}
       <div
-        className={`bg-gray-950/95 transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`bg-[#f5f6f8] transition-all duration-300 ease-in-out overflow-hidden ${
           isExpanded
-            ? "max-h-[360px] opacity-100 py-5 border-t border-blue-800/30"
+            ? "max-h-[360px] opacity-100 py-5 border-t border-[#e6e8ec]"
             : "max-h-0 opacity-0"
         }`}
       >
         <div className="px-5">
-          <p className="text-gray-300 text-[12px] leading-relaxed font-normal">
+          <p className="text-[#414855] text-[12px] leading-relaxed font-normal">
             {description}
           </p>
         </div>

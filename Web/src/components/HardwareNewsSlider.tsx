@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Radio } from "lucide-react";
 import { HardwareNews } from "@/types/laptop";
+import type { Dict } from "@/types/dictionary";
 
 // ── Editorial images by category — plain URLs, browser fetches directly (no SSR proxy) ──
 const CAT_IMAGES: Record<string, string> = {
@@ -35,7 +36,7 @@ const CAT_COLORS = ["text-blue-400", "text-cyan-400", "text-indigo-400", "text-p
 
 interface Props {
   readonly news: HardwareNews[];
-  readonly dict?: any;
+  readonly dict?: Dict;
 }
 
 // ── News card ────────────────────────────────────────────────────────────────
@@ -56,7 +57,10 @@ function NewsCard({ item, colorIdx, readMoreLabel }: {
         {!loaded && (
           <div className="absolute inset-0 skeleton-shimmer" />
         )}
-        {/* Plain <img> — browser fetches directly, no Next.js SSR proxy needed */}
+        {/* Plain <img> — browser fetches directly, no Next.js SSR proxy needed.
+            Decisión documentada (bitácora 2026-06-05): <Image> de Next proxea
+            server-side y la VM/Cloud Run no siempre alcanza el host de imágenes. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={item.category}

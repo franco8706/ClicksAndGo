@@ -1,7 +1,7 @@
 import { auth, signIn } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Cpu } from "lucide-react";
+import { Cpu, AlertTriangle, MailCheck } from "lucide-react";
 import MagicLinkForm from "./MagicLinkForm";
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
@@ -9,6 +9,9 @@ import ptDict from "@/dictionaries/pt.json";
 
 interface LoginPageProps {
   params: Promise<{ locale: string }>;
+  // NextAuth redirige aquí con ?error=<código> (fallo OAuth/adapter) y
+  // ?verify=1 (magic link enviado). Sin leerlos, el usuario no ve nada.
+  searchParams: Promise<{ error?: string; verify?: string }>;
 }
 
 /* ── Iconos SVG inline de proveedores OAuth ──────────────────────── */
@@ -43,9 +46,10 @@ function FacebookIcon() {
 }
 
 /* ── Login Page — Server Component ───────────────────────────────── */
-export default async function LoginPage({ params }: LoginPageProps) {
+export default async function LoginPage({ params, searchParams }: LoginPageProps) {
   const { locale } = await params;
-  const dict: any = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const { error: authError, verify } = await searchParams;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
 
   const session = await auth();
   if (session?.user) redirect(`/${locale}/panel`);
@@ -90,13 +94,13 @@ export default async function LoginPage({ params }: LoginPageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-16 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f5f6f8] flex items-center justify-center px-4 py-16 relative overflow-hidden">
       {/* Fondo — grid tech sutil */}
-      <div className="hero-grid-overlay absolute inset-0 opacity-15 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-950/20 via-black to-black pointer-events-none" />
+      <div className="hero-grid-overlay absolute inset-0 opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="bg-gray-950/90 backdrop-blur-xl border border-gray-800/60 rounded-3xl p-8 shadow-2xl shadow-black/60">
+        <div className="bg-white border border-[#e6e8ec] rounded-lg p-8 shadow-lg">
 
           {/* Logo */}
           <div className="flex justify-center mb-8">
@@ -104,27 +108,42 @@ export default async function LoginPage({ params }: LoginPageProps) {
               href={`/${locale}`}
               className="flex items-center gap-3 group transition-transform active:scale-95"
             >
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10 group-hover:rotate-3 transition-transform duration-300">
-                <Cpu size={20} className="text-black stroke-[2.5]" />
+              <div className="w-10 h-10 bg-[#0a0e14] rounded-md flex items-center justify-center group-hover:rotate-3 transition-transform duration-200">
+                <Cpu size={20} className="text-white stroke-[2.5]" />
               </div>
-              <span className="text-xl font-black text-white tracking-tight uppercase">
-                Clicks <span className="text-blue-500">&</span> Go
+              <span className="text-xl font-black text-[#0a0e14] tracking-tight uppercase">
+                Clicks <span className="text-blue-600">&</span> Go
               </span>
             </Link>
           </div>
 
           {/* Título */}
           <div className="text-center mb-8">
-            <h1
-              className="text-3xl font-bold text-white mb-2"
-              style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
-            >
+            <h1 className="text-3xl font-bold text-[#0a0e14] mb-2 tracking-tight">
               {dict.auth?.loginTitle || "Iniciar sesión"}
             </h1>
-            <p className="text-gray-500 text-sm">
+            <p className="text-[#6b7280] text-sm">
               {dict.auth?.loginSubtitle || "Para guardar favoritos y recibir alertas de precio"}
             </p>
           </div>
+
+          {/* Feedback de flujo: error OAuth / magic link enviado */}
+          {authError && (
+            <div className="mb-6 flex items-start gap-3 px-4 py-3 rounded bg-red-50 border border-red-200">
+              <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-red-700 text-xs leading-relaxed">
+                {dict.auth?.loginError || "No pudimos iniciar sesión. Probá de nuevo o usá otro método."}
+              </p>
+            </div>
+          )}
+          {verify && !authError && (
+            <div className="mb-6 flex items-start gap-3 px-4 py-3 rounded bg-emerald-50 border border-emerald-200">
+              <MailCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-emerald-700 text-xs leading-relaxed">
+                {dict.auth?.verifySent || "Te enviamos un enlace de acceso. Revisá tu correo."}
+              </p>
+            </div>
+          )}
 
           {/* Botones OAuth */}
           <div className="space-y-2.5 mb-6">
@@ -132,7 +151,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
               <form key={label} action={action}>
                 <button
                   type="submit"
-                  className="w-full flex items-center gap-4 px-5 py-3.5 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-gray-800/60 hover:border-gray-700 rounded-xl text-white text-sm font-semibold transition-all cursor-pointer select-none"
+                  className="w-full flex items-center gap-4 px-5 py-3.5 bg-white hover:bg-[#f5f6f8] active:bg-[#eef0f3] border border-[#e6e8ec] hover:border-[#d3d7dd] rounded-[2px] text-[#0a0e14] text-sm font-semibold transition-all cursor-pointer select-none"
                 >
                   <Icon />
                   <span>{label}</span>
@@ -143,11 +162,11 @@ export default async function LoginPage({ params }: LoginPageProps) {
 
           {/* Divisor */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-gray-800/80" />
-            <span className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em]">
+            <div className="flex-1 h-px bg-[#e6e8ec]" />
+            <span className="text-[10px] text-[#9aa1ac] font-black uppercase tracking-[0.2em]">
               {dict.auth?.orEmail || "o con tu email"}
             </span>
-            <div className="flex-1 h-px bg-gray-800/80" />
+            <div className="flex-1 h-px bg-[#e6e8ec]" />
           </div>
 
           {/* Magic link form */}
@@ -155,16 +174,16 @@ export default async function LoginPage({ params }: LoginPageProps) {
 
           {/* Footer */}
           <div className="mt-6 text-center space-y-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[#6b7280]">
               {dict.auth?.noAccount || "¿No tenés cuenta?"}{" "}
               <Link
                 href={`/${locale}/register`}
-                className="text-blue-400/80 hover:text-blue-400 font-semibold transition-colors"
+                className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
               >
                 {dict.auth?.createAccount || "Crear cuenta"}
               </Link>
             </p>
-            <p className="text-[10px] text-gray-700 leading-relaxed">
+            <p className="text-[10px] text-[#9aa1ac] leading-relaxed">
               {dict.auth?.privacyNote || "Al continuar aceptás nuestra Política de Privacidad y Términos de Uso."}
             </p>
           </div>

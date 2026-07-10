@@ -3,41 +3,56 @@
 import React, { useState, useMemo, useEffect } from "react";
 import LaptopCard from "./LaptopCard";
 import type { Laptop } from "@/types/laptop";
+import { PRODUCT_TYPES } from "@/types/product";
+import type { Dict } from "@/types/dictionary";
 
-const FILTERS = [
-  { key: "all",         labelKey: "allLaptops" },
-  { key: "gaming",      labelKey: "gaming"     },
-  { key: "business",    labelKey: "business"   },
-  { key: "creator",     labelKey: "creator"    },
-  { key: "workstation", labelKey: "workstation"},
-  { key: "ultrabook",   labelKey: "ultrabook"  },
-  { key: "budget",      labelKey: "budget"     },
-];
-
-const VALID_KEYS = new Set(FILTERS.map((f) => f.key));
+const ALL = "all";
+const VALID_TYPES = new Set<string>(PRODUCT_TYPES);
+const typeOf = (p: Laptop): string => p.product_type || "laptop";
 
 interface CatalogSectionProps {
   readonly laptops: Laptop[];
   readonly countryCode: string;
-  readonly dict: any;
+  readonly dict: Dict;
   readonly locale: string;
+  /** IDs de productos guardados por el usuario logueado */
+  readonly favoriteIds?: readonly string[];
+  /** Server action de toggle de favorito (pasa hacia LaptopCard) */
+  readonly toggleFavoriteAction?: (laptopId: string) => Promise<void>;
 }
 
-export default function CatalogSection({ laptops, countryCode, dict, locale }: CatalogSectionProps) {
-  const [activeFilter, setActiveFilter] = useState<string>("all");
+export default function CatalogSection({
+  laptops, countryCode, dict, locale, favoriteIds, toggleFavoriteAction,
+}: CatalogSectionProps) {
+  const favoriteSet = useMemo(() => new Set(favoriteIds ?? []), [favoriteIds]);
+  const [activeFilter, setActiveFilter] = useState<string>(ALL);
   const [expandedId, setExpandedId]     = useState<string | null>(null);
 
-  // Lee ?cat= al montar (para links compartidos / navegación directa)
+  // 📦 Multi-producto: los chips se derivan de los tipos presentes en el
+  // catálogo (ordenados por la taxonomía canónica). Así se auto-adaptan a
+  // medida que los retailers suman impresoras, teclados, mouse, etc.
+  const availableTypes = useMemo<string[]>(() => {
+    const present = new Set(laptops.map(typeOf));
+    return PRODUCT_TYPES.filter((t) => present.has(t));
+  }, [laptops]);
+  const filters = useMemo(() => [ALL, ...availableTypes], [availableTypes]);
+
+  const catDict = (dict.categories ?? {}) as Record<string, string>;
+  const labelFor = (key: string) =>
+    key === ALL ? (dict.common?.allProducts || dict.common?.allLaptops || "Todos") : (catDict[key] || key);
+
+  // Lee ?cat= al montar (para links compartidos). Solo aplica si es un tipo válido.
   useEffect(() => {
     const cat = new URLSearchParams(window.location.search).get("cat");
-    if (cat && VALID_KEYS.has(cat)) setActiveFilter(cat);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronización única con la URL, hydration-safe
+    if (cat && VALID_TYPES.has(cat)) setActiveFilter(cat);
   }, []);
 
-  // Escucha el evento del HeroSection cuando el usuario elige una sugerencia
+  // Escucha el evento del HeroSection (buscador) — filtra por tipo de producto.
   useEffect(() => {
     const handler = (e: Event) => {
       const { category } = (e as CustomEvent<{ category: string }>).detail;
-      if (VALID_KEYS.has(category)) {
+      if (VALID_TYPES.has(category)) {
         setActiveFilter(category);
         setExpandedId(null);
       }
@@ -47,15 +62,8 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
   }, []);
 
   const filtered = useMemo(() => {
-    if (activeFilter === "all") return laptops;
-    return laptops.filter((l) => {
-      const cat = (
-        (l.intelligence as any)?.category ||
-        l.metadata_extra?.category ||
-        ""
-      ).toLowerCase();
-      return cat === activeFilter;
-    });
+    if (activeFilter === ALL) return laptops;
+    return laptops.filter((l) => typeOf(l) === activeFilter);
   }, [laptops, activeFilter]);
 
   const handleFilterChange = (key: string) => {
@@ -67,33 +75,37 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const countNoun = (n: number) =>
+    `${n} ${n === 1 ? (dict.common?.productSingular || "producto") : (dict.common?.products || "productos")}`;
+
   return (
     <>
-      {/* ── Filter chips ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        {FILTERS.map(({ key, labelKey }) => {
-          const label    = dict.common?.[labelKey] || key;
-          const isActive = activeFilter === key;
-          return (
-            <button
-              key={key}
-              onClick={() => handleFilterChange(key)}
-              className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-200 border cursor-pointer select-none ${
-                isActive
-                  ? "bg-blue-600/45 backdrop-blur-sm border-blue-500/40 text-white shadow-lg shadow-blue-500/10"
-                  : "border-gray-800/80 text-gray-400 bg-gray-900/30 hover:border-blue-500/40 hover:text-blue-400"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* ── Filtros por categoría de producto ──────────────────────────── */}
+      {filters.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          {filters.map((key) => {
+            const isActive = activeFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => handleFilterChange(key)}
+                className={`px-5 py-2.5 rounded-[2px] text-sm font-bold transition-all duration-200 border cursor-pointer select-none ${
+                  isActive
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "border-[#e6e8ec] text-[#6b7280] bg-white hover:border-blue-300 hover:text-blue-600"
+                }`}
+              >
+                {labelFor(key)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Results count ──────────────────────────────────────────────── */}
       {filtered.length > 0 && (
-        <p className="text-gray-600 text-[11px] font-black uppercase tracking-widest mb-6">
-          {filtered.length} laptops
+        <p className="text-[#9aa1ac] text-[11px] font-black uppercase tracking-widest mb-6">
+          {countNoun(filtered.length)}
         </p>
       )}
 
@@ -108,15 +120,17 @@ export default function CatalogSection({ laptops, countryCode, dict, locale }: C
               locale={locale}
               isExpanded={expandedId === String(laptop.id)}
               onToggle={() => handleToggle(String(laptop.id))}
+              isFavorite={favoriteSet.has(String(laptop.id))}
+              toggleFavoriteAction={toggleFavoriteAction}
             />
           ))}
         </div>
       ) : (
-        <div className="py-24 text-center flex flex-col items-center justify-center bg-gray-900/10 rounded-[2rem] border border-dashed border-gray-800">
-          <h3 className="text-lg font-bold text-gray-200 mb-2">
+        <div className="py-24 text-center flex flex-col items-center justify-center bg-[#f5f6f8] rounded-md border border-dashed border-[#d3d7dd]">
+          <h3 className="text-lg font-bold text-[#0a0e14] mb-2">
             {dict.common?.noResults || "Sin Resultados"}
           </h3>
-          <p className="text-gray-500 text-sm">
+          <p className="text-[#6b7280] text-sm">
             {dict.common?.scanning || "Buscando"} {countryCode}…
           </p>
         </div>

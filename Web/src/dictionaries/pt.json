@@ -20,7 +20,10 @@
       "processor": "Processador",
       "memory": "Memória RAM",
       "storage": "Armazenamento SSD"
-    }
+    },
+    "allProducts": "Todos",
+    "products": "produtos",
+    "productSingular": "produto"
   },
   "news": {
     "title": "Notícias de Tecnologia",
@@ -108,6 +111,7 @@
     "ram": "GB RAM",
     "ssd": "GB SSD",
     "unavailable": "Link indisponível",
+    "affiliateNote": "Link de afiliado · podemos receber uma comissão",
     "descGaming": "Perfeita para jogos exigentes, streaming ao vivo e cargas de trabalho com GPU que exigem potência máxima. Com processador de alta performance e placa gráfica dedicada, entrega experiências fluidas em títulos AAA, design 3D e renderização acelerada por inteligência artificial.",
     "descBusiness": "Desenvolvida para profissionais que precisam de desempenho real sem concessões. Ideal para videoconferências em HD, documentos pesados, planilhas complexas e multitarefa exigente. Conectividade robusta, bateria de longa duração e tela de alta fidelidade para um dia de trabalho impecável.",
     "descWorkstation": "Potência de estação de trabalho para usuários que lidam com grandes volumes de dados, renders 3D, modelos CAD ou simulações científicas. A combinação de CPU multi-core e GPU profissional garante resultados precisos mesmo sob as cargas mais intensas e sustentadas.",
@@ -148,7 +152,8 @@
     "privacyLink": "Privacidade",
     "termsLink": "Termos",
     "cookiesLink": "Cookies",
-    "copyright": "© 2026 Clicks & Go. Todos os direitos reservados."
+    "copyright": "© 2026 Clicks & Go. Todos os direitos reservados.",
+    "affiliateDisclosure": "Divulgação de afiliados: A Clicks & Go participa de programas de afiliados. Se você comprar através dos nossos links, podemos receber uma comissão sem custo adicional para você. Isso não afeta os preços que você vê nem as nossas recomendações."
   },
   "condition": {
     "new": "Novo",
@@ -196,6 +201,93 @@
     "memberSince": "Membro desde",
     "favoritesSection": "Meus favoritos",
     "noFavorites": "Você ainda não salvou nenhum laptop",
-    "privacyNote": "Ao continuar você concorda com nossa Política de Privacidade e Termos de Uso."
+    "privacyNote": "Ao continuar você concorda com nossa Política de Privacidade e Termos de Uso.",
+    "loginError": "Não foi possível fazer login. Tente novamente ou use outro método.",
+    "verifySent": "Enviamos um link de acesso. Verifique seu e-mail (e a pasta de spam)."
+  },
+  "dashboard": {
+    "overview": "Resumo",
+    "savedItems": "Salvos",
+    "activeAlerts": "Alertas ativos",
+    "detectedCountry": "Sua região",
+    "favorites": "Meus favoritos",
+    "favoritesEmpty": "Você ainda não salvou nenhum laptop. Toque no coração ♡ em qualquer produto do catálogo.",
+    "alerts": "Alertas de preço",
+    "alertsEmpty": "Nenhum alerta configurado. Crie a partir dos seus favoritos com um preço-alvo.",
+    "alertsHint": "Avisaremos quando o preço cair abaixo do seu alvo.",
+    "currentPrice": "Preço atual",
+    "targetPrice": "Preço-alvo",
+    "createAlert": "Criar alerta",
+    "deleteAlert": "Excluir alerta",
+    "remove": "Remover",
+    "viewProduct": "Ver produto",
+    "goCatalog": "Explorar catálogo",
+    "alertTriggered": "Preço alcançado!",
+    "alertWaiting": "Aguardando queda",
+    "preferredCountry": "País do catálogo",
+    "autoByIp": "Automático (com base na sua localização)",
+    "countryHint": "Escolha de qual país você quer ver produtos e preços. No automático usamos sua localização.",
+    "saveToFavorites": "Salvar nos favoritos",
+    "removeFromFavorites": "Remover dos favoritos",
+    "countries": {
+      "AR": "Argentina",
+      "US": "Estados Unidos",
+      "ES": "Espanha",
+      "MX": "México",
+      "BR": "Brasil",
+      "CO": "Colômbia",
+      "CL": "Chile"
+    }
+  },
+  "categories": {
+    "laptop": "Notebooks",
+    "desktop": "Desktops",
+    "monitor": "Monitores",
+    "keyboard": "Teclados",
+    "mouse": "Mouse",
+    "headphones": "Fones",
+    "webcam": "Webcams",
+    "printer": "Impressoras",
+    "supplies": "Suprimentos"
+  },
+  "specs": {
+    "cpu": "Processador",
+    "ram": "RAM",
+    "storage": "SSD",
+    "gpu": "GPU",
+    "screen": "Tela",
+    "size": "Tamanho",
+    "resolution": "Resolução",
+    "refresh": "Atualização",
+    "panel": "Painel",
+    "switch": "Switch",
+    "layout": "Layout",
+    "wireless": "Sem fio",
+    "backlit": "Retroiluminado",
+    "dpi": "DPI",
+    "sensor": "Sensor",
+    "buttons": "Botões",
+    "form": "Tipo",
+    "driver": "Driver",
+    "anc": "Cancelamento de ruído",
+    "fps": "FPS",
+    "mic": "Microfone",
+    "technology": "Tecnologia",
+    "ppm": "Páginas/min",
+    "color": "Cor",
+    "wifi": "WiFi",
+    "suppliesKind": "Tipo",
+    "compatibility": "Compatibilidade",
+    "yield": "Rendimento"
+  },
+  "typeTagline": {
+    "desktop": "Potência de desktop para trabalho e games exigentes.",
+    "monitor": "Mais espaço de tela e cores precisas para seu setup.",
+    "keyboard": "Digitação precisa e confortável por horas.",
+    "mouse": "Precisão e ergonomia para trabalho e jogo.",
+    "headphones": "Áudio imersivo para música, chamadas e games.",
+    "webcam": "Chamadas nítidas e streaming em alta definição.",
+    "printer": "Impressão confiável para casa ou escritório.",
+    "supplies": "Suprimentos originais pelo melhor preço verificado."
   }
 }

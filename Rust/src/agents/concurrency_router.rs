@@ -41,10 +41,7 @@ impl ConcurrencyRouter {
 /// Inline hint para que Rayon pueda vectorizar el hot loop.
 #[inline]
 fn score_one(specs: HardwareSpecs) -> ScoreResult {
-    let hardware_score = HardwareScorerAgent::calculate_score(
-        &specs.cpu, specs.ram_gb, &specs.gpu,
-    );
-
+    // La matemática financiera es universal (aplica a cualquier producto).
     let (discount_pct, usd_reference_price, savings) =
         HardwareScorerAgent::compute_financial_math(
             specs.current_price,
@@ -53,11 +50,24 @@ fn score_one(specs: HardwareSpecs) -> ScoreResult {
             &specs.currency,
         );
 
-    // Bonus financiero por descuento fuerte (> 15%)
-    let final_score = if discount_pct > 15 {
-        (hardware_score + 0.5).clamp(1.0, 10.0)
+    // 📦 Multi-producto: laptop/desktop se puntúan por hardware (CPU/GPU/RAM);
+    // el resto (impresoras, teclados, mouse, auriculares…) no tiene hardware de
+    // cómputo, así que usa el scorer genérico por señales financieras/reputación.
+    let type_l = specs.product_type.to_ascii_lowercase();
+    let is_hardware_scored = matches!(type_l.as_str(), "laptop" | "desktop" | "");
+
+    let base_score = if is_hardware_scored {
+        HardwareScorerAgent::calculate_score(&specs.cpu, specs.ram_gb, &specs.gpu)
     } else {
-        hardware_score
+        HardwareScorerAgent::calculate_generic_score(discount_pct, specs.rating, specs.reviews)
+    };
+
+    // Bonus por descuento fuerte (> 15%) solo para hardware — el scorer genérico
+    // ya incorpora el descuento en su cálculo.
+    let final_score = if is_hardware_scored && discount_pct > 15 {
+        (base_score + 0.5).clamp(1.0, 10.0)
+    } else {
+        base_score
     };
 
     ScoreResult {

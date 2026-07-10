@@ -71,72 +71,80 @@ export default async function RootLayout({ children, params }: LayoutProps) {
             {children}
           </main>
 
-          <footer className="bg-black text-gray-400 py-16 border-t border-gray-900 z-10 relative select-none">
+          <footer className="bg-[#f5f6f8] text-[#414855] py-16 border-t border-[#e6e8ec] z-10 relative select-none">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
 
                 <div className="space-y-4">
                   <div className="flex items-center">
-                    <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/10">
-                      <Cpu size={18} className="text-black stroke-[2.5]" />
+                    <div className="w-9 h-9 bg-[#0a0e14] rounded-md flex items-center justify-center mr-3">
+                      <Cpu size={18} className="text-white stroke-[2.5]" />
                     </div>
-                    <span className="text-white font-extrabold text-xl tracking-tight uppercase">
-                      Clicks <span className="text-blue-500">&</span> Go
+                    <span className="text-[#0a0e14] font-extrabold text-xl tracking-tight">
+                      Clicks <span className="text-blue-600">&</span> Go
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed text-gray-400">{dict.footer?.description}</p>
-                  <p className="text-[11px] text-gray-600 leading-relaxed">{dict.footer?.disclaimer}</p>
+                  <p className="text-sm leading-relaxed text-[#6b7280]">{dict.footer?.description}</p>
+                  <p className="text-[11px] text-[#9aa1ac] leading-relaxed">{dict.footer?.disclaimer}</p>
                 </div>
 
                 <div>
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{dict.footer?.products || "Productos"}</h4>
-                  <ul className="space-y-2.5 text-sm">
+                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.products || "Productos"}</h4>
+                  <ul className="space-y-2.5 text-sm text-[#6b7280]">
                     {/* 🚀 FIX SPA: Sustituido <a> por <Link> para evitar recarga de página (Full Page Reload) */}
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-400 transition-colors">{dict.common?.gaming}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-400 transition-colors">{dict.common?.workstation}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-400 transition-colors">{dict.common?.ultrabook}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-400 transition-colors">{dict.common?.creator}</Link></li>
+                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.gaming}</Link></li>
+                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.workstation}</Link></li>
+                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.ultrabook}</Link></li>
+                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.creator}</Link></li>
                   </ul>
                 </div>
 
                 <div>
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{dict.footer?.resources || "Recursos"}</h4>
-                  <ul className="space-y-2.5 text-sm">
-                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">API / GraphQL</span></li>
-                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">{dict.footer?.statusLink || "Estado del Sistema"}</span></li>
-                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">Rust Axum Engine</span></li>
-                    <li><span className="hover:text-blue-400 transition-colors cursor-pointer">Zero-Trust Security</span></li>
+                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.resources || "Recursos"}</h4>
+                  <ul className="space-y-2.5 text-sm text-[#6b7280]">
+                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">API / GraphQL</span></li>
+                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">{dict.footer?.statusLink || "Estado del Sistema"}</span></li>
+                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">Rust Axum Engine</span></li>
+                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">Zero-Trust Security</span></li>
                   </ul>
                 </div>
 
                 <div>
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{dict.footer?.contact || "Contacto"}</h4>
+                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.contact || "Contacto"}</h4>
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-center gap-3">
-                      <Mail size={14} className="text-blue-500 shrink-0" />
-                      <span className="truncate text-gray-300 font-medium">info@clicksandgo.com</span>
+                      <Mail size={14} className="text-blue-600 shrink-0" />
+                      <span className="truncate text-[#414855] font-medium">info@clicksandgo.com</span>
                     </li>
                     <li className="flex items-center gap-3">
-                      <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                      <span className="text-xs font-bold tracking-wide text-gray-400">Auditoría Clicks & Go v4.0</span>
+                      <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                      <span className="text-xs font-bold tracking-wide text-[#6b7280]">Auditoría Clicks & Go v4.0</span>
                     </li>
                     <li className="flex space-x-4 pt-3">
-                      <Link href="#" aria-label="Comunidad" className="text-gray-500 hover:text-white transition-colors"><MessageSquare size={18} /></Link>
-                      <Link href="#" aria-label="Negocios" className="text-gray-500 hover:text-white transition-colors"><Briefcase size={18} /></Link>
-                      <Link href="#" aria-label="Desarrollo" className="text-gray-500 hover:text-white transition-colors"><Code2 size={18} /></Link>
+                      <Link href="#" aria-label="Comunidad" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><MessageSquare size={18} /></Link>
+                      <Link href="#" aria-label="Negocios" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><Briefcase size={18} /></Link>
+                      <Link href="#" aria-label="Desarrollo" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><Code2 size={18} /></Link>
                     </li>
                   </ul>
                 </div>
 
               </div>
 
-              <div className="border-t border-gray-900 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
+              {/* Divulgación de afiliados global (FTC/RGPD) — visible en toda página */}
+              <div className="border-t border-[#e6e8ec] pt-8 pb-6">
+                <p className="text-[11px] leading-relaxed text-[#9aa1ac] max-w-4xl">
+                  {dict.footer?.affiliateDisclosure ||
+                    "Clicks & Go participa en programas de afiliados y puede recibir una comisión por compras hechas a través de sus enlaces, sin costo adicional para vos."}
+                </p>
+              </div>
+
+              <div className="border-t border-[#e6e8ec] pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9aa1ac] gap-4">
                 <p>{dict.footer?.copyright || "© 2026 Clicks & Go. All rights reserved."}</p>
                 <div className="flex space-x-6">
-                  <Link href={`/${locale}/privacidad`} className="hover:text-white transition-colors">{dict.footer?.privacyLink || "Privacy"}</Link>
-                  <Link href={`/${locale}/terminos`} className="hover:text-white transition-colors">{dict.footer?.termsLink || "Terms"}</Link>
-                  <Link href="#" className="hover:text-white transition-colors">{dict.footer?.cookiesLink || "Cookies"}</Link>
+                  <Link href={`/${locale}/privacidad`} className="hover:text-[#0a0e14] transition-colors">{dict.footer?.privacyLink || "Privacy"}</Link>
+                  <Link href={`/${locale}/terminos`} className="hover:text-[#0a0e14] transition-colors">{dict.footer?.termsLink || "Terms"}</Link>
+                  <Link href="#" className="hover:text-[#0a0e14] transition-colors">{dict.footer?.cookiesLink || "Cookies"}</Link>
                 </div>
               </div>
 

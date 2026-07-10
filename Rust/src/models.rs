@@ -13,9 +13,24 @@ pub use crate::agents::link_validator::{LinkValidationRequest, LinkCheckResult};
 pub struct HardwareSpecs {
     #[serde(default)]
     pub sku: Option<String>,
+    // cpu/gpu son laptop-específicos: default para productos sin hardware de cómputo
+    // (impresoras, teclados, mouse…) que se puntúan con el scorer genérico.
+    #[serde(default)]
     pub cpu: String,
+    #[serde(default)]
     pub gpu: String,
+    #[serde(default)]
     pub ram_gb: i32,
+
+    // 📦 Multi-producto: discrimina qué scorer aplicar (laptop/desktop → hardware,
+    // resto → genérico por señales financieras/reputación).
+    #[serde(default = "default_product_type")]
+    pub product_type: String,
+    // Señales para el scorer genérico (reseñas del retailer). Opcionales.
+    #[serde(default)]
+    pub rating: f64,
+    #[serde(default)]
+    pub reviews: i64,
 
     // f64: precisión de 15-17 dígitos, obligatorio para precios LATAM de 6-7 cifras (ARS, CLP)
     #[serde(default)]
@@ -30,6 +45,10 @@ pub struct HardwareSpecs {
 
 fn default_currency() -> String {
     "USD".to_string()
+}
+
+fn default_product_type() -> String {
+    "laptop".to_string()
 }
 
 /// Respuesta completa con score hardware + matemática financiera resuelta en Rust

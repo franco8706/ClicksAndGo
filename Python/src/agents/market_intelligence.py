@@ -19,6 +19,8 @@ class MarketIntelligenceAgent:
         mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://mongodb_lake:27017")
         try:
             self.mongo_client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
+            # 🛡️ MongoClient es lazy: el ping fuerza la conexión real ahora
+            self.mongo_client.admin.command("ping")
             self.db = self.mongo_client["clicks_and_go_db"]
             self.db_connected = True
         except Exception:
@@ -86,7 +88,12 @@ class MarketIntelligenceAgent:
         """Cruza la fecha exacta de hoy con el calendario en MongoDB."""
         if not self.db_connected: return None
 
-        calendar_doc = self.db.promo_calendar.find_one({"dataset": "latest"})
+        # 🛡️ Defensivo: un Mongo intermitente no debe tumbar el enriquecimiento
+        # del batch completo (este método corre una vez por laptop).
+        try:
+            calendar_doc = self.db.promo_calendar.find_one({"dataset": "latest"})
+        except Exception:
+            return None
         if not calendar_doc: return None
 
         today = datetime.date.today()

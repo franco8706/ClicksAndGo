@@ -32,8 +32,15 @@ describe('Financial Formatters (Zero Trust v4.0)', () => {
     });
 
     it('debe manejar valores nulos o indefinidos con seguridad perimetral', () => {
-      const formattedNull = formatCurrencyString(null as any, 'USD');
+      const formattedNull = formatCurrencyString(null as unknown as number, 'USD');
       expect(formattedNull).toBe('--');
+    });
+
+    it('debe degradar a USD ante códigos de moneda inválidos (sin lanzar RangeError)', () => {
+      // "AR$" haría explotar Intl.NumberFormat si no se sanitizara
+      const formattedInvalid = formatCurrencyString(1000, 'AR$');
+      expect(formattedInvalid.endsWith('USD')).toBe(true);
+      expect(formattedInvalid).toMatch(/1.*000/);
     });
 
   });

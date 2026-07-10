@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, LayoutDashboard } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
+import type { Dict } from "@/types/dictionary";
 
 interface UserSession {
   user?: {
@@ -15,7 +16,7 @@ interface UserSession {
 }
 
 interface NavbarProps {
-  readonly dict: any;
+  readonly dict: Dict;
   readonly currentLocale?: string;
   readonly session?: UserSession | null;
 }
@@ -36,10 +37,10 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
 
   return (
     <nav
-      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ease-out border-b ${
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-200 ease-out border-b ${
         scrolled
-          ? "glass-effect border-gray-800/50 py-3 shadow-xl shadow-black/20"
-          : "bg-transparent border-transparent py-5"
+          ? "glass-effect border-[#e6e8ec] py-3 shadow-sm"
+          : "bg-white/80 backdrop-blur-sm border-transparent py-5"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,11 +51,11 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
             href={getHref("/")}
             className="flex items-center gap-3 group transition-transform active:scale-95 shrink-0 select-none"
           >
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10 group-hover:rotate-3 transition-transform duration-300">
-              <Cpu size={20} className="text-black stroke-[2.5]" />
+            <div className="w-10 h-10 bg-[#0a0e14] rounded-md flex items-center justify-center group-hover:rotate-3 transition-transform duration-200">
+              <Cpu size={20} className="text-white stroke-[2.5]" />
             </div>
-            <span className="text-xl font-black text-white tracking-tight uppercase">
-              Clicks <span className="text-blue-500">&</span> Go
+            <span className="text-xl font-black text-[#0a0e14] tracking-tight uppercase">
+              Clicks <span className="text-blue-600">&</span> Go
             </span>
           </Link>
 
@@ -66,23 +67,23 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
               /* Usuario logueado → botón Panel */
               <Link
                 href={getHref("/panel")}
-                className="flex items-center gap-2 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 shadow-lg shadow-blue-500/20 active:scale-95 select-none"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-[2px] text-sm font-bold tracking-wide transition-all duration-200 active:scale-95 select-none"
               >
                 <LayoutDashboard size={15} />
-                {dict.auth?.panel || dict.navbar?.panel || "Mi Panel"}
+                {dict.auth?.panel || "Mi Panel"}
               </Link>
             ) : (
               /* Visitante → login + register */
               <>
                 <Link
                   href={getHref("/login")}
-                  className="text-white/80 hover:text-white text-sm font-semibold tracking-wide transition-colors px-4 py-2"
+                  className="text-[#414855] hover:text-[#0a0e14] text-sm font-semibold tracking-wide transition-colors px-4 py-2"
                 >
                   {dict.navbar?.login || "Iniciar sesión"}
                 </Link>
                 <Link
                   href={getHref("/register")}
-                  className="bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 shadow-lg shadow-blue-500/20 active:scale-95 select-none"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-[2px] text-sm font-bold tracking-wide transition-all duration-200 active:scale-95 select-none"
                 >
                   {dict.navbar?.register || "Registrarse"}
                 </Link>
@@ -96,7 +97,7 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
             {session?.user ? (
               <Link
                 href={getHref("/panel")}
-                className="flex items-center gap-1.5 bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-[2px] text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
               >
                 <LayoutDashboard size={13} />
                 {dict.auth?.panel || "Panel"}
@@ -104,7 +105,7 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
             ) : (
               <Link
                 href={getHref("/register")}
-                className="bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-[2px] text-xs font-bold tracking-wide transition-colors active:scale-95 select-none"
               >
                 {dict.navbar?.register || "Registrarse"}
               </Link>

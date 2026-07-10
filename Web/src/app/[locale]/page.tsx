@@ -1,7 +1,12 @@
 import React from "react";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { CheckCircle, Tag, ShieldCheck, Star } from "lucide-react";
+import { auth } from "@/auth";
+import { getProfile, getFavoriteIds, toggleFavorite } from "@/lib/railsApi";
 import type { Laptop, HardwareNews } from "@/types/laptop";
+import type { Dict } from "@/types/dictionary";
 
 import HeroSection from "@/components/HeroSection";
 import CatalogSection from "@/components/CatalogSection";
@@ -11,37 +16,10 @@ import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
 
-// ── Stats strip ──────────────────────────────────────────────────────────────
-function StatsBanner({ dict }: { dict: any }) {
-  const stats = [
-    { num: dict.stats?.productsNum  || "5",     label: dict.stats?.products  || "Países con cobertura" },
-    { num: dict.stats?.enginesNum   || "100%",  label: dict.stats?.engines   || "Siempre gratis" },
-    { num: dict.stats?.countriesNum || "Diario",label: dict.stats?.countries || "Actualización de precios" },
-    { num: dict.stats?.latencyNum   || "24/7",  label: dict.stats?.latency   || "Siempre disponible" },
-  ];
-  return (
-    <div className="border-b border-gray-800/50 bg-gradient-to-b from-gray-950/60 to-transparent">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        <p className="text-center text-[10px] font-black text-blue-400 uppercase tracking-widest mb-8">
-          {dict.stats?.eyebrow || "Por qué elegir Clicks & Go"}
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map(({ num, label }) => (
-            <div key={label} className="group">
-              <div className="text-4xl sm:text-5xl font-black text-white mb-2 tracking-tight group-hover:text-blue-400 transition-colors duration-300">
-                {num}
-              </div>
-              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Why trust us ─────────────────────────────────────────────────────────────
-function WhyTrustUs({ dict }: { dict: any }) {
+// (StatsBanner eliminado: quedó como código muerto cuando se dejó de renderizar
+//  en el reordenamiento UI v2 — recuperable desde git si se quiere reincorporar.)
+function WhyTrustUs({ dict }: { dict: Dict }) {
   const items = [
     {
       icon:  <CheckCircle size={22} className="text-emerald-400" />,
@@ -66,19 +44,16 @@ function WhyTrustUs({ dict }: { dict: any }) {
   ];
 
   return (
-    <section className="py-20 border-b border-gray-800/40">
+    <section className="py-20 border-b border-[#e6e8ec]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-14">
-          <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">
+          <span className="text-blue-600 text-[10px] font-black uppercase tracking-widest">
             {dict.features?.eyebrow || "Nuestra promesa"}
           </span>
-          <h2
-            className="text-5xl sm:text-6xl font-bold text-white mt-3"
-            style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
-          >
+          <h2 className="text-5xl sm:text-6xl font-bold text-[#0a0e14] mt-3 tracking-tight">
             {dict.features?.title || "¿Por qué confiar en Clicks & Go?"}
           </h2>
-          <p className="text-gray-400 mt-4 max-w-xl mx-auto text-sm leading-relaxed">
+          <p className="text-[#6b7280] mt-4 max-w-xl mx-auto text-sm leading-relaxed">
             {dict.features?.subtitle || "Trabajamos para que no tengas que comparar precios tú mismo"}
           </p>
         </div>
@@ -86,13 +61,13 @@ function WhyTrustUs({ dict }: { dict: any }) {
           {items.map(({ icon, title, desc }) => (
             <div
               key={title}
-              className="group p-7 rounded-2xl bg-gray-900/30 border border-gray-800/70 hover:border-blue-500/30 hover:bg-gray-900/60 transition-all duration-300"
+              className="group p-7 rounded bg-[#f5f6f8] border border-[#e6e8ec] hover:border-[#d3d7dd] hover:bg-white hover:shadow-md transition-all duration-200"
             >
-              <div className="w-11 h-11 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center mb-5 group-hover:border-blue-500/30 transition-colors">
+              <div className="w-11 h-11 rounded bg-white border border-[#e6e8ec] flex items-center justify-center mb-5 group-hover:border-blue-200 transition-colors">
                 {icon}
               </div>
-              <h3 className="text-white font-semibold text-sm mb-2">{title}</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
+              <h3 className="text-[#0a0e14] font-semibold text-sm mb-2">{title}</h3>
+              <p className="text-[#6b7280] text-xs leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
@@ -107,7 +82,39 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
 
   const headersList = await headers();
-  const countryCode = headersList.get("x-country-code") || "US";
+  const ipCountry = headersList.get("x-country-code") || "US";
+
+  /* ── 👤 Sesión + personalización geo ──────────────────────────────
+     Si el usuario está logueado: cargamos sus favoritos (corazones del
+     catálogo) y su país preferido — si eligió uno, pisa al detectado
+     por IP. Visitante anónimo: catálogo 100% por IP, cero llamadas a
+     Rails. Todo pasa por Rails REST (Postgres es su frontera exclusiva,
+     Next.js nunca lo toca directo salvo el adapter de NextAuth). ── */
+  const session = await auth().catch(() => null);
+  let favoriteIds: string[] = [];
+  let preferredCountry: string | null = null;
+
+  if (session?.user?.id) {
+    const [profile, favs] = await Promise.all([
+      getProfile(session.user.id),
+      getFavoriteIds(session.user.id),
+    ]);
+    preferredCountry = profile?.country_code || null;
+    favoriteIds = favs;
+  }
+
+  const countryCode = preferredCountry || ipCountry;
+  const isLoggedIn = !!session?.user?.id;
+
+  /* ── Server Action: toggle de favorito desde el catálogo ── */
+  async function toggleFavoriteAction(laptopId: string): Promise<void> {
+    "use server";
+    const sess = await auth().catch(() => null);
+    if (!sess?.user?.id) redirect(`/${locale}/login`);
+    await toggleFavorite(sess.user.id, laptopId);
+    revalidatePath(`/${locale}`);
+    revalidatePath(`/${locale}/panel`);
+  }
 
   const railsApiUrl  = process.env.RAILS_API_URL || "http://rails_backend:3000";
   const fetchConfig  = { next: { revalidate: 60, tags: [`catalog-${countryCode}`] } };
@@ -134,10 +141,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   }
 
   return (
-    <main className="min-h-screen pb-0 font-sans relative overflow-hidden bg-[#090d16]">
-      {/* Ambient glows */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/8 rounded-full blur-[140px] pointer-events-none z-0" />
-      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-600/5 rounded-full blur-[120px] pointer-events-none z-0" />
+    <main className="min-h-screen pb-0 font-sans relative overflow-hidden bg-white">
+      {/* Tintes de ambiente muy sutiles sobre blanco */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none z-0" />
+      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-500/4 rounded-full blur-[120px] pointer-events-none z-0" />
 
       {/* 1. Hero + ticker de noticias integrado */}
       <HeroSection dict={dict} news={news} />
@@ -151,12 +158,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div id="productos" className="mt-6 mb-8 scroll-mt-28">
           {/* Badge live — reemplaza el header del catálogo */}
-          <div className="mb-6 flex items-center gap-3 px-5 py-2.5 bg-emerald-950/30 border border-emerald-900/40 select-none w-fit">
+          <div className="mb-6 flex items-center gap-3 px-5 py-2.5 rounded bg-emerald-50 border border-emerald-200 select-none w-fit">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
               {dict.hero?.verifiedDeals || "Precios auditados en tiempo real"}
             </span>
           </div>
@@ -166,12 +173,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             countryCode={countryCode}
             dict={dict}
             locale={locale}
+            favoriteIds={isLoggedIn ? favoriteIds : undefined}
+            toggleFavoriteAction={toggleFavoriteAction}
           />
         </div>
       </section>
 
       {/* 5. Mejores Ofertas — accesible desde el navbar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-16 border-t border-gray-800/40">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-16 border-t border-[#e6e8ec]">
         <div id="ofertas" className="scroll-mt-28">
           <AIDealsSection laptops={laptops} countryCode={countryCode} dict={dict} />
         </div>

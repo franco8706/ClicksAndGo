@@ -39,6 +39,34 @@ impl HardwareScorerAgent {
         round1(score.clamp(1.0, 10.0))
     }
 
+    /// Scoring GENÉRICO para productos sin CPU/GPU (multi-producto):
+    /// impresoras, teclados, mouse, auriculares, webcams, monitores, insumos.
+    /// Deriva el `deal_score` de señales financieras y de reputación, no de
+    /// hardware. Mantiene la misma escala 1.0–10.0 del scorer de laptops.
+    ///   - `discount_pct`: 0–100, principal driver de "oportunidad".
+    ///   - `rating`: 0.0–5.0 (reseñas del retailer); <=0 => se ignora.
+    ///   - `reviews`: nº de reseñas; da un pequeño bonus de confianza.
+    #[inline]
+    pub fn calculate_generic_score(discount_pct: i32, rating: f64, reviews: i64) -> f64 {
+        let mut score: f64 = 5.0;
+
+        // Descuento: hasta +3.0 (un 40%+ de descuento es una gran oferta).
+        let d = discount_pct.clamp(0, 100) as f64;
+        score += (d / 40.0 * 3.0).min(3.0);
+
+        // Reputación: rating 0–5 aporta hasta +1.5 (centrado en 3.0★).
+        if rating > 0.0 {
+            score += ((rating.clamp(0.0, 5.0) - 3.0) / 2.0 * 1.5).clamp(-1.5, 1.5);
+        }
+
+        // Confianza por volumen de reseñas: hasta +0.5.
+        if reviews > 0 {
+            score += ((reviews as f64).log10() / 4.0 * 0.5).min(0.5);
+        }
+
+        round1(score.clamp(1.0, 10.0))
+    }
+
     /// Matemática financiera de bajo nivel.
     /// f64 obligatorio: precios ARS/CLP tienen 6-7 dígitos significativos.
     #[inline]

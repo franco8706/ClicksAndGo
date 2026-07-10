@@ -131,7 +131,7 @@ export function middleware(request: NextRequest) {
   // 🛒 PASARELA DE AFILIACIÓN INTELIGENTE (/out)
   // Valida, traduce e inyecta el tag correcto según la red y la IP.
   // =====================================================================
-  if (pathname.startsWith('/out')) {
+  if (pathname === '/out') {
     const targetUrl = searchParams.get('url');
 
     // Guard 1: URL absoluta y válida. Guard 2: SOLO dominios verificados (anti open-redirect)
@@ -145,24 +145,35 @@ export function middleware(request: NextRequest) {
     const config = AFFILIATE_TAGS[countryCode];
 
     if (config) {
-      if (monetizedUrl.includes('amazon')) {
-        // Traducción de dominio: usuario de ES con URL amazon.com → amazon.es
-        if (countryCode === 'ES' && monetizedUrl.includes('amazon.com')) {
-          monetizedUrl = monetizedUrl.replace('amazon.com', 'amazon.es');
+      // 🛡️ Decisión por HOSTNAME (no substring): un deeplink de Awin/CJ puede
+      // contener "amazon" en el query string y NO debe recibir tag de Amazon.
+      try {
+        const target = new URL(monetizedUrl);
+        const host = target.hostname.toLowerCase();
+        const isAmazonHost =
+          host === 'amazon.com' || host.endsWith('.amazon.com') ||
+          host === 'amazon.es'  || host.endsWith('.amazon.es');
+        const isMeliHost = host.includes('mercadolibre') || host.includes('mercadolivre');
+
+        if (isAmazonHost && config.network !== 'MERCADOLIBRE') {
+          // Traducción de dominio precisa: SOLO amazon.com → amazon.es para España.
+          // (El replace por substring anterior convertía amazon.com.mx → amazon.es.mx, inválido.)
+          if (countryCode === 'ES' && (host === 'amazon.com' || host.endsWith('.amazon.com'))) {
+            target.hostname = 'amazon.es';
+          }
+          // Inyectar tag de Amazon SOLO para países con programa Amazon Associates (ES, US)
+          target.searchParams.set('tag', config.tag);
+          monetizedUrl = target.toString();
+        } else if (isMeliHost && config.network === 'MERCADOLIBRE') {
+          // Inyectar tag de MercadoLibre solo para países LATAM con red ML
+          target.searchParams.set('affiliate', config.tag);
+          monetizedUrl = target.toString();
         }
-        // Inyectar tag de Amazon SOLO para países con programa Amazon Associates (ES, US)
-        // LATAM usa MercadoLibre — inyectar un tag de Amazon sobre ML sería atribución incorrecta
-        if (config.network !== 'MERCADOLIBRE') {
-          const sep = monetizedUrl.includes('?') ? '&' : '?';
-          monetizedUrl = `${monetizedUrl}${sep}tag=${config.tag}`;
-        }
-      } else if (monetizedUrl.includes('mercadolibre') && config.network === 'MERCADOLIBRE') {
-        // Inyectar tag de MercadoLibre solo para países LATAM con red ML
-        const sep = monetizedUrl.includes('?') ? '&' : '?';
-        monetizedUrl = `${monetizedUrl}${sep}affiliate=${config.tag}`;
+        // Otros retailers (Lenovo, HP, Dell, etc.): pasar sin modificar.
+        // Sus URLs en affiliate_raw ya incluyen los params del programa retailer directo.
+      } catch {
+        // URL no parseable: se deja intacta y la revalidación de abajo decide.
       }
-      // Otros retailers (Lenovo, HP, Dell, etc.): pasar sin modificar.
-      // Sus URLs en affiliate_raw ya incluyen los params del programa retailer directo.
     }
 
     // Revalidar tras la traducción de dominio/tags (defensa en profundidad)

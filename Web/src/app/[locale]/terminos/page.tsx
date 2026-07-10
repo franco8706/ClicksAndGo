@@ -171,45 +171,45 @@ const CONTENT: Record<string, {
 export default async function TerminosPage({ params }: Props) {
   const { locale } = await params;
   const content = CONTENT[locale] ?? CONTENT.es;
-  const dict: any = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
 
   return (
-    <div className="min-h-screen bg-black pt-32 pb-20">
+    <div className="min-h-screen bg-white pt-32 pb-20">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
         <div className="mb-10">
           <Link
             href={`/${locale}`}
-            className="text-xs text-gray-600 hover:text-blue-400 transition-colors font-semibold uppercase tracking-widest mb-6 inline-block"
+            className="text-xs text-[#9aa1ac] hover:text-blue-600 transition-colors font-semibold uppercase tracking-widest mb-6 inline-block"
           >
             {content.backLabel}
           </Link>
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 bg-blue-600/20 border border-blue-500/25 rounded-xl flex items-center justify-center">
-              <FileText size={20} className="text-blue-400" />
+            <div className="w-10 h-10 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-center">
+              <FileText size={20} className="text-blue-600" />
             </div>
             <h1
-              className="text-5xl font-bold text-white"
+              className="text-5xl font-bold text-[#0a0e14]"
               style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
             >
               {content.title}
             </h1>
           </div>
-          <p className="text-gray-600 text-sm">{content.updated}</p>
+          <p className="text-[#9aa1ac] text-sm">{content.updated}</p>
         </div>
 
         {/* Contenido */}
         <div className="space-y-8">
           {content.sections.map((section) => (
-            <div key={section.heading} className="bg-gray-950/60 border border-gray-800/40 rounded-2xl p-6">
+            <div key={section.heading} className="bg-[#f5f6f8] border border-[#e6e8ec] rounded-2xl p-6">
               <h2
-                className="text-lg font-bold text-white mb-3"
+                className="text-lg font-bold text-[#0a0e14] mb-3"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 {section.heading}
               </h2>
-              <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-line">
+              <p className="text-[#414855] text-sm leading-relaxed whitespace-pre-line">
                 {section.body}
               </p>
             </div>
@@ -217,14 +217,14 @@ export default async function TerminosPage({ params }: Props) {
         </div>
 
         {/* Footer links */}
-        <div className="mt-12 pt-8 border-t border-gray-900 flex flex-wrap gap-4 text-xs text-gray-600">
-          <Link href={`/${locale}/privacidad`} className="hover:text-blue-400 transition-colors font-semibold">
+        <div className="mt-12 pt-8 border-t border-[#e6e8ec] flex flex-wrap gap-4 text-xs text-[#9aa1ac]">
+          <Link href={`/${locale}/privacidad`} className="hover:text-blue-600 transition-colors font-semibold">
             {dict.footer?.privacyLink || "Privacidad"}
           </Link>
-          <Link href={`/${locale}/cookies`} className="hover:text-blue-400 transition-colors font-semibold">
+          <Link href={`/${locale}/cookies`} className="hover:text-blue-600 transition-colors font-semibold">
             {dict.footer?.cookiesLink || "Cookies"}
           </Link>
-          <Link href={`/${locale}`} className="hover:text-blue-400 transition-colors font-semibold">
+          <Link href={`/${locale}`} className="hover:text-blue-600 transition-colors font-semibold">
             Clicks & Go
           </Link>
         </div>

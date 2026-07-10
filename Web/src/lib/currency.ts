@@ -34,8 +34,12 @@ const formatterCache = new Map<string, Intl.NumberFormat>();
 export function formatCurrencyString(amount: number, currencyCode: string): string {
   if (amount === undefined || amount === null) return "--";
 
-  const targetCurrency = (currencyCode || 'USD').toUpperCase().trim() as CurrencyCode;
-  const config = CURRENCY_MAP[targetCurrency] || CURRENCY_MAP.USD;
+  // 🛡️ Sanitización: un código fuera del mapa (ej. "AR$", "XX") haría que
+  // Intl.NumberFormat lance RangeError y rompa el render de la card.
+  // Si no es una moneda soportada, degradamos TODO a USD (config + código).
+  const requested = (currencyCode || 'USD').toUpperCase().trim() as CurrencyCode;
+  const targetCurrency: CurrencyCode = requested in CURRENCY_MAP ? requested : 'USD';
+  const config = CURRENCY_MAP[targetCurrency];
 
   // Generamos una llave única para el caché basada en la configuración regional
   const cacheKey = `${config.locale}-${targetCurrency}-${config.maxDigits}`;

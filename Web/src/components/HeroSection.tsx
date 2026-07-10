@@ -7,6 +7,7 @@ import {
   GraduationCap, Zap, Laptop, ChevronDown, ChevronRight,
 } from "lucide-react";
 import type { SearchSuggestion, HardwareNews } from "@/types/laptop";
+import type { Dict } from "@/types/dictionary";
 
 /* ── Iconos por categoría ── */
 const CATEGORY_ICON: Record<string, React.ReactNode> = {
@@ -41,7 +42,7 @@ const STATIC_TICKER: { source: string; headline: string; url?: string }[] = [
 /* ─────────────────────────────────────────────────────────
    Buscador predictivo — flat-style con glow azul
 ───────────────────────────────────────────────────────── */
-function PredictiveSearch({ dict }: { readonly dict: any }) {
+function PredictiveSearch({ dict }: { readonly dict: Dict }) {
   const [query, setQuery]       = useState("");
   const [isFocused, setFocused] = useState(false);
   const inputRef                = useRef<HTMLInputElement>(null);
@@ -79,13 +80,13 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
     <div className="relative w-full max-w-2xl">
       {/* Input flat-style — borde inferior + glow azul al enfocar */}
       <div
-        className={`relative flex items-center transition-all duration-300 border-b-2
-          ${isFocused ? "border-blue-500 bg-blue-950/20" : "border-white/25 bg-white/3"}`}
-        style={isFocused ? { boxShadow: "0 4px 24px rgba(59,130,246,0.2)" } : {}}
+        className={`relative flex items-center transition-all duration-200 border-b-2
+          ${isFocused ? "border-blue-600 bg-blue-50/50" : "border-[#d3d7dd] bg-transparent"}`}
+        style={isFocused ? { boxShadow: "0 6px 20px rgba(37,99,235,0.12)" } : {}}
       >
         <Search
           size={20}
-          className={`ml-5 shrink-0 transition-colors duration-300 ${isFocused ? "text-blue-400" : "text-gray-500"}`}
+          className={`ml-5 shrink-0 transition-colors duration-200 ${isFocused ? "text-blue-600" : "text-[#9aa1ac]"}`}
         />
         <input
           ref={inputRef}
@@ -95,24 +96,24 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={dict.hero?.searchPlaceholder || "¿Qué necesitas hacer con tu nueva laptop?"}
-          className="flex-1 bg-transparent px-4 py-5 text-base text-white placeholder-gray-500 font-medium outline-none"
+          className="flex-1 bg-transparent px-4 py-5 text-base text-[#0a0e14] placeholder-[#9aa1ac] font-medium outline-none"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
-            className="mr-4 p-2 hover:bg-white/10 transition-colors cursor-pointer"
+            className="mr-4 p-2 rounded hover:bg-black/5 transition-colors cursor-pointer"
             aria-label="Limpiar búsqueda"
           >
-            <X size={18} className="text-gray-500 hover:text-gray-300" />
+            <X size={18} className="text-[#9aa1ac] hover:text-[#414855]" />
           </button>
         )}
       </div>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full mt-0 left-0 right-0 z-50 bg-black/95 border border-gray-800/80 shadow-2xl overflow-hidden animate-hero-entry">
-          <div className="px-5 py-3 border-b border-gray-800/60">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-black">
+        <div className="absolute top-full mt-0 left-0 right-0 z-50 bg-white border border-[#e6e8ec] rounded-b shadow-lg overflow-hidden animate-hero-entry">
+          <div className="px-5 py-3 border-b border-[#e6e8ec]">
+            <p className="text-[10px] uppercase tracking-widest text-[#9aa1ac] font-black">
               {dict.hero?.suggestions || "Sugerencias"}
             </p>
           </div>
@@ -120,16 +121,16 @@ function PredictiveSearch({ dict }: { readonly dict: any }) {
             <button
               key={i}
               onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
-              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-blue-950/30 transition-colors text-left group border-b border-gray-800/30 last:border-0 cursor-pointer"
+              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-blue-50 transition-colors text-left group border-b border-[#e6e8ec] last:border-0 cursor-pointer"
             >
-              <div className="p-2.5 bg-gray-950 border border-gray-800 group-hover:border-blue-500/40 group-hover:scale-105 transition-all duration-200">
-                {CATEGORY_ICON[s.category ?? ""] || <Search size={16} className="text-blue-400" />}
+              <div className="p-2.5 rounded bg-[#f5f6f8] border border-[#e6e8ec] group-hover:border-blue-300 group-hover:scale-105 transition-all duration-200">
+                {CATEGORY_ICON[s.category ?? ""] || <Search size={16} className="text-blue-600" />}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold text-gray-200 group-hover:text-blue-400 transition-colors">{s.query}</p>
-                <p className="text-[10px] text-gray-500 font-black uppercase mt-0.5 tracking-wide">{s.result_counts} opciones verificadas</p>
+                <p className="text-sm font-bold text-[#0a0e14] group-hover:text-blue-600 transition-colors">{s.query}</p>
+                <p className="text-[10px] text-[#9aa1ac] font-black uppercase mt-0.5 tracking-wide">{s.result_counts} opciones verificadas</p>
               </div>
-              <ChevronRight size={14} className="text-gray-600 group-hover:text-blue-400 transition-colors" />
+              <ChevronRight size={14} className="text-[#9aa1ac] group-hover:text-blue-600 transition-colors" />
             </button>
           ))}
         </div>
@@ -166,21 +167,21 @@ function NewsTicker({ news }: { news?: HardwareNews[] }) {
     <div
       id="noticias"
       className="nvidia-ticker-strip w-full scroll-mt-28"
-      style={{ borderTop: "1px solid rgba(59,130,246,0.25)" }}
+      style={{ borderTop: "1px solid rgba(37,99,235,0.18)" }}
     >
       <div className="nvidia-ticker-track nvidia-ticker-track-hover">
         {doubled.map((item, i) => {
           const inner = (
             <div
-              className="flex flex-col justify-center px-7 py-4 hover:bg-blue-950/20 transition-colors border-r min-w-[230px] max-w-[280px]"
-              style={{ borderRightColor: "rgba(255,255,255,0.06)" }}
+              className="flex flex-col justify-center px-7 py-4 hover:bg-blue-50 transition-colors border-r min-w-[230px] max-w-[280px]"
+              style={{ borderRightColor: "rgba(10,14,20,0.06)" }}
             >
               {/* Fuente — prominente en azul */}
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1.5 text-blue-400">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1.5 text-blue-600">
                 {item.source}
               </span>
-              {/* Titular — blanco */}
-              <p className="text-[11px] text-gray-200 font-semibold leading-snug line-clamp-2 group-hover:text-white transition-colors">
+              {/* Titular */}
+              <p className="text-[11px] text-[#414855] font-semibold leading-snug line-clamp-2 group-hover:text-[#0a0e14] transition-colors">
                 {item.headline}
               </p>
             </div>
@@ -211,15 +212,15 @@ function NewsTicker({ news }: { news?: HardwareNews[] }) {
    HeroSection — layout NVIDIA-style, paleta azul/blanco
 ───────────────────────────────────────────────────────── */
 interface HeroSectionProps {
-  readonly dict: any;
+  readonly dict: Dict;
   readonly news?: HardwareNews[];
 }
 
 export default function HeroSection({ dict, news }: HeroSectionProps) {
   return (
-    <section className="relative w-full min-h-screen flex flex-col overflow-hidden bg-black">
+    <section className="relative w-full min-h-screen flex flex-col overflow-hidden bg-white">
 
-      {/* ── Imagen de fondo ── */}
+      {/* ── Imagen de fondo (muy sutil, se funde con el blanco a la izquierda) ── */}
       <div className="absolute inset-0 z-0">
         <Image
           src="https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
@@ -227,63 +228,45 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
           fill
           priority
           sizes="100vw"
-          className="object-cover opacity-50 pointer-events-none select-none"
+          className="object-cover opacity-[0.12] pointer-events-none select-none"
         />
-        {/* Gradiente cinematográfico left-to-right */}
+        {/* Gradiente blanco left-to-right (deja respirar la imagen a la derecha) */}
         <div className="hero-gradient absolute inset-0" />
         {/* Cuadrícula tech azul sutil */}
-        <div className="hero-grid-overlay absolute inset-0 opacity-60" />
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="hero-grid-overlay absolute inset-0 opacity-70" />
       </div>
-
-      {/* ── Rayo de escaneo azul ── */}
-      <div className="scan-beam" aria-hidden="true" />
 
       {/* ── Contenido principal ── */}
       <div className="relative z-10 flex-1 flex flex-col justify-center pt-32 pb-12">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 w-full">
           <div className="max-w-3xl">
 
-            {/* Badge de categoría con línea expansiva azul */}
+            {/* Badge de categoría con línea azul */}
             <div className="mb-8 animate-hero-entry" style={{ animationDelay: "0s" }}>
-              <span className="block text-xs sm:text-sm font-black uppercase tracking-[0.22em] mb-2 text-blue-400/70">
+              <span className="block text-xs sm:text-sm font-black uppercase tracking-[0.22em] mb-2 text-blue-600">
                 {dict.hero?.aiTag || "Laptops & Tecnología"}
               </span>
-              <div
-                className="h-[2px] bg-blue-500"
-                style={{ animation: "badgeLine 0.5s cubic-bezier(0.16,1,0.3,1) 0.4s both" }}
-              />
+              <div className="h-[2px] w-24 bg-blue-600" />
             </div>
 
-            {/* Título principal — Barlow Condensed 700 (NVIDIA-style) */}
+            {/* Título principal — Barlow 700 sentence-case (NVIDIA-style) */}
             <h1
-              className="mb-6 leading-[0.95] font-bold text-white drop-shadow-2xl"
+              className="mb-6 leading-[0.98] font-bold text-[#0a0e14]"
               style={{
-                fontFamily: "var(--font-display)",
                 fontSize: "clamp(3rem, 8vw, 6.5rem)",
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.03em",
                 fontWeight: 700,
               }}
             >
-              <span
-                className="block"
-                style={{ animation: "clipReveal 0.9s cubic-bezier(0.16,1,0.3,1) 0.1s both" }}
-              >
+              <span className="block">
                 {dict.hero?.title1 || "Tu Próxima Laptop,"}
               </span>
-              <span
-                className="block text-blue-500/75"
-                style={{ animation: "clipReveal 0.9s cubic-bezier(0.16,1,0.3,1) 0.3s both" }}
-              >
+              <span className="block text-blue-600">
                 {dict.hero?.title2 || "Al Mejor Precio"}
               </span>
               <span
-                className="block text-gray-300"
-                style={{
-                  fontSize: "clamp(1.6rem, 4vw, 3.5rem)",
-                  fontWeight: 600,
-                  animation: "clipReveal 0.9s cubic-bezier(0.16,1,0.3,1) 0.5s both",
-                }}
+                className="block text-[#6b7280]"
+                style={{ fontSize: "clamp(1.6rem, 4vw, 3.5rem)", fontWeight: 600 }}
               >
                 {dict.hero?.titleSub || "Con Análisis Experto"}
               </span>
@@ -291,8 +274,8 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
 
             {/* Subtítulo */}
             <p
-              className="text-base sm:text-lg text-gray-300 mb-10 max-w-xl font-medium leading-relaxed animate-hero-entry"
-              style={{ animationDelay: "0.55s" }}
+              className="text-base sm:text-lg text-[#414855] mb-10 max-w-xl font-medium leading-relaxed animate-hero-entry"
+              style={{ animationDelay: "0.15s" }}
             >
               {dict.hero?.subtitle || "Analizamos miles de ofertas para que encuentres la laptop perfecta, seleccionada bajo estrictas directivas de rendimiento real."}
             </p>
@@ -300,27 +283,26 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
             {/* Buscador */}
             <div
               className="w-full max-w-2xl animate-hero-entry mb-8"
-              style={{ animationDelay: "0.65s" }}
+              style={{ animationDelay: "0.2s" }}
             >
               <PredictiveSearch dict={dict} />
             </div>
 
-            {/* CTAs */}
+            {/* CTAs — sólido azul + outline, esquinas casi rectas (NVIDIA) */}
             <div
               className="flex flex-wrap items-center gap-4 animate-hero-entry"
-              style={{ animationDelay: "0.75s" }}
+              style={{ animationDelay: "0.25s" }}
             >
               <a
                 href="#productos"
-                className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-widest bg-blue-600/45 backdrop-blur-sm hover:bg-blue-600/70 border border-blue-500/30 text-white transition-all duration-200 shadow-lg shadow-blue-500/20"
-                style={{ fontFamily: "var(--font-display)" }}
+                className="btn-nvidia inline-flex items-center gap-2 px-7 py-3.5 text-sm"
               >
                 {dict.hero?.ctaCatalog || "Ver Catálogo"}
                 <ChevronRight size={16} />
               </a>
               <a
                 href="#ofertas"
-                className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-white border border-white/25 hover:border-blue-500 hover:text-blue-400 transition-all duration-300"
+                className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold rounded-[2px] text-[#0a0e14] border border-[#d3d7dd] hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
               >
                 {dict.hero?.ctaDeals || "Mejores Ofertas"}
               </a>
@@ -338,7 +320,7 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
       {/* ── Scroll indicator → apunta al ticker de noticias ── */}
       <a
         href="#noticias"
-        className="absolute bottom-[88px] left-1/2 -translate-x-1/2 z-10 hidden md:flex flex-col items-center gap-1.5 text-white/40 hover:text-blue-400 transition-colors cursor-pointer select-none"
+        className="absolute bottom-[88px] left-1/2 -translate-x-1/2 z-10 hidden md:flex flex-col items-center gap-1.5 text-[#9aa1ac] hover:text-blue-600 transition-colors cursor-pointer select-none"
       >
         <span className="text-[9px] uppercase tracking-[0.2em] font-black">
           {dict.navbar?.news || "Noticias"}

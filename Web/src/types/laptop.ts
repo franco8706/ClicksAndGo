@@ -1,9 +1,15 @@
 /**
  * =====================================================================
- * 🛸 CLICKS & GO - Constitución de Datos v4.0 (Frontend DTOs)
+ * 🛸 CLICKS & GO - Constitución de Datos v4.1 (Frontend DTOs)
  * Sincronización Estricta Completa: Next.js 15+ <-> Rails <-> Python
+ *
+ * v4.1: escalado multi-producto. El catálogo dejó de ser solo laptops;
+ * `product_type` + `specs` genéricas conviven con los campos laptop
+ * dedicados (retrocompatible). Taxonomía en `product.ts`.
  * =====================================================================
  */
+
+import type { ProductType } from "./product";
 
 /** 🏢 Redes de Afiliación y Distribuidores Autorizados (Sincronizado con retailers.json) */
 export type RetailerSlug =
@@ -50,6 +56,17 @@ export interface Laptop {
   readonly name: string;
   readonly condition: ProductCondition;
 
+  /** 📦 Tipo de producto (multi-producto). Ausente/`"laptop"` = notebook. */
+  readonly product_type?: ProductType;
+
+  /**
+   * 📦 Specs genéricas por tipo (monitor, teclado, impresora…). El serializer
+   * de Rails las llena SIEMPRE — para laptops replica cpu/ram/ssd/gpu/pantalla
+   * aquí, así el render de la card es uniforme (ver SPEC_SCHEMA en product.ts).
+   */
+  readonly specs?: Record<string, string | number | boolean>;
+
+  /** Campos dedicados de laptop (se mantienen para retrocompatibilidad). */
   readonly hardware: {
     readonly cpu: string;
     readonly ram_gb: number;
@@ -96,9 +113,20 @@ export interface Laptop {
     readonly promo_event?: string;
     readonly market_urgency?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     readonly fomo_message?: string;
-    [key: string]: any; // Permite escalabilidad futura
+    // Campos JSONB sembrados por Python/seeds (usados por el frontend)
+    readonly category?: string;
+    readonly ai_badge?: string;
+    readonly ui_accent_color?: string;
+    readonly seo_title?: string;
+    readonly seo_description?: string;
+    readonly condition?: string;
+    [key: string]: unknown; // Permite escalabilidad futura sin abrir `any`
   }
 }
+
+/** 📦 Alias genérico: el catálogo ya no es solo laptops. `Product` === `Laptop`
+ *  (mismo DTO) hasta que se justifique divergir. Preferí `Product` en código nuevo. */
+export type Product = Laptop;
 
 // =====================================================================
 // 📰 ENTIDAD SECUNDARIA: HARDWARE NEWS DTO

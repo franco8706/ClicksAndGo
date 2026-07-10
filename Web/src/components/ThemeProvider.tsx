@@ -7,20 +7,19 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>;
 
 /**
- * 🌗 ThemeProvider - Orquestador del Entorno Tecnológico Oscuro Premium v3.6
- * Envoltura perimetral con tipado estricto que fuerza la inicialización inmutable del tema oscuro,
- * mitigando parpadeos de estilos claros (FOUC) y asegurando una hidratación fluida de latencia cero.
+ * 🌗 ThemeProvider — Entorno claro (v5.0)
+ * Fuerza el tema claro por defecto: fondo blanco, identidad consumer orientada
+ * a la conversión de afiliados. El ADN estructural/animación es estilo NVIDIA,
+ * pero sobre superficie clara (no el fondo oscuro anterior).
  */
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
     <NextThemesProvider
-      // 🛡️ REGLA ZERO TRUST: Colocamos las props externas primero para evitar que 
-      // configuraciones accidentales del Layout anulen el comportamiento forzado del ecosistema.
       {...props}
-      attribute="class"            // Soporte nativo y optimizado para selectores de clase en Tailwind v4
-      defaultTheme="dark"          // Forzado determinista a entorno oscuro por defecto (NVIDIA Style)
-      enableSystem={false}         // Desactiva la lectura del sistema operativo para blindar la identidad de marca
-      disableTransitionOnChange    // Elimina micro-transiciones parásitas en la GPU durante los cambios de ruta
+      attribute="class"            // Selectores de clase para Tailwind v4
+      defaultTheme="light"         // Fondo blanco por defecto
+      enableSystem={false}         // Identidad de marca fija (no seguir al SO)
+      disableTransitionOnChange    // Sin micro-transiciones parásitas al cambiar de ruta
     >
       {children}
     </NextThemesProvider>

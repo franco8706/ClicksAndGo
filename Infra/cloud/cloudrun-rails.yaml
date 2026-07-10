@@ -59,6 +59,13 @@ spec:
             secretKeyRef:
               name: SECRET_KEY_BASE
               key: latest
+        # 🛡️ Protege /api/v1/users/** (perfil/favoritos/alertas) de llamadas
+        # externas directas mientras ingress sea "all" — solo Next.js la conoce.
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: INTERNAL_API_KEY
+              key: latest
         startupProbe:
           httpGet:
             path: /up

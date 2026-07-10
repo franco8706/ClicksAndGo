@@ -1,96 +1,73 @@
 @import "tailwindcss";
 
 /* =========================================================
-   CLICKS & GO — TEMA NVIDIA-STYLE v4.4
+   CLICKS & GO — LIGHT DESIGN SYSTEM v5.0
+   ADN estructural inspirado en NVIDIA (tipografía bold sentence-case,
+   esquinas rectas, micro-interacciones snappy ~0.2s ease-out),
+   pero sobre fondo BLANCO y con acento AZUL (sin el verde corporativo).
    ========================================================= */
 @theme {
-  /* Paleta Base */
-  --color-background: #090d16;
-  --color-foreground: #f8fafc;
+  /* ── Superficies (claro) ── */
+  --color-background: #ffffff;      /* página */
+  --color-surface:    #f5f6f8;      /* secciones alternas / fondos suaves */
+  --color-raised:     #ffffff;      /* tarjetas sobre superficie gris */
 
-  /* Colores de Marca */
-  --color-brand-primary: #3b82f6;
-  --color-brand-hover: #2563eb;
-  --color-brand-success: #10b981;
-  --color-brand-border: #1e293b;
-  --color-brand-glow: rgba(16, 185, 129, 0.15);
+  /* ── Tinta / texto ── */
+  --color-ink:    #0a0e14;          /* titulares (casi negro) */
+  --color-body:   #414855;          /* cuerpo */
+  --color-muted:  #6b7280;          /* secundario */
+  --color-faint:  #9aa1ac;          /* terciario / captions */
 
-  /* NVIDIA Signature Green */
-  --color-nvidia-green: #76b900;
-  --color-nvidia-green-dim: rgba(118, 185, 0, 0.18);
-  --color-nvidia-green-glow: rgba(118, 185, 0, 0.35);
+  /* ── Líneas ── */
+  --color-line:        #e6e8ec;     /* bordes */
+  --color-line-strong: #d3d7dd;     /* bordes hover */
 
-  /* Tipografía: Barlow (body) + Barlow Condensed (headings) */
-  --font-sans: var(--font-barlow), "Barlow", ui-sans-serif, system-ui, sans-serif;
+  /* ── Marca (acento AZUL — reemplaza el verde NVIDIA) ── */
+  --color-brand-primary: #2563eb;   /* azul 600 */
+  --color-brand-hover:   #1d4ed8;   /* azul 700 */
+  --color-brand-tint:    #eff5ff;   /* relleno suave */
+  --color-brand-line:    #cddffb;   /* borde tintado */
+  --color-success:       #059669;   /* "gran oportunidad" */
+  --color-success-tint:  #ecfdf5;
+
+  /* ── Tipografía: Barlow (cercana a NVIDIA-NALA) ── */
+  --font-sans:    var(--font-barlow), "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-barlow-condensed), "Barlow Condensed", ui-sans-serif, sans-serif;
 
-  /* Radios */
-  --radius-card: 0.75rem;
+  /* ── Radios: casi rectos (firma NVIDIA) ── */
+  --radius-card: 4px;
+  --radius-btn:  2px;
 
-  /* Animaciones registradas */
-  --animate-hero-entry:     fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-shimmer:        shimmer 2.5s infinite linear;
-  --animate-soft-pulse:     softPulse 3s ease-in-out infinite;
-  --animate-scroll-bounce:  scrollBounce 2s infinite ease-in-out;
-  --animate-ticker:         tickerScroll 80s linear infinite;
-  --animate-clip-reveal:    clipReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-scan-beam:      scanBeam 6s ease-in-out infinite;
-  --animate-badge-line:     badgeLine 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
-  --animate-nvidia-glow:    nvidiaGlow 2.5s ease-in-out infinite;
+  /* ── Sombras suaves (sobre blanco) ── */
+  --shadow-sm: 0 1px 2px rgba(10, 14, 20, 0.05);
+  --shadow-md: 0 1px 3px rgba(10, 14, 20, 0.06), 0 8px 24px rgba(10, 14, 20, 0.06);
+  --shadow-lg: 0 4px 12px rgba(10, 14, 20, 0.08), 0 24px 48px rgba(10, 14, 20, 0.08);
 
-  /* ── Keyframes ── */
+  /* ── Timing NVIDIA: rápido y directo ── */
+  --ease-out-nv: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Animaciones ── */
+  --animate-hero-entry:    fadeInUp 0.7s var(--ease-out-nv) forwards;
+  --animate-shimmer:       shimmer 1.8s infinite linear;
+  --animate-scroll-bounce: scrollBounce 2s infinite ease-in-out;
+  --animate-ticker:        tickerScroll 80s linear infinite;
 
   @keyframes fadeInUp {
-    from { opacity: 0; transform: translate3d(0, 1.2rem, 0); }
+    from { opacity: 0; transform: translate3d(0, 1rem, 0); }
     to   { opacity: 1; transform: translate3d(0, 0, 0); }
   }
-
   @keyframes shimmer {
     0%   { background-position: -200% 0; }
     100% { background-position:  200% 0; }
   }
-
-  @keyframes softPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.8; transform: scale(0.99); }
-  }
-
   @keyframes scrollBounce {
     0%, 20%, 50%, 80%, 100% { transform: translate3d(0, 0, 0); }
-    40%  { transform: translate3d(0, -8px, 0); }
-    60%  { transform: translate3d(0, -4px, 0); }
+    40% { transform: translate3d(0, -8px, 0); }
+    60% { transform: translate3d(0, -4px, 0); }
   }
-
-  /* Ticker horizontal infinito — los items se duplican en el DOM para el loop */
   @keyframes tickerScroll {
     0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
-  }
-
-  /* Reveal de texto mediante clip-path (de derecha a izquierda) */
-  @keyframes clipReveal {
-    from { clip-path: inset(0 100% 0 0); opacity: 0; }
-    to   { clip-path: inset(0 0%   0 0); opacity: 1; }
-  }
-
-  /* Rayo de escaneo horizontal sobre el hero */
-  @keyframes scanBeam {
-    0%   { transform: translateX(-120%); opacity: 0; }
-    15%  { opacity: 0.7; }
-    85%  { opacity: 0.7; }
-    100% { transform: translateX(120%);  opacity: 0; }
-  }
-
-  /* Línea expandida bajo el badge de categoría */
-  @keyframes badgeLine {
-    from { width: 0; }
-    to   { width: 100%; }
-  }
-
-  /* Pulso verde NVIDIA para el borde del buscador */
-  @keyframes nvidiaGlow {
-    0%, 100% { box-shadow: 0 0 12px rgba(118, 185, 0, 0.3); }
-    50%       { box-shadow: 0 0 32px rgba(118, 185, 0, 0.6); }
   }
 }
 
@@ -106,28 +83,31 @@
 
   body {
     background-color: var(--color-background);
-    color: var(--color-foreground);
+    color: var(--color-body);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    letter-spacing: 0.01em;
   }
 
-  /* Headings usan Barlow Condensed automáticamente */
+  /* Titulares NVIDIA: bold, sentence-case, tracking ajustado.
+     Barlow (no condensada) para el look NALA; peso 700. */
   h1, h2, h3, h4 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    color: var(--color-ink);
     letter-spacing: -0.02em;
+    line-height: 1.08;
   }
 
   ::selection {
-    background-color: rgba(118, 185, 0, 0.25);
-    color: #ffffff;
+    background-color: rgba(37, 99, 235, 0.16);
+    color: var(--color-ink);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-nvidia-green);
-    outline-offset: 3px;
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
   }
 }
 
@@ -135,206 +115,198 @@
    UTILITIES
    ========================================================= */
 
+/* Fuente display condensada opcional (para números/acentos) */
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+/* Retícula tech muy sutil (hero claro) */
+@utility hero-grid-overlay {
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Degradado del hero claro: blanco sólido → transparente hacia la imagen */
 @utility hero-gradient {
   background: linear-gradient(
     to right,
-    rgba(9, 13, 22, 1)    0%,
-    rgba(9, 13, 22, 0.85) 45%,
-    rgba(9, 13, 22, 0.2)  75%,
-    rgba(9, 13, 22, 0)    100%
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.92) 45%,
+    rgba(255, 255, 255, 0.35) 75%,
+    rgba(255, 255, 255, 0) 100%
   );
 }
 
-/* Overlay de cuadrícula tech sutil sobre el hero */
-@utility hero-grid-overlay {
-  background-image:
-    linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
-/* Texto con gradiente metálico blanco */
+/* Titular con leve degradado de tinta (sutil, no metálico) */
 @utility text-gradient {
-  background: linear-gradient(135deg, #ffffff 25%, #94a3b8 100%);
+  background: linear-gradient(135deg, #0a0e14 30%, #334155 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Texto condensado NVIDIA con gradiente verde-blanco */
+/* Acento tipográfico de marca */
+@utility text-brand {
+  background: linear-gradient(100deg, #0a0e14 55%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+/* Alias legado (algunos componentes usan text-nvidia) → mismo efecto azul */
 @utility text-nvidia {
-  font-family: var(--font-display);
-  background: linear-gradient(100deg, #ffffff 50%, #76b900 100%);
+  background: linear-gradient(100deg, #0a0e14 55%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -0.03em;
 }
 
-/* Badge de categoría estilo NVIDIA (top-left del hero) */
 @utility nvidia-category-badge {
   display: inline-flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-/* Rayo de escaneo — posición absoluta dentro del hero */
-@utility scan-beam {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 35%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(59, 130, 246, 0.05) 40%,
-    rgba(59, 130, 246, 0.10) 50%,
-    rgba(59, 130, 246, 0.05) 60%,
-    transparent 100%
-  );
-  animation: var(--animate-scan-beam);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Tira ticker horizontal (strip inferior del hero) */
+/* Tira ticker horizontal (strip inferior del hero) — clara */
 @utility nvidia-ticker-strip {
   position: relative;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.80);
+  background: rgba(245, 246, 248, 0.9);
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(59, 130, 246, 0.25);
+  border-top: 1px solid var(--color-line);
 }
-
-/* Track interno del ticker */
 @utility nvidia-ticker-track {
   display: flex;
   width: max-content;
   animation: var(--animate-ticker);
   will-change: transform;
 }
-
-/* Pausa el ticker al hacer hover */
 @utility nvidia-ticker-track-hover {
-  &:hover {
-    animation-play-state: paused;
-  }
+  &:hover { animation-play-state: paused; }
 }
 
-/* Buscador flat-style NVIDIA (borde inferior solamente) */
+/* Buscador flat NVIDIA: solo borde inferior */
 @utility search-nvidia {
   border-top: none;
   border-left: none;
   border-right: none;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid var(--color-line-strong);
   border-radius: 0;
   background: transparent;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out;
 
   &:focus-within {
-    border-bottom-color: var(--color-nvidia-green);
-    box-shadow: 0 4px 20px rgba(118, 185, 0, 0.2);
-    animation: var(--animate-nvidia-glow);
+    border-bottom-color: var(--color-brand-primary);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.14);
   }
 }
 
-/* Links de navegación */
+/* Link de navegación con subrayado que crece (NVIDIA) */
 @utility nav-link {
   position: relative;
-  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.2s ease-out;
 
   &::after {
     content: '';
     position: absolute;
     width: 0;
     height: 2px;
-    bottom: -4px;
+    bottom: -6px;
     left: 0;
     background-color: var(--color-brand-primary);
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: width 0.25s var(--ease-out-nv);
   }
-
   &:hover::after { width: 100%; }
 }
 
-/* Botón primario */
+/* Botón primario azul, esquinas casi rectas, micro-lift */
 @utility btn-primary {
   background-color: var(--color-brand-primary);
+  color: #ffffff;
+  border-radius: var(--radius-btn);
   will-change: transform, box-shadow;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s ease-out, transform 0.2s var(--ease-out-nv), box-shadow 0.2s ease-out;
 
   &:hover {
     background-color: var(--color-brand-hover);
     transform: translate3d(0, -1px, 0);
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.45);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
   }
-
-  &:active { transform: translate3d(0, 1px, 0); }
+  &:active { transform: translate3d(0, 0, 0); }
 }
 
-/* Botón NVIDIA green */
+/* Botón sólido (CTA tipo "Learn More" de NVIDIA): rectángulo nítido.
+   Legado btn-nvidia → ahora azul sólido, texto sentence-case. */
 @utility btn-nvidia {
-  background-color: var(--color-nvidia-green);
-  color: #000000;
-  font-family: var(--font-display);
+  background-color: var(--color-brand-primary);
+  color: #ffffff;
+  border-radius: var(--radius-btn);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   will-change: transform, box-shadow;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s ease-out, transform 0.2s var(--ease-out-nv), box-shadow 0.2s ease-out;
 
   &:hover {
-    background-color: #8acc00;
+    background-color: var(--color-brand-hover);
     transform: translate3d(0, -1px, 0);
-    box-shadow: 0 0 28px rgba(118, 185, 0, 0.5);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.24);
   }
-
-  &:active { transform: translate3d(0, 1px, 0); }
+  &:active { transform: translate3d(0, 0, 0); }
 }
 
 @utility scroll-indicator {
   animation: var(--animate-scroll-bounce);
 }
 
+/* Tarjeta: micro-lift + borde/ sombra suaves al hover */
 @utility card-hover {
   will-change: transform, box-shadow;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s var(--ease-out-nv), box-shadow 0.2s ease-out, border-color 0.2s ease-out;
 
   &:hover {
-    transform: translate3d(0, -4px, 0);
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 15px rgba(118, 185, 0, 0.08);
-    border-color: rgba(118, 185, 0, 0.25);
+    transform: translate3d(0, -3px, 0);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-line-strong);
   }
 }
 
 @utility neon-glow {
-  border-color: rgba(16, 185, 129, 0.25);
-  box-shadow: 0 0 20px var(--color-brand-glow);
+  border-color: var(--color-brand-line);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
 @utility feature-icon {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
+/* Skeleton claro */
 @utility skeleton-shimmer {
-  background: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  background: linear-gradient(90deg, #eef0f3 0%, #f7f8fa 50%, #eef0f3 100%);
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
 }
 
+/* Glass claro (sutil, sobre blanco) */
 @utility glass-effect {
-  background-color: rgba(9, 13, 22, 0.65);
+  background-color: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-line);
 }
 
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
-
   &::-webkit-scrollbar { display: none; }
+}
+
+/* Selección premium (algunos componentes la referencian) */
+@utility selection-premium {
+  &::selection { background-color: rgba(37, 99, 235, 0.16); color: var(--color-ink); }
 }
 
 /* =========================================================
@@ -344,9 +316,8 @@
   & > * {
     opacity: 0;
     will-change: transform, opacity;
-    animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeInUp 0.4s var(--ease-out-nv) forwards;
   }
-
   & > *:nth-child(1) { animation-delay: 0.04s; }
   & > *:nth-child(2) { animation-delay: 0.08s; }
   & > *:nth-child(3) { animation-delay: 0.12s; }

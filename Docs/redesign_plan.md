@@ -1,129 +1,131 @@
-# 🚀 Clicks & Go - Plan de Arquitectura y Escalabilidad (v4.3 Enterprise)
+# 🚀 Clicks & Go - Plan de Arquitectura y Escalabilidad
 
-**Visión Actualizada:** Ecosistema maduro de 4 Microservicios con especialización estricta. Arquitectura Zero-Trust, Server-Side Rendering puro, recolección API-First, contingencia de latencia cero (Antigravity), orquestación de concurrencia en Rust y persistencia políglota.
+**Visión:** Ecosistema maduro de 4 microservicios con especialización estricta. Arquitectura Zero-Trust, SSR puro, recolección API-First, contingencia de latencia cero (Antigravity), concurrencia en Rust y persistencia políglota. Arranca con afiliación de notebooks; escala a otras verticales de producto.
 
-## 🟢 FASE 1: Amputación y Limpieza (100% Completado)
-Objetivo: Eliminar el monolito híbrido y el solapamiento de tareas.
+> Este documento es el **roadmap** (qué falta y en qué orden). El detalle técnico de cómo se implementó cada fase vive en `bitacora_sistema.md`. Las reglas permanentes de arquitectura viven en `contexto_maestro.md`.
+
+---
+
+# 🎯 Próximos pasos (backlog priorizado)
+
+**El estado actual:** todo el producto está construido y verificado en desarrollo (build/tsc/lint/tests verdes). Lo que falta es, en su mayoría, **operativo de lanzamiento** (deploy real + configuración de cuentas externas), no código nuevo. Esta es la ruta para avanzar, de más a menos urgente:
+
+### 🔴 Bloqueante para lanzar (deploy + aprobación de afiliados)
+1. **Deploy a Cloud Run con URL pública** — bloquea la aprobación en las redes de afiliados. Guía: `Infra/cloud/RUNBOOK_DEPLOY.md`.
+2. **Correr las migraciones en Cloud SQL**: `migration_user_v2.sql` + `migration_products_v3.sql` (la de auth ya corrió).
+3. **Validar el boot real de Rails** (`bundle install` + `rails routes` + request de humo a los endpoints nuevos) — no se pudo en el sandbox por falta de red a rubygems.
+4. **`cargo check` real de Rust** — validar el scorer multi-producto (no hay red a crates.io en el sandbox).
+5. **Resolver Vertex AI 403 billing** (proyecto GCP `clicks-and-go`) — opera con Antigravity mientras tanto.
+6. **Configurar cuentas externas**: OAuth reales (Google/Azure/Facebook), Resend (verificar dominio + API key), `AUTH_URL` → dominio final.
+7. **Registrarse en las redes de afiliados** (Awin, CJ, Amazon Associates) — manual.
+8. **Registro AAIP** (Ley 25.326, Argentina) — responsabilidad del titular.
+
+### 🟠 Corazón agéntico / re-engagement (post-lanzamiento cercano)
+- **PriceAlertAgent (Python)**: tras cada ciclo de precios, consultar `price_alerts` activas y notificar por email (Resend) cuando `precio_actual <= target_price`. El motor del re-engagement.
+- **Sembrar catálogo real multi-producto**: hoy `seeds_catalog.sql` es solo laptops; agregar monitores, teclados, mouse, auriculares, impresoras, etc.
+- **Afinar specs y scoring por tipo** con datos reales de ingesta (ratings/reseñas para el scorer genérico de Rust).
+
+### 🟡 Hardening / escala (cuando haya tráfico)
+- **Endurecer `ingress`** de Rails/Rust/Python con IAM (`roles/run.invoker`) en vez de `all` + `INTERNAL_API_KEY` (defensa en profundidad).
+- **Extender `INTERNAL_API_KEY`** a los endpoints de escritura consumidos por Python (`POST /products`, `/hardware_news`) — hoy solo dependen de rate limiting.
+- **Cloud CDN** (requiere Load Balancer externo).
+- **A/B testing algorítmico** (Vertex vs Antigravity vía telemetría MongoDB).
+- **Colas asíncronas** (Celery + Redis) para picos de ingesta masiva.
+
+### 🟢 Mejoras de producto / deuda menor
+- **Buscador predictivo del hero**: hoy sugiere categorías de laptop; generalizar a tipos de producto.
+- **`HardwareNewsSlider.tsx`**: código muerto tras el ticker inline — eliminar o reintegrar (decisión de producto).
+
+---
+
+# 📚 Historial de fases (todas completadas)
+
+> Registro de lo construido en cada fase. Los ítems `[ ]` que veas abajo son pendientes que ya están **consolidados y priorizados en el backlog de arriba** — se dejan en su fase de origen solo como contexto. El detalle técnico de cada una vive en `bitacora_sistema.md`.
+
+## 🟢 FASE 1: Amputación y Limpieza (Completado)
+Eliminar el monolito híbrido y el solapamiento de tareas entre servicios.
 - [x] Extraer agentes cognitivos (UI, UX, SEO) y DB de Next.js.
 - [x] Extraer web scraping y llamadas a Vertex AI de Rust.
-- [x] Adoptar Docker Compose con dependencias de salud (`service_healthy`).
+- [x] Docker Compose con dependencias de salud (`service_healthy`).
 
-## 🟢 FASE 2: Especialización de Microservicios (100% Completado)
-Objetivo: Asignar a cada lenguaje su tarea ideal bajo principios SOLID.
-- [x] **Python (El Cerebro):** Instanciación del `MasterOrchestrator`. Transición a `MarketHunter` (API-First). Motor Semántico optimizado con Gemini 2.5 Flash.
-- [x] **Rust (El Motor):** API matemática con `axum` y `ConcurrencyRouter` para procesamiento paralelo masivo. `DevopsAgent` inyectando logs a MongoDB.
-- [x] **Rails (El Guardián):** Único dueño de PostgreSQL. Implementación de transacciones ACID, serialización de DTOs y Upserts automáticos.
-- [x] **Next.js (La Fachada):** Purificación extrema. Eliminación de la carpeta `/api/`. Transición a **Server Components (SSR)** puros conectándose directamente a Rails internamente para latencia cero.
+## 🟢 FASE 2: Especialización de Microservicios (Completado)
+Asignar a cada lenguaje su tarea ideal bajo principios SOLID.
+- [x] Python: `MasterOrchestrator` + `MarketHunter` (API-First) + Motor Semántico.
+- [x] Rust: API matemática (`axum` + `ConcurrencyRouter`) + `DevopsAgent` → MongoDB.
+- [x] Rails: único dueño de PostgreSQL, transacciones ACID, Upserts automáticos.
+- [x] Next.js: Server Components puros, sin `/api/` propia, fetch directo a Rails.
 
-## 🟢 FASE 3: Interconexión, Contingencia y Red (100% Completado)
-Objetivo: Lograr un ecosistema resiliente, a prueba de fallos y de consumo controlado.
-- [x] **Proxy Edge Perimetral:** Activación de `middleware.ts` para enrutamiento geográfico dinámico (`x-vercel-ip-country`) y ofuscación de URLs de afiliados (`/out`).
-- [x] **Protocolo Antigravity:** Heurísticas de fallback activadas en Python ante caídas de Gemini o límites de cuota persistidos en disco.
-- [x] **Sincronización DTO:** Alineación perfecta del contrato JSON (`laptop.ts` de TS, `laptop.json` de Schema, y el serializador de Rails). Corrección del Bug de Hiperinflación Monetaria.
+## 🟢 FASE 3: Interconexión, Contingencia y Red (Completado)
+Ecosistema resiliente, a prueba de fallos y de consumo controlado.
+- [x] Proxy Edge Perimetral (`middleware.ts`): geo dinámico + ofuscación `/out`.
+- [x] Protocolo Antigravity: fallback determinista ante caída/cuota de Gemini.
+- [x] Sincronización DTO estricta (`laptop.ts` ↔ serializer de Rails).
 
-## 🟢 FASE 3.5: Hardening de Consistencia y Cloud (2026-06-05 — Completado)
-Objetivo: Eliminar las inconsistencias que rompían visualización, divisas e i18n, y cablear la IA real.
-- [x] **Datos/Esquema Cloud SQL:** `deal_score` re-escalado a 1.0–10.0; país alineado con moneda; enum `currency_type` completado (7 monedas); `hardware_news.country_code` para geolocalización; catálogo y noticias multi-región sembradas. Tabla `price_histories` (plural).
-- [x] **Contrato DTO:** serializer de Rails alineado 1:1 con `laptop.ts` (currency, `applied_exchange_rate`, `discount_pct`, `ai_score_label`, `price_trend`, `category`, `seo`). Tipo de cambio persistido en `tipo_cambio_aplicado`.
-- [x] **Rust:** corregido el `ScoreResult` que impedía compilar; campos financieros con `serde(default)`; nueva ruta `POST /api/v1/benchmarks/run`.
-- [x] **Proveedores IA:** capa `src/providers/` (Vertex AI primario + Antigravity fallback) con `ProviderRouter` y failover. Estado expuesto en `GET /health`.
-- [x] **MarketHunter:** mapeo correcto de `site_id` de MercadoLibre (solo LATAM), detección real de marca, imágenes forzadas a https.
-- [x] **Frontend i18n:** textos hardcodeados movidos a diccionarios (es/en/pt). Divisas y referencia USD provienen del backend. Imágenes de alta calidad (AVIF/WebP, quality 90–95) y slider de noticias rediseñado con imágenes editoriales.
-- [x] **Afiliación/Geo:** tags de afiliado para BR/CO/CL; redirección de idioma según ubicación; noticias filtradas por país.
-- [x] **Infra:** `docker-compose` híbrido (cloud/local), `MONGO_URI`/`MONGODB_URI` unificado, credenciales Vertex montadas en el contenedor.
+## 🟢 FASE 3.5–3.6: Hardening + UI/UX Consumer (Completado)
+Cloud SQL/DTO/Rust/Python consistentes; frontend 100% consumer-facing (sin jerga técnica); estabilización Docker.
+- [x] Esquema Cloud SQL, contrato DTO, `ProviderRouter` con failover, i18n completo.
+- [x] Overhaul visual (imágenes, slider de noticias, copy consumer, Docker healthcheck).
+- [ ] Resolver Vertex AI 403 billing (proyecto GCP `clicks-and-go`) — opera con Antigravity mientras tanto.
 
-> ⚠️ **Pendiente operativo:** Vertex AI responde HTTP 403 (`dunning`) por un problema de **facturación** del proyecto GCP `clicks-and-go`. Hasta regularizarlo, el sistema opera con Antigravity. Resolver en GCP → Facturación.
+## 🟢 FASE 4: Alta Disponibilidad — Cloud Run (Completado)
+Infraestructura para tráfico concurrente en Google Cloud.
+- [x] Cache (Redis opcional / memory_store), Rack::Attack, Puma multi-worker.
+- [x] 4 manifests Cloud Run con autoscaling declarativo + `deploy.sh`.
+- [ ] Cloud CDN (requiere Load Balancer externo).
+- [ ] A/B testing algorítmico (Vertex vs Antigravity vía telemetría MongoDB).
+- [ ] Colas asíncronas (Celery + Redis) para picos de ingesta masiva.
 
-## 🟢 FASE 3.6: Overhaul UI/UX Consumer + Estabilización Docker (2026-06-05 — Completado)
-Objetivo: Hacer el frontend 100% consumer-facing (sin jerga técnica), reparar bugs críticos de imágenes/i18n/Docker y elevar la calidad visual al nivel de referencia (NVIDIA-style).
+## 🟢 FASE 4.1–4.4: Coprocesador Gemini + Legal + Catálogo + NewsRadar (Completado)
+Rust como pre-procesador de bajo costo para Gemini; monitoreo legal de afiliados; catálogo real sembrado; noticias reales automatizadas.
+- [x] Rust: `HardwareCanonicalizer`, `PriceSentinel`, `LegalDiffer`, `LinkValidator`.
+- [x] `LegalComplianceAgent` (12 URLs ToS/privacidad, arquitectura 3 capas, Cloud Scheduler).
+- [x] `seeds_catalog.sql` (25 retailers, 40 laptops), páginas legales, stats honestos.
+- [x] NewsRadar (11 feeds RSS, auto-loop 6h), disclosure de afiliados en cards/footer.
+- [ ] Registrar en redes de afiliados (Awin, CJ, Amazon Associates) — manual.
+- [ ] Deploy a Cloud Run con URL pública (bloqueante para aprobación de afiliados).
 
-- [x] **Imágenes de noticias:** Reemplazado `<Image>` Next.js (que proxea server-side) por `<img>` HTML nativo en `HardwareNewsSlider`. El browser fetcha directamente desde Unsplash sin pasar por el servidor GCP.
-- [x] **HardwareNewsSlider:** Reescrito completo — flechas circulares modernas, skeleton shimmer, mapeo `CAT_IMAGES` por categoría, `onError` fallback, micro-animación en hover.
-- [x] **i18n completo:** "Noticias" hardcodeado en `Navbar.tsx` (×2) y todo el footer en `layout.tsx` (Privacidad/Términos/Cookies/copyright) movidos a claves de diccionario. Diccionarios es/en/pt humanizados.
-- [x] **Copy consumer:** Eliminado todo lenguaje técnico/agéntico del UI. Principio fijo: el usuario ve una plataforma de comparación de precios, no un sistema de agentes IA.
-- [x] **Layout page.tsx:** Catálogo antes que noticias. Nuevas secciones: `StatsBanner`, `WhyTrustUs` (4 pilares), `HowItWorks` (3 pasos), `CTA Banner`.
-- [x] **CSS scroll offset:** `scroll-padding-top: 6rem` en `html` — evita que la navbar fija tape el destino de anclas.
-- [x] **Bug next.config.ts:** Faltaba `export default nextConfig` → `output: 'standalone'` ignorado → Docker build fallaba en `COPY .next/standalone`.
-- [x] **Bug LanguageSelector:** Removido `useSearchParams()` que requería Suspense boundary en Next.js 14+.
-- [x] **Docker healthcheck:** `localhost` resolvía a IPv6 `::1`; Next.js solo escucha en IPv4 → contenedor `(unhealthy)` en loop. Fix: `127.0.0.1:3000`. Sitio live en `http://34.44.182.166/es`.
+## 🟢 FASE 5: Autenticación — OAuth + Magic Links (Completado)
+Registro/login sin contraseñas: OAuth (Google/Microsoft/Facebook) + magic link (Resend).
+- [x] Migración SQL (`migration_auth_v1.sql`), adapter custom snake_case, providers condicionales.
+- [x] `/login`, `/register`, `/panel` protegido, páginas legales, feedback de error/verify.
+- [ ] Configurar credentials OAuth reales (Google Console, Azure, Facebook) — manual.
+- [ ] Resend: verificar dominio, obtener API key.
+- [ ] AAIP: registro Ley 25.326 (Argentina) — responsabilidad del usuario.
+- [ ] `AUTH_URL` → dominio final al deployar.
 
-## 🟢 FASE 4: Alta Disponibilidad — Cloud Run + Redis (2026-06-05 — Completado)
-Objetivo: Preparar la infraestructura para soportar 50k–80k usuarios concurrentes en Google Cloud.
-- [x] **Caché Redis en Rails:** `Rails.cache.fetch` en `GET /api/v1/notebooks` (TTL 60s por país) y `hardware_news` (TTL 5min). Fallback a `memory_store` sin REDIS_URL. Gems: `redis ~> 5.0`.
-- [x] **Rate Limiting (Rack::Attack):** 120 req/min catálogo, 60 req/min noticias, 30 req/min escrituras. Bloqueo automático de SQLmap/Nikto/Nuclei. Respuesta 429 en JSON.
-- [x] **Puma Multi-Worker:** `WEB_CONCURRENCY=2` workers + `RAILS_MAX_THREADS=5` hilos por worker = 10 requests paralelos por instancia Rails con `preload_app!` (CoW memory).
-- [x] **Cache-Control para CDN (Next.js):** Headers `s-maxage=60, stale-while-revalidate=300` en catálogo; `s-maxage=300, stale-while-revalidate=3600` en detalle; `immutable` en assets estáticos.
-- [x] **Manifests Cloud Run (Infra/cloud/):** 4 YAMLs (`cloudrun-{rails,python,rust,web}.yaml`) con autoscaling declarativo: Rails 1–20, Web 2–50, Python 0–5, Rust 0–10. Secretos vía Secret Manager.
-- [x] **Script de Deploy (`Infra/cloud/deploy.sh`):** Build → Artifact Registry → `gcloud run services replace` para los 4 servicios en orden correcto. Soporte `--only <servicio>`.
-- [ ] **Configurar Cloud CDN:** `gcloud compute backend-services update clicks-web-backend --enable-cdn` (requiere Load Balancer externo).
-- [ ] **Crear Memorystore Redis:** `gcloud redis instances create clicks-redis --size=1 --region=us-central1` y agregar `REDIS_URL` a Secret Manager.
-- [ ] **A/B Testing Algorítmico:** Medir CTR de etiquetas Vertex vs Antigravity vía telemetría MongoDB.
-- [ ] **Colas Asíncronas (Phase 5):** Celery + Redis en Python para encolar 100k ofertas sin saturar RAM.
+## 🟢 FASE 6: Dashboard de Usuario + Geo Global (Completado)
+Panel post-login con favoritos y alertas de precio; catálogo y noticias personalizados por ubicación/preferencia — base del funnel de re-engagement para afiliación.
+- [x] `migration_user_v2.sql`: país preferido/detectado, locale, última visita.
+- [x] Dashboard `/panel`: stats, favoritos con último precio, alertas con estado, perfil + país del catálogo.
+- [x] Corazón de favoritos en el catálogo (session-aware, redirige a login si hace falta).
+- [x] **Fase 6.1 — Cumplimiento Zero-Trust:** favoritos/alertas/perfil migrados de acceso directo a Postgres desde Next.js hacia endpoints REST de Rails (`/api/v1/users/:user_id/*`), protegidos por `INTERNAL_API_KEY` para no exponer un IDOR mientras Rails tenga `ingress: all`. Ver `contexto_maestro.md` §1–2.
+- [ ] Ejecutar `migration_user_v2.sql` en Cloud SQL (junto al deploy).
+- [ ] Validar boot real de Rails (`bundle install` + `rails routes` + request de humo a los endpoints nuevos) — no se pudo ejecutar en el sandbox de desarrollo por falta de red/gems.
+- [ ] **PriceAlertAgent (Python):** tras cada ciclo de precios, consultar `price_alerts` activas y notificar por email (Resend) cuando `precio_actual <= target_price`. El corazón agéntico del re-engagement.
+- [ ] Endurecer `ingress` de Rails/Rust/Python con IAM (`roles/run.invoker`) en vez de `all` + `INTERNAL_API_KEY` (defensa en profundidad, ya anotado en los manifests).
+- [x] Escalado multi-producto: generalizar `laptops` → catálogo por `product_type`. **Hecho en FASE 7** (ver abajo).
 
-## 🟢 FASE 4.1: Rust Coprocesador Gemini + Optimización Total (2026-06-07 — Completado)
-Objetivo: Convertir Rust en el pre-procesador de bajo costo para todas las tareas agénticas de Gemini, reduciendo tokens y latencia.
+## 🟢 FASE 6.5: Rediseño a tema claro (ADN NVIDIA) (Completado)
+Fondo blanco para maximizar conversión de afiliados; patrones tipográficos/de
+animación de NVIDIA (sin su verde — acento azul).
+- [x] `globals.css` "Light Design System v5.0", `ThemeProvider` dark→light, toda la web convertida.
+- [x] Barlow (≈NVIDIA-NALA) bold sentence-case, radios nítidos, transiciones 0.2s ease-out.
 
-- [x] **HardwareCanonicalizer** (`POST /api/v1/hardware/canonicalize`): Normalización cross-retailer de CPU/GPU, `HardwareTier` enum, `build_gemini_context()`.
-- [x] **PriceSentinel** (`POST /api/v1/price/anomalies`): Moving average + z-score, flash sale heuristic, `gemini_trigger: bool`.
-- [x] **LegalDiffer** (`POST /api/v1/legal/diff`): FNV-1a 64-bit hash (zero deps), risk scoring 0–100, `gemini_priority: "SKIP"|"NORMAL"|"URGENT"`. Ahorro ~98% tokens en Legal Agent.
-- [x] **LinkValidator** (`POST /api/v1/links/validate`): HEAD concurrente, `Arc<Semaphore>` MAX=20, 5-hop redirect chain, timeout 12s.
-- [x] **hardware_scorer.rs v4.3:** Intel Core Ultra 5/7/9, Apple M4 Pro/Max/Ultra, RTX 4050 (bug fix), Snapdragon X Elite/Plus, RTX 2060–2080 legacy. Funciones `cpu_score()` / `gpu_score()` públicas e `#[inline]`.
-- [x] **concurrency_router.rs:** Sin clone innecesario (ownership directo), `score_one()` como free function `#[inline]`, error logging para panics.
-- [x] **main.rs v4.3:** `HealthCache` TTL 5s, HTTP client pool tuneado, `CompressionLayer` gzip, body limit 4 MB.
-- [x] **Cargo.toml:** `reqwest 0.12` (elimina `hyper 0.14` + `rustls 0.21` duplicados), `compression-gzip`, perfil `dev` incremental.
-- [x] **Bug E0277:** `std::sync::MutexGuard` no cruzar `.await` en handler `/health`. Fix: 2 bloques separados. `cargo check` ✅ limpio.
+## 🟢 FASE 7: Escalado multi-producto (Completado v1)
+De "solo notebooks" a todo el catálogo digital de los retailers, con categorías
+claras y bien definidas.
+- [x] **Taxonomía (2 niveles)**: Familia → `product_type`. Computación (laptop·desktop·monitor), Periféricos (keyboard·mouse·headphones·webcam), Impresión (printer·supplies). Fuente única: `Web/src/types/product.ts`.
+- [x] **DB** `migration_products_v3.sql` — aditiva: `product_type` + `specs` JSONB + índices. Retrocompatible (la tabla sigue siendo `laptops`, FKs intactas).
+- [x] **Rails** — serializer con `product_type`/`specs`; endpoint `/api/v1/products` (+ `?type=`); modelo/persistencia con soporte de tipo; degrada con gracia pre-migración.
+- [x] **Rust** — `calculate_generic_score` para no-laptops; router despacha por `product_type`. La matemática sigue en Rust.
+- [x] **Python** — `product_type`/`specs` fluyen por el normalizador y el payload a Rust.
+- [x] **Web** — filtros por tipo (chips dinámicos), card y página de detalle `[slug]` con specs por tipo + badge, i18n es/en/pt.
+- [ ] Correr `migration_products_v3.sql` en Cloud SQL (junto al deploy).
+- [ ] `cargo check` real de Rust (no hay red a crates.io en el sandbox).
+- [ ] Sembrar catálogo real multi-producto (`seeds_catalog.sql` hoy es solo laptops).
+- [ ] Afinar specs y scoring por tipo con datos reales de ingesta (ratings/reseñas para el scorer genérico).
+- [ ] Buscador predictivo del hero: hoy sugiere categorías de laptop; generalizar a tipos de producto.
 
-## 🟢 FASE 4.2: Agente Legal "Abogado Digital" (2026-06-07 — Completado)
-Objetivo: Monitoreo exhaustivo de ToS y políticas de privacidad de redes de afiliados para prevenir baneos.
-
-- [x] **LegalComplianceAgent** (`Python/src/agents/legal_agent.py`): 12 URLs monitoreadas (Awin, CJ, Amazon, MercadoLibre, HP, Dell, Lenovo, Asus). SHA-256 snapshots en MongoDB.
-- [x] **Arquitectura 3 capas:** Rust diff (gratuito) → Antigravity heurística (gratuito) → Gemini solo si `gemini_priority != "SKIP"` y solo con `gemini_brief`.
-- [x] **Integración MasterOrchestrator:** Legal Agent como step 0 antes de NewsRadar.
-- [x] **Endpoints Python:** `POST /api/v1/legal/audit` (mode=full|check) y `GET /api/v1/legal/status`.
-- [x] **AntigravityProvider:** Soporte completo de `TASK_LEGAL_AUDIT` con señales CRITICAL/HIGH/MEDIUM y `significant_shrink`.
-- [x] **Cloud Scheduler:** `legal-audit-daily` (03:00 UTC, full) + `legal-audit-6h` (cada 6h, check).
-
-## 🟢 FASE 4.3: Catálogo SQL + Preparación Afiliados (2026-06-07 — Completado)
-Objetivo: Tener contenido real en la BD para cumplir los requisitos de aprobación de redes de afiliados.
-
-- [x] **seeds_catalog.sql:** 25 retailers (AR/US/ES/MX/BR), 40 laptops con metadata SEO completa, 40 price_histories. Scripts idempotentes.
-- [x] **cloudrun-rust.yaml:** Eliminado emoji que causaba warning YAML non-ASCII.
-- [x] **Stats honestos:** `StatsBanner` actualizado — 40K+/100+/12 reemplazados por 5 países / 100% gratis / Actualización diaria / 24/7 disponible (es/en/pt). Evita riesgo de baneo por afirmaciones falsas.
-- [x] **Páginas legales:** `/{locale}/privacidad` y `/{locale}/terminos` creadas — 10 secciones c/u en es/en/pt. Links del footer actualizados a rutas reales.
-- [ ] **Affiliate disclosure:** En product cards y footer (requerido FTC/RGPD).
-- [ ] **Deploy a Cloud Run:** Sin URL pública no hay aprobación de afiliados (bloqueante crítico).
-- [ ] **Resolver Vertex AI 403 billing** en GCP console (proyecto `clicks-and-go` / 798903122073).
-- [ ] **Registrar en redes de afiliados:** Awin, CJ Affiliate, Amazon Associates (manual).
-- [ ] **Configurar API keys** en `.env` y Secret Manager tras aprobación.
-
-## 🟢 FASE 4.4: UI Restructure v2 + NewsRadar v2 (2026-06-07 — Completado)
-Objetivo: Simplificar la página eliminando secciones redundantes, restaurar navegación desde navbar, y hacer que las noticias sean reales y se actualicen automáticamente.
-
-- [x] **Limpieza de secciones:** CTA Banner y `HowItWorks` eliminados de `page.tsx` (redundantes con el resto del contenido).
-- [x] **Reordenamiento:** `WhyTrustUs` movido arriba del catálogo (entre `StatsBanner` y `#productos`) — visible sin scroll.
-- [x] **AIDealsSection restaurada:** Sección "Mejores Ofertas" devuelta a `page.tsx` con `id="ofertas"`. Navbar link `/#ofertas` funcional. Muestra top-3 laptops por `deal_score` descendente.
-- [x] **Orden final de página:** Hero → Stats → WhyTrustUs → Catálogo → Mejores Ofertas → Noticias.
-- [x] **NewsRadar v2:** 11 feeds RSS especializados (Tom's Hardware, The Verge, Ars Technica, Engadget, TechRadar, CNET, Wired, Xataka ES, NotebookCheck, Digital Trends, Laptop Mag). Filtra artículos off-topic por keywords. 6 ítems/feed.
-- [x] **lxml instalado:** `requirements.txt` + `lxml>=5.0.0`. Parser XML: `lxml-xml` con fallback `html.parser`.
-- [x] **Auto-loop 6h:** `_news_radar_loop()` en lifespan de `main.py` — corre al arrancar y cada 6 horas. Sin cron externo necesario.
-- [x] **Rails LIMIT 20:** `hardware_news` devuelve 20 artículos (antes 10).
-- [x] **Resultado:** DB 3 → 96 noticias reales de hardware. Slider muestra contenido fresh de fuentes reconocidas.
-
-## 🟢 FASE 5: Autenticación v1.0 — OAuth + Magic Links (2026-06-09 — Completado)
-Objetivo: Sistema de registro e inicio de sesión completo con OAuth (Google/Microsoft/Facebook) y magic links por email (Resend), sin contraseñas.
-
-- [x] **Migración SQL:** `Infra/db/migration_auth_v1.sql` — columnas `last_name`, `phone`, `city` en tabla `users`; tablas `sessions` y `verification_tokens`. Ejecutada exitosamente en Cloud SQL.
-- [x] **`Web/src/lib/db.ts`:** Singleton Pool de PostgreSQL (`pg@8.13`) con SSL en producción y connection pooling (max 10, idle 30s, connect 3s).
-- [x] **`Web/src/auth.ts`:** NextAuth.js v5 (`5.0.0-beta.31`) con adapter custom `ClicksAdapter()` — necesario porque `@auth/pg-adapter` oficial usa camelCase con comillas SQL (`"emailVerified"`) mientras nuestro esquema usa snake_case (`email_verified`). Providers condicionales: solo activa Google/Microsoft/Facebook/Resend si las env vars correspondientes están seteadas (no crashea si falta alguna).
-- [x] **`Web/src/app/api/auth/[...nextauth]/route.ts`:** Route Handler con `runtime = "nodejs"` (pg no es Edge-compatible).
-- [x] **`/login` y `/register`:** Server Components con Server Actions para OAuth sign-in y magic link. Inline `"use server"` functions capturan `locale` del scope del componente. Client Component `MagicLinkForm.tsx` usa `useActionState` (React 19).
-- [x] **`/panel`:** Dashboard protegido — `auth()` → redirect a `/login` si no hay sesión. Query directa a DB para datos de perfil. `ProfileForm.tsx` (Client Component) con `useActionState` para actualizar nombre/apellido/teléfono/ciudad.
-- [x] **Navbar:** Botón "Mi Panel" con ícono `LayoutDashboard` cuando hay sesión activa; "Iniciar sesión" + "Registrarse" para visitantes. Session pasada como prop desde `layout.tsx` (Server Component) sin SessionProvider.
-- [x] **Diccionarios i18n:** Sección `auth` completa en es/en/pt (30+ claves: loginTitle, registerTitle, emailLabel, linkSentTitle, panelTitle, profileSection, firstName, lastName, phone, city, etc.).
-- [x] **Páginas legales:** `/{locale}/privacidad` y `/{locale}/terminos` — 10 secciones c/u en es/en/pt cubriendo GDPR/LGPD/Ley 25.326. ShieldCheck/FileText icons, dark theme glassmorphism.
-- [x] **Footer links:** `/{locale}/privacidad` y `/{locale}/terminos` apuntando a rutas reales (antes `href="#"`).
-- [x] **`.env`:** `AUTH_SECRET` generado (`openssl rand -base64 32`), `AUTH_URL=http://localhost`, placeholders para todos los providers OAuth.
-- [ ] **Configurar credentials OAuth** (manual): Google Console, Azure App Registration (multi-tenant), Facebook Developers.
-- [ ] **Resend:** Verificar dominio `clicksandgo.com`, obtener API key, setear `AUTH_RESEND_KEY`.
-- [ ] **AAIP:** Registro en Agencia de Acceso a la Información Pública (Ley 25.326, Argentina) — responsabilidad del usuario.
-- [ ] **`AUTH_URL`:** Cambiar a `https://clicksandgo.com` al deployar a Cloud Run.
+## 🟡 Deuda técnica conocida (no bloqueante)
+- `HardwareNewsSlider.tsx` quedó sin usar tras integrar el ticker de noticias dentro de `HeroSection` — candidato a eliminar o reintegrar (decisión pendiente de producto, no técnica).
+- Endpoints de escritura consumidos por Python (`POST /api/v1/notebooks`, `.../hardware_news`) no tienen aún el mismo `INTERNAL_API_KEY` que los endpoints de usuario — dependen solo de rate limiting. Extender la protección cuando se aborde el endurecimiento de `ingress` de arriba.
