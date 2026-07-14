@@ -71,13 +71,15 @@ spec:
         # 📧 Login por magic link (NextAuth Resend provider) — se activa solo si
         # AUTH_RESEND_KEY está presente (ver Web/src/auth.ts). Mismo secreto que
         # usa PriceAlertAgent en Python para los avisos de "bajó de precio".
+        # ⏸️ Descomentar cuando exista la cuenta Resend + el secreto en Secret Manager
+        # (si se referencia un secreto inexistente, Cloud Run rechaza el deploy).
         - name: AUTH_FROM_EMAIL
           value: noreply@clicksandgo.com
-        - name: AUTH_RESEND_KEY
-          valueFrom:
-            secretKeyRef:
-              name: AUTH_RESEND_KEY
-              key: latest
+        # - name: AUTH_RESEND_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: AUTH_RESEND_KEY
+        #       key: latest
         # 🔑 OAuth (Google/Microsoft/Facebook) — CADA proveedor se activa solo si
         # SUS DOS variables están presentes (auth.ts). Descomentar de a pares
         # cuando se registren las apps en cada consola (ver RUNBOOK paso 6).

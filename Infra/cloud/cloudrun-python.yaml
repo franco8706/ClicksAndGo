@@ -76,11 +76,13 @@ spec:
               key: latest
         # Sin esta key, PriceAlertAgent detecta alertas alcanzadas pero no envía
         # el email (las deja pendientes) — ver Python/src/agents/price_alert_agent.py.
-        - name: AUTH_RESEND_KEY
-          valueFrom:
-            secretKeyRef:
-              name: AUTH_RESEND_KEY
-              key: latest
+        # ⏸️ Descomentar cuando exista la cuenta Resend + el secreto en Secret Manager
+        # (si se referencia un secreto inexistente, Cloud Run rechaza el deploy).
+        # - name: AUTH_RESEND_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: AUTH_RESEND_KEY
+        #       key: latest
         livenessProbe:
           httpGet:
             path: /health

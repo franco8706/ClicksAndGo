@@ -11,13 +11,13 @@
 **El estado actual:** todo el producto está construido y verificado en desarrollo (build/tsc/lint/tests verdes). Lo que falta es, en su mayoría, **operativo de lanzamiento** (deploy real + configuración de cuentas externas), no código nuevo. Esta es la ruta para avanzar, de más a menos urgente:
 
 ### 🔴 Bloqueante para lanzar (deploy + aprobación de afiliados)
-1. **Deploy a Cloud Run con URL pública** — bloquea la aprobación en las redes de afiliados. Guía: `Infra/cloud/RUNBOOK_DEPLOY.md`.
-2. **Correr las migraciones en Cloud SQL** (en orden): `migration_user_v2.sql` → `products_v3` → `alerts_v4` → `integrity_v5` (la de auth ya corrió). Luego `seeds_products_multi.sql` si se quiere el catálogo demo.
-3. **Validar el boot real de Rails** (`bundle install` + `rails routes` + request de humo a los endpoints nuevos) — no se pudo en el sandbox por falta de red a rubygems.
-4. **`cargo check` real de Rust** — validar el scorer multi-producto (no hay red a crates.io en el sandbox).
+1. ✅ **Deploy a Cloud Run con URL pública** — HECHO 2026-07-14. Multiproducto EN VIVO: `https://clicks-web-2myrvivvhq-uc.a.run.app/es`. Ver bitácora de esa fecha.
+2. ✅ **Migraciones en Cloud SQL** — HECHO 2026-07-14 (backup previo → `user_v2`→`products_v3`→`alerts_v4`→`integrity_v5` + `seeds_products_multi`). 70 productos, 9 tipos, 0 violaciones.
+3. ✅ **Boot real de Rails validado** — build Docker real + smoke-test production contra Postgres + deploy vivo sirviendo `/api/v1/products?type=`.
+4. ✅ **Build real de Rust validado** — `cargo build --release` en Docker + fix crítico de boot (timeout Mongo 30s→2s) + `/health` y scoring vivos en Cloud Run.
 5. **Resolver Vertex AI 403 billing** (proyecto GCP `clicks-and-go`) — opera con Antigravity mientras tanto.
-6. **Configurar cuentas externas**: OAuth reales (Google/Azure/Facebook), Resend (verificar dominio + API key), `AUTH_URL` → dominio final.
-7. **Registrarse en las redes de afiliados** (Awin, CJ, Amazon Associates) — manual.
+6. **Configurar cuentas externas**: OAuth reales (Google/Azure/Facebook), Resend (verificar dominio + API key → descomentar `AUTH_RESEND_KEY` en `cloudrun-web.yaml`/`cloudrun-python.yaml` y crear el secreto), `AUTH_URL` → dominio final.
+7. **Registrarse en las redes de afiliados** (Awin, CJ, Amazon Associates) — manual. **← EL bloqueante de negocio actual: ya hay URL pública para el registro.**
 8. **Registro AAIP** (Ley 25.326, Argentina) — responsabilidad del titular.
 
 ### 🟠 Corazón agéntico / re-engagement (post-lanzamiento cercano)

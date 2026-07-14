@@ -28,6 +28,7 @@
 | 2026-07-07 | **Escalado multi-producto v1** (de notebooks a catálogo digital completo) |
 | 2026-07-10 | Docs reorganizados (legibilidad) · commit+push · **PriceAlertAgent v1** (re-engagement) |
 | 2026-07-10 | Seed multi-producto · **Integridad DB v5** · scoring por tipo · buscador generalizado |
+| 2026-07-14 | **DEPLOY A PRODUCCIÓN** 🚀 — multiproducto EN VIVO en Cloud Run (migraciones + imágenes + schedulers) |
 
 ---
 
@@ -176,3 +177,17 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Scoring por tipo — Rust]`: nueva `type_spec_bonus(product_type, specs)` (0–1.5) que suma calidad por señales propias de cada tipo leídas del JSONB: monitor→refresh_hz/4K/panel, teclado→mecánico/wireless/backlit, mouse→dpi/wireless, auriculares→ANC/wireless, webcam→4K/fps, impresora→wifi/color/ppm, insumos→rendimiento. `HardwareSpecs` suma el campo `specs`; el `ConcurrencyRouter` lo agrega al scorer genérico. `master_orchestrator` envía `specs` a Rust. La matemática sigue 100% en Rust. Pendiente: `cargo check` (sin red a crates.io).
 - `[Buscador predictivo — Web]`: sugería categorías de laptop (gaming/business) que ya **no filtraban** (el catálogo filtra por `product_type`). Generalizado: sugiere los 9 tipos con ícono + tagline localizado, navega todas al enfocar sin texto, y dispara `catalog:filter` con el `product_type`. Placeholder i18n cambiado a genérico ("¿Qué producto estás buscando?"). `SearchSuggestion` (laptop) reemplazado por `TypeSuggestion` derivado de la taxonomía.
 - `[Verificación]`: Postgres real (migración aplica/rechaza/idempotente) ✅ · `tsc` 0 · ESLint 0 · `next build` ✅ · vitest 5/5 ✅ · `py_compile` ✅ · `ruby -c` (sin cambios Ruby esta vez). Rust queda para `cargo check` pre-deploy.
+
+## 2026-07-14 · 🚀 DEPLOY A PRODUCCIÓN — multiproducto EN VIVO en Cloud Run
+
+- `[Contexto]`: se descubrió que la infra GCP **ya estaba desplegada** (4 servicios Cloud Run activos, Cloud SQL `clicks-db` RUNNABLE, Artifact Registry, `clicks-sa` con IAM correcto) — la sesión fue una **actualización en caliente**, no un deploy desde cero. gcloud ya estaba autenticado en el entorno (cuenta del titular).
+- `[Validación previa en Docker]` (antes de tocar prod): build real de las 4 imágenes `linux/amd64` (valida `cargo build` y `bundle install`, los 2 bloqueantes históricos del sandbox) + smoke-tests de boot + cadena completa Web→Rails→Postgres local sirviendo el catálogo multiproducto.
+  - `[Bug de producción detectado y corregido]`: el boot de Rust **bloqueaba >30s** si MongoDB estaba caído (default del driver) — superaba el `startupProbe` de Cloud Run (~20s) → riesgo de crash-loop en cold-start. Fix en `main.rs`: `server_selection_timeout`/`connect_timeout` = 2s (espeja `serverSelectionTimeoutMS=2000` de Python). Boot verificado: >30s → **~4s**.
+- `[DB de producción]`: inspección solo-lectura primero → solo `auth_v1` estaba aplicada; pre-chequeos de `integrity_v5` sobre datos vivos = **0 violaciones**. Backup on-demand → migraciones `user_v2`→`products_v3`→`alerts_v4`→`integrity_v5` + `seeds_products_multi` con `ON_ERROR_STOP`. Resultado: **70 productos en 9 tipos**, 0 tipos inválidos, 0 sin precio.
+  - `[Fix de seed]`: prod tiene `uq_retailer_name_country` (de `cloud_fix.sql`) y Best Buy ya existía como slug `best_buy_us` → el seed (que usaba `bestbuy_us`) chocaba. Alineado el slug + `ON CONFLICT DO NOTHING` catch-all en el INSERT de retailers. La DB local no tenía esa constraint — por eso el test local no lo detectó.
+  - `[Password Cloud SQL]`: el password dentro de `DATABASE_URL` está **URL-encoded** — hay que decodificarlo (`urllib.parse.unquote`) antes de usarlo con psql/PGPASSWORD.
+- `[Secretos]`: creado `INTERNAL_API_KEY` (64 hex; `clicks-sa` ya tenía `secretAccessor` a nivel proyecto). `AUTH_RESEND_KEY` **comentado** en los manifests de web/python hasta que exista la cuenta Resend (referenciar un secreto inexistente hace fallar el deploy; el código maneja su ausencia con gracia).
+- `[Deploy]`: push de las 4 imágenes a Artifact Registry (`:54654ad` + `:latest`) → `gcloud run services replace` rust→rails→python→web. Revisiones nuevas Ready. Verificado público: Rust `/health` ok (mongo:true), Rails `/up` 200 + catálogo con los 9 tipos, home `/es` renderizando Impresoras/Monitores/Teclados/Auriculares.
+- `[Schedulers]`: creados `full-cycle-daily` (04:00 UTC — **el pipeline comercial no tenía disparador**: nunca corría solo), `legal-audit-daily` (03:00) y `legal-audit-6h`. Ya existía `news-radar-6h`. Disparo manual de `full-cycle` validó el cableado end-to-end (LegalAgent auditando ToS; los WARNINGs de fetch a Awin/CJ son anti-bot esperado).
+- `[URLs Cloud Run]`: ambas formas (`clicks-*-798903122073.us-central1.run.app` determinística y `clicks-*-2myrvivvhq-uc.a.run.app` legacy) **funcionan** — un timeout inicial desde el codespace fue un falso positivo de red.
+- `[Estado final]`: sistema multiproducto EN VIVO. Bloqueantes de negocio restantes: registro en redes de afiliados (manual del titular), cuenta Resend + descomentar `AUTH_RESEND_KEY`, OAuth providers, dominio propio + `AUTH_URL`, billing Vertex (opera con Antigravity).

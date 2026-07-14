@@ -12,10 +12,10 @@
 -- ── RETAILERS (marketplaces + marcas de periféricos/impresión) ────────────────
 INSERT INTO retailers (name, slug, base_url, affiliate_tag, country_code) VALUES
   ('Amazon US',        'amazon_us',       'https://www.amazon.com/',            'clicksandgo-20',    'US'),
-  ('Best Buy US',      'bestbuy_us',      'https://www.bestbuy.com/',           'clicks_bestbuy_us', 'US'),
+  ('Best Buy US',      'best_buy_us',      'https://www.bestbuy.com/',           'clicks_bestbuy_us', 'US'),
   ('Amazon España',    'amazon_es',       'https://www.amazon.es/',             'clicksandgo-es-21', 'ES'),
   ('MercadoLibre MX',  'mercadolibre_mx', 'https://www.mercadolibre.com.mx/',   'clicks_ml_mx',      'MX')
-ON CONFLICT (slug, country_code) DO NOTHING;
+ON CONFLICT DO NOTHING;  -- catch-all: cubre uq de slug Y de (name,country) según el entorno
 
 -- ── PRODUCTOS ─────────────────────────────────────────────────────────────────
 -- Nota: procesador/ram_gb/disco_gb/tarjeta_video/display_inches quedan NULL en
@@ -36,7 +36,7 @@ VALUES
  'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=640&q=70',
  '{"condition":"new","category":"monitor","ai_badge":"165Hz","ui_accent_color":"#2563eb","seo_title":"LG UltraGear 27GP850 QHD 165Hz","seo_description":"Monitor gaming QHD 165Hz IPS Nano al mejor precio verificado."}'::jsonb),
 
-((SELECT id FROM retailers WHERE slug='bestbuy_us' AND country_code='US'),
+((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
  'MON-SAM-G7-32', 'samsung-odyssey-g7-32-us', 'Samsung', 'Odyssey G7 32"', 'US',
  'monitor', '{"size_inches":32,"resolution":"2560x1440","refresh_hz":240,"panel":"VA curvo"}'::jsonb,
  NULL, NULL, NULL, NULL, NULL,
@@ -82,7 +82,7 @@ VALUES
  'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=640&q=70',
  '{"condition":"new","category":"keyboard","ai_badge":"Productividad","ui_accent_color":"#2563eb"}'::jsonb),
 
-((SELECT id FROM retailers WHERE slug='bestbuy_us' AND country_code='US'),
+((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
  'KBD-RAZ-BWV4', 'razer-blackwidow-v4-us', 'Razer', 'BlackWidow V4', 'US',
  'keyboard', '{"switch":"Razer Green","layout":"Full","wireless":false,"backlit":true}'::jsonb,
  NULL, NULL, NULL, NULL, NULL,
@@ -129,7 +129,7 @@ VALUES
  'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=640&q=70',
  '{"condition":"new","category":"headphones","ai_badge":"ANC Premium","ui_accent_color":"#2563eb"}'::jsonb),
 
-((SELECT id FROM retailers WHERE slug='bestbuy_us' AND country_code='US'),
+((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
  'HP-BOSE-QCU', 'bose-quietcomfort-ultra-us', 'Bose', 'QuietComfort Ultra', 'US',
  'headphones', '{"form":"Over-ear","driver_mm":35,"anc":true,"wireless":true}'::jsonb,
  NULL, NULL, NULL, NULL, NULL,
