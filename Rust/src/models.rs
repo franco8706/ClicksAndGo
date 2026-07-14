@@ -31,6 +31,10 @@ pub struct HardwareSpecs {
     pub rating: f64,
     #[serde(default)]
     pub reviews: i64,
+    // 📦 Specs propias del tipo (JSONB de la DB) para el bonus de scoring por tipo
+    // (ej. monitor→refresh_hz, teclado→switch, auriculares→anc). Opcional.
+    #[serde(default)]
+    pub specs: serde_json::Map<String, serde_json::Value>,
 
     // f64: precisión de 15-17 dígitos, obligatorio para precios LATAM de 6-7 cifras (ARS, CLP)
     #[serde(default)]

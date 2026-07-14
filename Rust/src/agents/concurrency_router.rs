@@ -1,4 +1,4 @@
-use crate::agents::hardware_scorer::HardwareScorerAgent;
+use crate::agents::hardware_scorer::{HardwareScorerAgent, type_spec_bonus};
 use crate::models::{HardwareSpecs, ScoreResult, MAX_BATCH_SIZE};
 use rayon::prelude::*;
 use tokio::task;
@@ -59,7 +59,9 @@ fn score_one(specs: HardwareSpecs) -> ScoreResult {
     let base_score = if is_hardware_scored {
         HardwareScorerAgent::calculate_score(&specs.cpu, specs.ram_gb, &specs.gpu)
     } else {
-        HardwareScorerAgent::calculate_generic_score(discount_pct, specs.rating, specs.reviews)
+        // Genérico (descuento + reputación) + bonus por señales de calidad del tipo.
+        let generic = HardwareScorerAgent::calculate_generic_score(discount_pct, specs.rating, specs.reviews);
+        (generic + type_spec_bonus(&type_l, &specs.specs)).clamp(1.0, 10.0)
     };
 
     // Bonus por descuento fuerte (> 15%) solo para hardware — el scorer genérico

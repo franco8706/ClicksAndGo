@@ -202,3 +202,66 @@ pub fn round1(v: f64) -> f64 { (v * 10.0).round() / 10.0 }
 
 #[inline(always)]
 pub fn round2(v: f64) -> f64 { (v * 100.0).round() / 100.0 }
+
+// ── Scoring por tipo (multi-producto) ─────────────────────────────────────────
+/// Bonus (0.0–1.5) por señales de calidad propias de cada tipo de producto, leídas
+/// de las specs del JSONB. El router lo suma al `calculate_generic_score` para
+/// productos sin CPU/GPU (monitor, teclado, mouse, auriculares, webcam, impresora,
+/// insumos). Laptops/desktops NO lo usan (los puntúa el scorer de hardware).
+#[inline]
+pub fn type_spec_bonus(product_type: &str, specs: &serde_json::Map<String, serde_json::Value>) -> f64 {
+    let num  = |k: &str| specs.get(k).and_then(serde_json::Value::as_f64);
+    let flag = |k: &str| specs.get(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let text = |k: &str| specs.get(k).and_then(serde_json::Value::as_str).unwrap_or("").to_ascii_lowercase();
+
+    let mut bonus: f64 = 0.0;
+    match product_type {
+        "monitor" => {
+            if let Some(hz) = num("refresh_hz") {
+                bonus += if hz >= 240.0 { 0.8 } else if hz >= 144.0 { 0.5 } else if hz >= 120.0 { 0.3 } else { 0.0 };
+            }
+            let res = text("resolution");
+            if res.contains("3840") || res.contains("2160") || res.contains("4k") { bonus += 0.5; }
+            else if res.contains("2560") || res.contains("1440") { bonus += 0.3; }
+            let panel = text("panel");
+            if panel.contains("oled") { bonus += 0.5; } else if panel.contains("ips") { bonus += 0.3; }
+        }
+        "keyboard" => {
+            let sw = text("switch");
+            // Mecánico (cualquier switch que no sea membrana/tijera) suma calidad.
+            if !sw.is_empty() && !sw.contains("membran") && !sw.contains("scissor") && !sw.contains("tijera") {
+                bonus += 0.4;
+            }
+            if flag("wireless") { bonus += 0.3; }
+            if flag("backlit")  { bonus += 0.2; }
+        }
+        "mouse" => {
+            if let Some(dpi) = num("dpi") {
+                bonus += if dpi >= 20000.0 { 0.5 } else if dpi >= 8000.0 { 0.3 } else { 0.0 };
+            }
+            if flag("wireless") { bonus += 0.3; }
+        }
+        "headphones" => {
+            if flag("anc")      { bonus += 0.5; }
+            if flag("wireless") { bonus += 0.3; }
+        }
+        "webcam" => {
+            let res = text("resolution");
+            if res.contains("4k") || res.contains("2160") { bonus += 0.5; }
+            else if res.contains("1080") { bonus += 0.2; }
+            if let Some(fps) = num("fps") { if fps >= 60.0 { bonus += 0.3; } }
+        }
+        "printer" => {
+            if flag("wifi")  { bonus += 0.3; }
+            if flag("color") { bonus += 0.2; }
+            if let Some(ppm) = num("ppm") { if ppm >= 25.0 { bonus += 0.3; } }
+        }
+        "supplies" => {
+            if let Some(y) = num("yield_pages") {
+                bonus += if y >= 1000.0 { 0.4 } else if y >= 300.0 { 0.2 } else { 0.0 };
+            }
+        }
+        _ => {}
+    }
+    bonus.min(1.5)
+}

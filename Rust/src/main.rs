@@ -223,7 +223,15 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let mongo_url = env::var("MONGO_URI")
         .or_else(|_| env::var("MONGODB_URI"))
         .unwrap_or_else(|_| "mongodb://127.0.0.1:27017".to_string());
-    let mongo_options = ClientOptions::parse(&mongo_url).await?;
+    let mut mongo_options = ClientOptions::parse(&mongo_url).await?;
+    // ⏱️ Timeouts cortos de selección/conexión (2s). Sin esto, el driver usa su
+    // default de 30s: el health-check de boot (check_health) y el handler /health
+    // se cuelgan 30s si Mongo está caído, y el startupProbe de Cloud Run (~20s)
+    // mata el contenedor en crash-loop. La telemetría es best-effort — jamás
+    // debe bloquear el arranque del motor matemático. Espeja el Python
+    // (serverSelectionTimeoutMS=2000).
+    mongo_options.server_selection_timeout = Some(Duration::from_secs(2));
+    mongo_options.connect_timeout = Some(Duration::from_secs(2));
     let mongo_client = Arc::new(MongoClient::with_options(mongo_options)?);
 
     // 3. Cliente HTTP — pool tuneado para Cloud Run (2 vCPUs)

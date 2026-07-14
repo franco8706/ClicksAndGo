@@ -10,6 +10,7 @@ from src.agents.news_radar import NewsRadarAgent
 from src.agents.market_intelligence import MarketIntelligenceAgent
 from src.agents.semantic_engine import SemanticEngineAgent
 from src.agents.legal_agent import LegalComplianceAgent
+from src.agents.price_alert_agent import PriceAlertAgent
 from src.providers import ProviderRouter
 
 class MasterOrchestratorAgent:
@@ -173,6 +174,8 @@ class MasterOrchestratorAgent:
                     # Señales de reputación para el scorer genérico (no-laptops).
                     "rating": float(d.get("specs", {}).get("rating", 0) or 0),
                     "reviews": int(d.get("specs", {}).get("reviews", 0) or 0),
+                    # Specs del tipo → bonus de scoring por tipo en Rust.
+                    "specs": d.get("specs", {}) if isinstance(d.get("specs"), dict) else {},
                     "current_price": float(d["financials"].get("current_price", 0)),
                     "original_price": float(d["financials"].get("original_price", 0)),
                     "exchange_rate": float(d["financials"].get("applied_exchange_rate", 1.0)),
@@ -211,3 +214,10 @@ class MasterOrchestratorAgent:
                 except Exception: pass
 
         self.log_action("MasterOrchestrator", f"Misión completada. {success_count}/{len(enriched_deals)} ofertas guardadas en PostgreSQL.")
+
+        # 9. 🔔 Re-engagement: notificar alertas de precio alcanzadas (email vía Resend).
+        #    Corre después de persistir los precios nuevos — así compara contra lo más fresco.
+        try:
+            PriceAlertAgent(self).check_and_notify()
+        except Exception as e:
+            self.log_action("PriceAlertAgent", f"Fallo al procesar alertas de precio: {e}", "ERROR")

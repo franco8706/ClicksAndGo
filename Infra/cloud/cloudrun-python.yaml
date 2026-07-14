@@ -57,10 +57,29 @@ spec:
           value: https://clicks-rust-798903122073.us-central1.run.app/api/v1/score/batch
         - name: RUST_BENCHMARK_URL
           value: https://clicks-rust-798903122073.us-central1.run.app/api/v1/benchmarks/run
+        # 📧 PriceAlertAgent: link de "ver producto" dentro del email de alerta.
+        - name: PUBLIC_WEB_URL
+          value: https://clicks-web-798903122073.us-central1.run.app
+        - name: AUTH_FROM_EMAIL
+          value: noreply@clicksandgo.com
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:
               name: MONGODB_URI
+              key: latest
+        # 🛡️ Llama a GET /api/v1/price_alerts/pending y POST /mark_notified en Rails
+        # (mismo secreto compartido que usa Web — ver INTERNAL_API_KEY en cloudrun-rails.yaml).
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: INTERNAL_API_KEY
+              key: latest
+        # Sin esta key, PriceAlertAgent detecta alertas alcanzadas pero no envía
+        # el email (las deja pendientes) — ver Python/src/agents/price_alert_agent.py.
+        - name: AUTH_RESEND_KEY
+          valueFrom:
+            secretKeyRef:
+              name: AUTH_RESEND_KEY
               key: latest
         livenessProbe:
           httpGet:

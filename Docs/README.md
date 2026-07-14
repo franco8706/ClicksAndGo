@@ -14,7 +14,7 @@ Si un cambio toca la arquitectura, se refleja en los tres.
 
 ---
 
-## 📸 Estado del proyecto (2026-07-07)
+## 📸 Estado del proyecto (2026-07-10)
 
 **Qué es:** plataforma global de comparación de precios y afiliación, con un sistema agéntico de IA en el centro. Empezó con notebooks; hoy es un **catálogo multi-producto** (computación · periféricos · impresión).
 
@@ -24,6 +24,7 @@ Si un cambio toca la arquitectura, se refleja en los tres.
 - ✅ Pipeline de ingesta agéntica (recolección API-first → Rust → Rails) con contingencia Antigravity de costo cero.
 - ✅ Catálogo, ofertas y noticias por país (geo por IP o preferencia del usuario).
 - ✅ Autenticación sin contraseñas (OAuth + magic links) y dashboard de usuario (favoritos + alertas de precio).
+- ✅ **PriceAlertAgent** — avisa por email cuando un producto alcanza el precio objetivo (motor de re-engagement).
 - ✅ Monitoreo legal de ToS de afiliados (3 capas: Rust → Antigravity → Gemini).
 - ✅ Tema claro (ADN NVIDIA, acento azul) y escalado multi-producto.
 - ✅ Seguridad auditada (open-redirect, SSRF, XSS, IDOR, headers, SSL) y costos GCP optimizados.
@@ -32,7 +33,7 @@ Si un cambio toca la arquitectura, se refleja en los tres.
 1. 🔴 **Deploy a Cloud Run** con URL pública (bloquea la aprobación de afiliados).
 2. 🔴 Correr migraciones en Cloud SQL + validar boot real de Rails + `cargo check` de Rust.
 3. 🔴 Configurar cuentas externas (OAuth, Resend, redes de afiliados, AAIP) y resolver el billing de Vertex AI.
-4. 🟠 **PriceAlertAgent** (Python) — el motor de re-engagement — y sembrar catálogo real multi-producto.
+4. 🟠 Afinar specs/scoring por tipo con datos reales de ingesta (el seed multi-producto de demo ya existe).
 
 ---
 
@@ -42,6 +43,6 @@ Si un cambio toca la arquitectura, se refleja en los tres.
 |---|---|
 | Taxonomía de productos (fuente única) | `Web/src/types/product.ts` |
 | Contrato de datos (DTO) | `Web/src/types/laptop.ts` ↔ serializer de Rails |
-| Migraciones SQL | `Infra/db/migration_{auth_v1,user_v2,products_v3}.sql` |
+| Migraciones SQL | `Infra/db/migration_{auth_v1,user_v2,products_v3,alerts_v4}.sql` |
 | Guía de deploy | `Infra/cloud/RUNBOOK_DEPLOY.md` |
 | Control de costos GCP | `Infra/cloud/COSTOS.md` |

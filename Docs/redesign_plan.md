@@ -12,7 +12,7 @@
 
 ### 🔴 Bloqueante para lanzar (deploy + aprobación de afiliados)
 1. **Deploy a Cloud Run con URL pública** — bloquea la aprobación en las redes de afiliados. Guía: `Infra/cloud/RUNBOOK_DEPLOY.md`.
-2. **Correr las migraciones en Cloud SQL**: `migration_user_v2.sql` + `migration_products_v3.sql` (la de auth ya corrió).
+2. **Correr las migraciones en Cloud SQL** (en orden): `migration_user_v2.sql` → `products_v3` → `alerts_v4` → `integrity_v5` (la de auth ya corrió). Luego `seeds_products_multi.sql` si se quiere el catálogo demo.
 3. **Validar el boot real de Rails** (`bundle install` + `rails routes` + request de humo a los endpoints nuevos) — no se pudo en el sandbox por falta de red a rubygems.
 4. **`cargo check` real de Rust** — validar el scorer multi-producto (no hay red a crates.io en el sandbox).
 5. **Resolver Vertex AI 403 billing** (proyecto GCP `clicks-and-go`) — opera con Antigravity mientras tanto.
@@ -21,9 +21,9 @@
 8. **Registro AAIP** (Ley 25.326, Argentina) — responsabilidad del titular.
 
 ### 🟠 Corazón agéntico / re-engagement (post-lanzamiento cercano)
-- **PriceAlertAgent (Python)**: tras cada ciclo de precios, consultar `price_alerts` activas y notificar por email (Resend) cuando `precio_actual <= target_price`. El motor del re-engagement.
-- **Sembrar catálogo real multi-producto**: hoy `seeds_catalog.sql` es solo laptops; agregar monitores, teclados, mouse, auriculares, impresoras, etc.
-- **Afinar specs y scoring por tipo** con datos reales de ingesta (ratings/reseñas para el scorer genérico de Rust).
+- ✅ **PriceAlertAgent (Python)** — construido en FASE 8 (ver abajo). Pendiente operativo: correr `migration_alerts_v4.sql` en Cloud SQL y configurar `AUTH_RESEND_KEY` (sin la key detecta pero no envía).
+- ✅ **Sembrar catálogo multi-producto**: `seeds_products_multi.sql` — 22 productos (monitores, teclados, mouse, auriculares, webcams, impresoras, desktops, insumos) en US/ES/MX con `product_type` + `specs`. Validado contra Postgres real (esquema + migraciones + seeds, 62 productos totales). La fuente definitiva sigue siendo la ingesta agéntica.
+- ✅ **Scoring por tipo** (FASE 9): `type_spec_bonus` en Rust suma calidad por señales de cada tipo (Hz/4K/panel, mecánico/wireless, ANC, dpi, wifi/ppm…). Pendiente operativo: `cargo check` + ratings/reseñas reales de ingesta.
 
 ### 🟡 Hardening / escala (cuando haya tráfico)
 - **Endurecer `ingress`** de Rails/Rust/Python con IAM (`roles/run.invoker`) en vez de `all` + `INTERNAL_API_KEY` (defensa en profundidad).
@@ -33,7 +33,7 @@
 - **Colas asíncronas** (Celery + Redis) para picos de ingesta masiva.
 
 ### 🟢 Mejoras de producto / deuda menor
-- **Buscador predictivo del hero**: hoy sugiere categorías de laptop; generalizar a tipos de producto.
+- ✅ **Buscador predictivo del hero** (FASE 9): generalizado a tipos de producto (sugiere las 9 categorías con ícono + tagline, y navega todas al enfocar). Antes sugería categorías de laptop que ya no filtraban nada.
 - **`HardwareNewsSlider.tsx`**: código muerto tras el ticker inline — eliminar o reintegrar (decisión de producto).
 
 ---
@@ -125,6 +125,23 @@ claras y bien definidas.
 - [ ] Sembrar catálogo real multi-producto (`seeds_catalog.sql` hoy es solo laptops).
 - [ ] Afinar specs y scoring por tipo con datos reales de ingesta (ratings/reseñas para el scorer genérico).
 - [ ] Buscador predictivo del hero: hoy sugiere categorías de laptop; generalizar a tipos de producto.
+
+## 🟢 FASE 8: PriceAlertAgent — motor de re-engagement (Completado v1)
+El corazón agéntico del re-engagement: avisar por email cuando un producto
+alcanza el precio objetivo que el usuario guardó.
+- [x] **DB** `migration_alerts_v4.sql` — `price_alerts.notified_at` + índice parcial de pendientes (aditiva).
+- [x] **Rails** — endpoints internos `GET /price_alerts/pending` y `POST /price_alerts/mark_notified` (InternalApiAuth); Rails resuelve la comparación precio≤objetivo (dueño de la DB).
+- [x] **Python** `PriceAlertAgent` — paso 9 del `MasterOrchestrator` (post-persistencia): consulta pendientes, envía email "bajó de precio" vía Resend, marca notificadas. Guard: sin `AUTH_RESEND_KEY` detecta pero no envía. Zero-Trust (no toca Postgres). Verificado con test de comportamiento (guard + envío + marcado).
+- [ ] Correr `migration_alerts_v4.sql` en Cloud SQL.
+- [ ] Configurar `AUTH_RESEND_KEY` + verificar dominio en Resend (mismo que magic links).
+- [ ] Re-armado: reactivar la alerta si el precio vuelve a subir por encima del objetivo (hoy notifica una sola vez).
+
+## 🟢 FASE 9: Integridad de datos + scoring por tipo + buscador generalizado (Completado)
+Auditoría y blindaje de la base + refinamiento del scoring + arreglo del buscador.
+- [x] **Integridad DB** `migration_integrity_v5.sql` — auditada contra Postgres real (Docker): datos limpios, pero faltaban guardas. Agregado: índices en FKs (`accounts.user_id`, `user_favorites.laptop_id`), `price_alerts` FKs NOT NULL, CHECKs (deal_score/precios/target), índice único de alerta activa, y **normalización de la taxonomía** vía tabla lookup `product_categories` + FK. Idempotente; verificado que rechaza datos inválidos.
+- [x] **Scoring por tipo** — `type_spec_bonus` en Rust (7 tipos) sobre el scorer genérico; Python envía `specs` a Rust.
+- [x] **Buscador predictivo** — generalizado a los 9 tipos de producto (ícono + tagline, navegación al enfocar); placeholder i18n product-genérico.
+- [ ] `cargo check` de Rust (scorer por tipo) + correr `migration_integrity_v5.sql` en Cloud SQL.
 
 ## 🟡 Deuda técnica conocida (no bloqueante)
 - `HardwareNewsSlider.tsx` quedó sin usar tras integrar el ticker de noticias dentro de `HeroSection` — candidato a eliminar o reintegrar (decisión pendiente de producto, no técnica).

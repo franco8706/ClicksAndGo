@@ -26,6 +26,8 @@
 | 2026-07-06 | Auditoría Zero-Trust → **refactor a Rails** + reorganización de `/Docs` |
 | 2026-07-07 | **Rediseño a tema claro** (ADN NVIDIA, acento azul) |
 | 2026-07-07 | **Escalado multi-producto v1** (de notebooks a catálogo digital completo) |
+| 2026-07-10 | Docs reorganizados (legibilidad) · commit+push · **PriceAlertAgent v1** (re-engagement) |
+| 2026-07-10 | Seed multi-producto · **Integridad DB v5** · scoring por tipo · buscador generalizado |
 
 ---
 
@@ -152,3 +154,25 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Web]` `types/product.ts` = fuente única de la taxonomía (tipos, familias, `SPEC_SCHEMA`, `formatSpec`). DTO `Laptop` extendido con `product_type`/`specs` (+ alias `Product`). `CatalogSection` filtra por tipo con chips dinámicos. `LaptopCard` **y la página de detalle `[slug]`** renderizan specs por tipo + badge de categoría (la impresora muestra Tecnología/ppm/WiFi, no "RAM 0GB"). i18n `categories`/`specs`/`typeTagline` en es/en/pt.
 - `[Verificación en vivo]`: mock de Rails con 16 productos (9 tipos) → home + detalle renderizan los 9 tipos con sus chips y specs (165Hz, 8000 DPI, ANC, switch, IPS, ppm). `next build` ✅, tsc 0, ESLint 0, vitest 5/5. `/es`, `/es/login`, `/es?cat=printer`, detalles no-laptop → 200.
 - `[Pendiente]`: correr `migration_products_v3.sql` en Cloud SQL; `cargo check` de Rust; sembrar catálogo real multi-producto; afinar specs/scoring por tipo con datos reales.
+
+## 2026-07-10 · Reorganización de /Docs + commit/push + PriceAlertAgent v1
+
+- `[Docs — legibilidad]`: la bitácora tenía ~133 líneas de logs automáticos de runtime (boot-ups, "pausa táctica 5s", "Score 5.0" repetido) que ahogaban las entradas de ingeniería → resumidas a un bloque, entradas reordenadas cronológicamente y agrupadas por sesión con índice. Nuevo `Docs/README.md` (puerta de entrada). `contexto_maestro` con **mapa rápido** de un vistazo; `redesign_plan` con **backlog priorizado** arriba (🔴 lanzar · 🟠 agéntico · 🟡 hardening · 🟢 producto).
+- `[Git]`: commit único de 58 archivos (multi-producto + rediseño claro + backend Zero-Trust + docs) → `b495a0c`, push a `main`. El token del Codespace "blank" no tenía escritura sobre ClicksAndGo; se pusheó con credencial provista por el titular (a revocar).
+- `[PriceAlertAgent v1 — re-engagement]`: el corazón agéntico de traer al usuario de vuelta.
+  - `[DB]` `migration_alerts_v4.sql` — `price_alerts.notified_at` (evita renotificar) + índice parcial de pendientes. Aditiva.
+  - `[Rails]` `AlertDispatchController` (InternalApiAuth): `GET /api/v1/price_alerts/pending` (alertas activas con precio≤objetivo, no notificadas, + email y datos del producto) y `POST /api/v1/price_alerts/mark_notified`. Rails resuelve la comparación (dueño de la DB). `ruby -c` ✅.
+  - `[Python]` `PriceAlertAgent` — paso 9 del `MasterOrchestrator` (tras persistir precios): consulta pendientes, envía email "bajó de precio" vía Resend (`AUTH_RESEND_KEY`/`AUTH_FROM_EMAIL`), marca notificadas. Zero-Trust (no toca Postgres). Sin API key: detecta pero no envía (deja pendiente). Nueva env `PUBLIC_WEB_URL` para el link del email.
+  - `[Verificación]`: test de comportamiento con `requests` simulado — caso sin key (guard: no envía/no marca) y caso con key (2 emails con subject/precio/link correctos + marcado de ids). `py_compile` ✅.
+  - `[Pendiente]`: correr `migration_alerts_v4.sql` en Cloud SQL; configurar Resend; re-armado de alerta si el precio vuelve a subir.
+- **[2026-07-10]** `[Datos]`: SEED MULTI-PRODUCTO v1.
+  - `[seeds_products_multi.sql]` NUEVO: 4 retailers de marketplace/periféricos (Amazon US/ES, Best Buy US, MercadoLibre MX) + 22 productos de 8 tipos (monitor·keyboard·mouse·headphones·webcam·printer·desktop·supplies) en US/ES/MX, con `product_type` + `specs` JSONB y su `price_histories`. Idempotente (`ON CONFLICT`).
+  - `[Verificación real]`: levantado Postgres 16 en Docker → aplicados esquema + las 4 migraciones + ambos seeds con `ON_ERROR_STOP=1` (todo exit 0). Confirmado: 62 productos totales (40 laptops + 22 nuevos), 62 price_histories, specs por tipo correctas, y la query del serializer (join + `specs->>'...'`) y el filtro `?type=` devuelven bien. La fuente definitiva del catálogo sigue siendo la ingesta agéntica; este seed es para demo/QA.
+
+## 2026-07-10 · Integridad DB + scoring por tipo + buscador generalizado
+
+- `[Integridad DB — auditoría real]`: levantado Postgres 16 (Docker), cargado todo y corrida una batería de diagnósticos. **Datos limpios** (0 huérfanos, 0 scores fuera de rango, 0 tipos inválidos, 0 precios negativos, 0 alertas duplicadas), pero **faltaban guardas de esquema**: FKs sin índice (`accounts.user_id`, `user_favorites.laptop_id`), `price_alerts.user_id/laptop_id` nullable, cero CHECKs, `product_type` sin integridad referencial.
+  - `[migration_integrity_v5.sql]` NUEVO (idempotente): índices en esas FKs; `price_alerts` FKs → NOT NULL; CHECKs (`deal_score` ∈ [1,10], `precio_actual`≥0, `target_price`>0); índice único de una alerta activa por (user, laptop); y **normalización de la taxonomía** con tabla lookup `product_categories` (code PK, family, label) + FK desde `laptops.product_type` — integridad referencial sin perder flexibilidad (sumar tipo = INSERT). Verificado que **rechaza** datos malos (product_type='banana' → FK, deal_score=99 → CHECK, target=0 → CHECK), que es idempotente y que ya **ninguna FK queda sin índice**.
+- `[Scoring por tipo — Rust]`: nueva `type_spec_bonus(product_type, specs)` (0–1.5) que suma calidad por señales propias de cada tipo leídas del JSONB: monitor→refresh_hz/4K/panel, teclado→mecánico/wireless/backlit, mouse→dpi/wireless, auriculares→ANC/wireless, webcam→4K/fps, impresora→wifi/color/ppm, insumos→rendimiento. `HardwareSpecs` suma el campo `specs`; el `ConcurrencyRouter` lo agrega al scorer genérico. `master_orchestrator` envía `specs` a Rust. La matemática sigue 100% en Rust. Pendiente: `cargo check` (sin red a crates.io).
+- `[Buscador predictivo — Web]`: sugería categorías de laptop (gaming/business) que ya **no filtraban** (el catálogo filtra por `product_type`). Generalizado: sugiere los 9 tipos con ícono + tagline localizado, navega todas al enfocar sin texto, y dispara `catalog:filter` con el `product_type`. Placeholder i18n cambiado a genérico ("¿Qué producto estás buscando?"). `SearchSuggestion` (laptop) reemplazado por `TypeSuggestion` derivado de la taxonomía.
+- `[Verificación]`: Postgres real (migración aplica/rechaza/idempotente) ✅ · `tsc` 0 · ESLint 0 · `next build` ✅ · vitest 5/5 ✅ · `py_compile` ✅ · `ruby -c` (sin cambios Ruby esta vez). Rust queda para `cargo check` pre-deploy.

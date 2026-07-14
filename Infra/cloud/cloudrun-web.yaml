@@ -68,6 +68,31 @@ spec:
             secretKeyRef:
               name: INTERNAL_API_KEY
               key: latest
+        # 📧 Login por magic link (NextAuth Resend provider) — se activa solo si
+        # AUTH_RESEND_KEY está presente (ver Web/src/auth.ts). Mismo secreto que
+        # usa PriceAlertAgent en Python para los avisos de "bajó de precio".
+        - name: AUTH_FROM_EMAIL
+          value: noreply@clicksandgo.com
+        - name: AUTH_RESEND_KEY
+          valueFrom:
+            secretKeyRef:
+              name: AUTH_RESEND_KEY
+              key: latest
+        # 🔑 OAuth (Google/Microsoft/Facebook) — CADA proveedor se activa solo si
+        # SUS DOS variables están presentes (auth.ts). Descomentar de a pares
+        # cuando se registren las apps en cada consola (ver RUNBOOK paso 6).
+        # - name: AUTH_GOOGLE_ID
+        #   valueFrom: { secretKeyRef: { name: AUTH_GOOGLE_ID, key: latest } }
+        # - name: AUTH_GOOGLE_SECRET
+        #   valueFrom: { secretKeyRef: { name: AUTH_GOOGLE_SECRET, key: latest } }
+        # - name: AUTH_MICROSOFT_ID
+        #   valueFrom: { secretKeyRef: { name: AUTH_MICROSOFT_ID, key: latest } }
+        # - name: AUTH_MICROSOFT_SECRET
+        #   valueFrom: { secretKeyRef: { name: AUTH_MICROSOFT_SECRET, key: latest } }
+        # - name: AUTH_FACEBOOK_ID
+        #   valueFrom: { secretKeyRef: { name: AUTH_FACEBOOK_ID, key: latest } }
+        # - name: AUTH_FACEBOOK_SECRET
+        #   valueFrom: { secretKeyRef: { name: AUTH_FACEBOOK_SECRET, key: latest } }
         startupProbe:
           httpGet:
             path: /

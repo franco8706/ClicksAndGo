@@ -3,29 +3,32 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Image from "next/image";
 import {
-  Search, X, Briefcase, Video, Gamepad2,
-  GraduationCap, Zap, Laptop, ChevronDown, ChevronRight,
+  Search, X, Laptop, Monitor, MonitorSmartphone, Keyboard, Mouse,
+  Headphones, Webcam, Printer, Droplet, ChevronDown, ChevronRight,
 } from "lucide-react";
-import type { SearchSuggestion, HardwareNews } from "@/types/laptop";
+import type { HardwareNews } from "@/types/laptop";
+import { PRODUCT_TYPES, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
 
-/* ── Iconos por categoría ── */
-const CATEGORY_ICON: Record<string, React.ReactNode> = {
-  gaming:      <Gamepad2      size={16} className="text-blue-400" />,
-  business:    <Briefcase     size={16} className="text-blue-400" />,
-  workstation: <Zap           size={16} className="text-blue-400" />,
-  ultrabook:   <Laptop        size={16} className="text-blue-400" />,
-  budget:      <GraduationCap size={16} className="text-blue-400" />,
-  creator:     <Video         size={16} className="text-blue-400" />,
+/* ── Iconos por tipo de producto (multi-producto) ── */
+const TYPE_ICON: Record<ProductType, React.ReactNode> = {
+  laptop:     <Laptop            size={16} className="text-blue-500" />,
+  desktop:    <Monitor           size={16} className="text-blue-500" />,
+  monitor:    <MonitorSmartphone size={16} className="text-blue-500" />,
+  keyboard:   <Keyboard          size={16} className="text-blue-500" />,
+  mouse:      <Mouse             size={16} className="text-blue-500" />,
+  headphones: <Headphones        size={16} className="text-blue-500" />,
+  webcam:     <Webcam            size={16} className="text-blue-500" />,
+  printer:    <Printer           size={16} className="text-blue-500" />,
+  supplies:   <Droplet           size={16} className="text-blue-500" />,
 };
 
-const SUGGESTIONS: SearchSuggestion[] = [
-  { query: "Laptop para jugar juegos pesados",   category: "gaming",      result_counts: 12 },
-  { query: "Laptop ligera para la oficina",       category: "business",    result_counts: 8  },
-  { query: "Potencia máxima para programar",      category: "workstation", result_counts: 4  },
-  { query: "Laptop económica para estudiar",      category: "budget",      result_counts: 23 },
-  { query: "Notebook para edición de video 4K",  category: "creator",     result_counts: 7  },
-];
+/** Una sugerencia = un tipo de producto (dispara el filtro del catálogo). */
+interface TypeSuggestion {
+  readonly category: ProductType;
+  readonly query: string;   // etiqueta localizada (ej. "Monitores")
+  readonly hint: string;    // tagline por tipo
+}
 
 /* Fallback si no hay noticias del API */
 const STATIC_TICKER: { source: string; headline: string; url?: string }[] = [
@@ -58,15 +61,24 @@ function PredictiveSearch({ dict }: { readonly dict: Dict }) {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  // Sugerencias = tipos de producto (localizados). Se construyen de la taxonomía.
+  const suggestions = useMemo<TypeSuggestion[]>(() => {
+    const catDict = (dict.categories ?? {}) as Record<string, string>;
+    const tagDict = (dict.typeTagline ?? {}) as Record<string, string>;
+    return PRODUCT_TYPES.map((t) => ({ category: t, query: catDict[t] || t, hint: tagDict[t] || "" }));
+  }, [dict]);
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return [];
-    return SUGGESTIONS.filter((s) => s.query.toLowerCase().includes(q)).slice(0, 5);
-  }, [query]);
+    if (!q) return suggestions; // sin texto: navegar todas las categorías
+    return suggestions
+      .filter((s) => s.query.toLowerCase().includes(q) || s.category.includes(q) || s.hint.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [query, suggestions]);
 
-  const isOpen = isFocused && query.length > 0 && filtered.length > 0;
+  const isOpen = isFocused && filtered.length > 0;
 
-  const handleSelect = (s: SearchSuggestion) => {
+  const handleSelect = (s: TypeSuggestion) => {
     setQuery(s.query);
     setFocused(false);
     inputRef.current?.blur();
@@ -124,11 +136,11 @@ function PredictiveSearch({ dict }: { readonly dict: Dict }) {
               className="w-full flex items-center gap-4 px-5 py-4 hover:bg-blue-50 transition-colors text-left group border-b border-[#e6e8ec] last:border-0 cursor-pointer"
             >
               <div className="p-2.5 rounded bg-[#f5f6f8] border border-[#e6e8ec] group-hover:border-blue-300 group-hover:scale-105 transition-all duration-200">
-                {CATEGORY_ICON[s.category ?? ""] || <Search size={16} className="text-blue-600" />}
+                {TYPE_ICON[s.category] || <Search size={16} className="text-blue-600" />}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-[#0a0e14] group-hover:text-blue-600 transition-colors">{s.query}</p>
-                <p className="text-[10px] text-[#9aa1ac] font-black uppercase mt-0.5 tracking-wide">{s.result_counts} opciones verificadas</p>
+                {s.hint && <p className="text-[11px] text-[#9aa1ac] font-medium mt-0.5 line-clamp-1">{s.hint}</p>}
               </div>
               <ChevronRight size={14} className="text-[#9aa1ac] group-hover:text-blue-600 transition-colors" />
             </button>

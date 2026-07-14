@@ -65,7 +65,16 @@ Los manifests referencian estos secretos por `secretKeyRef → key: latest`:
 | `MONGODB_URI` | rust, python | `mongodb+srv://USER:PASS@cluster.mongodb.net/clicksandgo` |
 | `SECRET_KEY_BASE` | rails | `openssl rand -hex 64` |
 | `AUTH_SECRET` | web | `openssl rand -base64 33` |
-| `INTERNAL_API_KEY` | rails, web | `openssl rand -hex 32` |
+| `INTERNAL_API_KEY` | rails, web, **python** | `openssl rand -hex 32` — mismo valor en los tres |
+| `AUTH_RESEND_KEY` | web, **python** | API key de [resend.com](https://resend.com) (dominio verificado) — habilita login por magic link Y los emails de `PriceAlertAgent`. Sin ella: login solo por OAuth (si está configurado), y las alertas de precio se detectan pero no se envían. |
+
+Opcionales (login social — activar de a pares cuando se registren las apps, ver paso 6):
+
+| Secreto | Usado por |
+|---|---|
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | web |
+| `AUTH_MICROSOFT_ID` / `AUTH_MICROSOFT_SECRET` | web |
+| `AUTH_FACEBOOK_ID` / `AUTH_FACEBOOK_SECRET` | web |
 
 > `REDIS_URL` **no** es necesario: sin él, Rails cae a `memory_store` (así se
 > ahorró Memorystore). Los manifests no lo montan.
@@ -76,14 +85,14 @@ Los manifests referencian estos secretos por `secretKeyRef → key: latest`:
 > público/privado).
 
 ```bash
-for s in DATABASE_URL MONGODB_URI SECRET_KEY_BASE AUTH_SECRET INTERNAL_API_KEY; do
+for s in DATABASE_URL MONGODB_URI SECRET_KEY_BASE AUTH_SECRET INTERNAL_API_KEY AUTH_RESEND_KEY; do
   gcloud secrets create "$s" --replication-policy=automatic || true
 done
 
 # Cargar el valor real de cada uno (ejemplo):
 printf 'postgresql://USER:PASS@/clicksandgo?host=/cloudsql/clicks-and-go:us-central1:clicks-db' \
   | gcloud secrets versions add DATABASE_URL --data-file=-
-# ... repetir para MONGODB_URI, SECRET_KEY_BASE, AUTH_SECRET, INTERNAL_API_KEY
+# ... repetir para MONGODB_URI, SECRET_KEY_BASE, AUTH_SECRET, INTERNAL_API_KEY, AUTH_RESEND_KEY
 ```
 
 ---
@@ -91,15 +100,28 @@ printf 'postgresql://USER:PASS@/clicksandgo?host=/cloudsql/clicks-and-go:us-cent
 ## 2. Base de datos (solo si Cloud SQL está vacía)
 
 El `entrypoint.sh` de Rails corre `rails db:prepare` al bootear (crea/migra el
-esquema base). Pero el catálogo y auth son SQL aparte. Si la instancia
-`clicks-db` es nueva, aplicá en orden vía `gcloud sql connect` o Cloud SQL Studio:
+esquema base). Pero el catálogo, auth, multi-producto y alertas son SQL
+aparte. Si la instancia `clicks-db` es nueva, aplicá **en este orden exacto**
+vía `gcloud sql connect` o Cloud SQL Studio (todas idempotentes — seguro
+re-correrlas si hay dudas de qué ya se aplicó):
 
-1. `Infra/db/esquema_postgres.sql` — esquema base
-2. `Infra/db/migration_auth_v1.sql` — columnas de perfil + tablas `sessions` / `verification_tokens`
-3. `Infra/db/seeds_catalog.sql` — 25 retailers + 40 laptops + 40 price_histories (idempotente)
+1. `Infra/db/esquema_postgres.sql` — esquema base (retailers, laptops, price_histories, users, user_favorites, price_alerts)
+2. `Infra/db/migration_auth_v1.sql` — perfil extendido + `sessions` / `verification_tokens` (NextAuth)
+3. `Infra/db/migration_user_v2.sql` — geo/preferencias de usuario + índices de dashboard
+4. `Infra/db/migration_products_v3.sql` — `product_type` + `specs` JSONB (catálogo multi-producto)
+5. `Infra/db/migration_alerts_v4.sql` — `notified_at` + índice de alertas pendientes (requerido por `PriceAlertAgent`)
+6. `Infra/db/migration_integrity_v5.sql` — índices de FK, `NOT NULL`, tabla `product_categories` + FK, CHECKs de rango, unicidad de alertas activas
 
-> Si reutilizás la Cloud SQL que ya venía cargada (docs 2026-06/07), **saltear
-> este paso**: los scripts son idempotentes pero no hace falta re-correrlos.
+Luego, semillas (opcional, para catálogo demo):
+
+7. `Infra/db/seeds_catalog.sql` — 25 retailers + 40 laptops + 40 price_histories
+8. `Infra/db/seeds_products_multi.sql` — 4 retailers + 22 productos multi-tipo (monitores, teclados, mouse, auriculares, webcams, impresoras, desktops, insumos) en US/ES/MX
+
+> Si reutilizás la Cloud SQL que ya venía cargada (docs 2026-06/07): esa
+> instancia ya corrió 1–3 y `seeds_catalog.sql`. Solo faltan **4, 5, 6** y,
+> si querés el catálogo multi-producto de demo, **8**. Todas son idempotentes
+> (`IF NOT EXISTS` / `ON CONFLICT`) — no hay riesgo en re-correr las que ya
+> se aplicaron.
 
 ---
 
@@ -127,7 +149,54 @@ número de proyecto (`...-798903122073.us-central1.run.app`), así que el paso d
 
 ---
 
-## 4. Verificación post-deploy
+## 4. Cloud Scheduler (jobs automáticos — sin esto, nada corre solo)
+
+Python escala a 0 y **nada lo despierta** salvo estos jobs. Sin este paso,
+el deploy queda arriba pero el catálogo nunca se refresca ni se evalúan las
+alertas de precio — es fácil pasarlo por alto porque el resto del sistema
+"funciona" igual (sirve lo que ya haya en Postgres).
+
+```bash
+PYTHON_SERVICE_URL=$(gcloud run services describe clicks-python \
+  --region us-central1 --format="value(status.url)")
+
+# 1. Caza de ofertas + scoring + persistencia + PriceAlertAgent (04:00 UTC)
+gcloud scheduler jobs create http full-cycle-daily \
+  --schedule="0 4 * * *" \
+  --uri="${PYTHON_SERVICE_URL}/api/v1/tasks/full-cycle" \
+  --http-method=POST --attempt-deadline=1800s \
+  --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+  --location=us-central1
+
+# 2. NewsRadar (cada 6h, desfasado 30min)
+gcloud scheduler jobs create http news-radar-6h \
+  --schedule="30 */6 * * *" \
+  --uri="${PYTHON_SERVICE_URL}/api/v1/tasks/news-radar" \
+  --http-method=POST \
+  --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+  --location=us-central1
+
+# 3. Auditoría legal de afiliados (diaria + chequeo rápido cada 6h)
+gcloud scheduler jobs create http legal-audit-daily \
+  --schedule="0 3 * * *" \
+  --uri="${PYTHON_SERVICE_URL}/api/v1/legal/audit?mode=full" \
+  --http-method=POST \
+  --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+  --location=us-central1
+gcloud scheduler jobs create http legal-audit-6h \
+  --schedule="0 */6 * * *" \
+  --uri="${PYTHON_SERVICE_URL}/api/v1/legal/audit?mode=check" \
+  --http-method=POST \
+  --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+  --location=us-central1
+```
+
+> Ver `Infra/cloud/scheduler-hunt.yaml` / `scheduler-news.yaml` /
+> `scheduler-legal.yaml` para el detalle de cada horario y por qué.
+
+---
+
+## 5. Verificación post-deploy
 
 ```bash
 # URLs finales
@@ -150,10 +219,12 @@ Checklist funcional:
 - [ ] Home `/es` renderiza catálogo + ofertas + noticias.
 - [ ] **Disclosure de afiliados visible** en footer y bajo cada botón de compra.
 - [ ] Login `/es/login` carga (OAuth aparecerá cuando se configuren las apps).
+- [ ] `gcloud scheduler jobs list --location us-central1` muestra los 4 jobs
+      (`full-cycle-daily`, `news-radar-6h`, `legal-audit-daily`, `legal-audit-6h`).
 
 ---
 
-## 5. Dominio propio + AUTH_URL (cuando haya dominio)
+## 6. Dominio propio + AUTH_URL (cuando haya dominio)
 
 En prod detrás del Load Balancer / dominio `clicksandgo.com`:
 1. Mapear el dominio al servicio `clicks-web` (o al LB `clicks-lb`).
@@ -163,12 +234,13 @@ En prod detrás del Load Balancer / dominio `clicksandgo.com`:
 
 ---
 
-## 6. Costos (leer antes de dejarlo prendido)
+## 7. Costos (leer antes de dejarlo prendido)
 
 Ver [`COSTOS.md`](./COSTOS.md). Resumen pre-lanzamiento:
 - Los 4 servicios ya tienen `cpu-throttling: true` y `minScale` bajo (web/rails
   pueden ir a `0` para gasto casi nulo, tolerando cold-start ~2-4s).
-- NewsRadar por Cloud Scheduler (`scheduler-news.yaml`), Python en `minScale: 0`.
+- Los 3 Cloud Scheduler jobs (`full-cycle`, `news-radar`, `legal-audit`) son lo
+  único que despierta a Python — `minScale: 0` se mantiene el resto del día.
 - Crear presupuesto con alertas (`gcloud billing budgets create ...`, ver COSTOS.md).
 - Cloud SQL es el mayor costo fijo → tier chico (`db-f1-micro`/`db-g1-small`).
 - Apagar la VM de Compute Engine si no se usa.

@@ -37,6 +37,15 @@ Rails.application.routes.draw do
       post "products",      to: "notebooks#create"
 
       # =========================================================
+      # 🔔 DESPACHO DE ALERTAS DE PRECIO (system-level)
+      # Consumido por el PriceAlertAgent (Python) tras cada ciclo de precios.
+      # Protegido por InternalApiAuth (clave compartida). No confundir con
+      # las rutas por-usuario `users/:user_id/price_alerts` de arriba.
+      # =========================================================
+      get  "price_alerts/pending",       to: "alert_dispatch#pending"
+      post "price_alerts/mark_notified", to: "alert_dispatch#mark_notified"
+
+      # =========================================================
       # 👤 CUENTA DE USUARIO (perfil, favoritos, alertas de precio)
       # Rails es el único dueño de lectura/escritura a Postgres — Next.js
       # consume estas rutas por fetch en vez de conectarse a la DB directo.

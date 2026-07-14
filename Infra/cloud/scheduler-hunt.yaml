@@ -1,0 +1,45 @@
+# =====================================================================
+# CLOUD SCHEDULER — Misión Diaria Completa (MarketHunter → Rust → Rails)
+#
+# Dispara /api/v1/tasks/full-cycle: caza de ofertas multi-retailer, scoring
+# (Rust), persistencia (Rails) y — al final del pipeline — PriceAlertAgent
+# (avisos de "bajó de precio" a usuarios con alertas activas).
+#
+# Sin este job, execute_daily_missions() NUNCA corre en Cloud Run: el
+# endpoint existe (protegido por Mutex, ver Python/main.py) pero nada lo
+# invoca solo. Sería el gap silencioso que deja el catálogo sin refrescar
+# y las alertas de precio sin evaluar.
+#
+# Horario: 04:00 UTC — después de legal-audit-daily (03:00 UTC), así la
+# auditoría de afiliados corre primero y el hunter usa fuentes ya validadas.
+#
+# Deploy:
+#   gcloud scheduler jobs create http full-cycle-daily \
+#     --schedule="0 4 * * *" \
+#     --uri="$(PYTHON_SERVICE_URL)/api/v1/tasks/full-cycle" \
+#     --http-method=POST \
+#     --attempt-deadline=1800s \
+#     --oidc-service-account-email=clicks-sa@clicks-and-go.iam.gserviceaccount.com \
+#     --location=us-central1
+# =====================================================================
+
+jobs:
+
+  - name: full-cycle-daily
+    schedule: "0 4 * * *"
+    timeZone: "UTC"
+    description: "Caza de ofertas + scoring Rust + persistencia Rails + PriceAlertAgent — pipeline comercial completo"
+    # El endpoint encola en background y responde al toque, pero la misión real
+    # (scraping multi-retailer + IA + Rust + Rails) puede tardar varios minutos.
+    attemptDeadline: "1800s"
+    httpTarget:
+      uri: "${PYTHON_SERVICE_URL}/api/v1/tasks/full-cycle"
+      httpMethod: POST
+      oidcToken:
+        serviceAccountEmail: clicks-sa@clicks-and-go.iam.gserviceaccount.com
+    retryConfig:
+      # El endpoint devuelve 429 si ya hay una misión en curso (Mutex) — no
+      # tiene sentido reintentar agresivo, solo cubrir un fallo transitorio de red.
+      retryCount: 1
+      minBackoffDuration: "60s"
+      maxBackoffDuration: "180s"
