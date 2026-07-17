@@ -31,7 +31,7 @@ spec:
         # 💰 CPU facturada solo durante requests (Rails no hace trabajo de fondo).
         run.googleapis.com/cpu-throttling: "true"
         # Conexión a Cloud SQL vía socket unix (Auth Proxy embebido, sin IP pública)
-        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db
+        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db2
     spec:
       # Service account con permisos de Cloud SQL Client + Secret Manager
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com

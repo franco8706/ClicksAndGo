@@ -29,6 +29,7 @@
 | 2026-07-10 | Docs reorganizados (legibilidad) · commit+push · **PriceAlertAgent v1** (re-engagement) |
 | 2026-07-10 | Seed multi-producto · **Integridad DB v5** · scoring por tipo · buscador generalizado |
 | 2026-07-14 | **DEPLOY A PRODUCCIÓN** 🚀 — multiproducto EN VIVO en Cloud Run (migraciones + imágenes + schedulers) |
+| 2026-07-17 | Crisis de billing · **OAuth en vivo** · recorte de costos 3x (LB, minScale, Cloud SQL) |
 
 ---
 
@@ -191,3 +192,16 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Schedulers]`: creados `full-cycle-daily` (04:00 UTC — **el pipeline comercial no tenía disparador**: nunca corría solo), `legal-audit-daily` (03:00) y `legal-audit-6h`. Ya existía `news-radar-6h`. Disparo manual de `full-cycle` validó el cableado end-to-end (LegalAgent auditando ToS; los WARNINGs de fetch a Awin/CJ son anti-bot esperado).
 - `[URLs Cloud Run]`: ambas formas (`clicks-*-798903122073.us-central1.run.app` determinística y `clicks-*-2myrvivvhq-uc.a.run.app` legacy) **funcionan** — un timeout inicial desde el codespace fue un falso positivo de red.
 - `[Estado final]`: sistema multiproducto EN VIVO. Bloqueantes de negocio restantes: registro en redes de afiliados (manual del titular), cuenta Resend + descomentar `AUTH_RESEND_KEY`, OAuth providers, dominio propio + `AUTH_URL`, billing Vertex (opera con Antigravity).
+
+## 2026-07-17 · 🔥 Crisis de billing + OAuth en vivo + recorte de costos 3x
+
+- `[Billing]`: el proyecto se suspendió por falta de pago → los 4 servicios caídos. Tras el pago, `My Billing Account` volvió a OPEN pero **Cloud Run seguía devolviendo 429** ("no available instance") por horas. Diagnóstico: NO era billing (proyecto ACTIVE, API habilitada, cuota 100 instancias/200k CPU, revisión Ready, tráfico 100% a latest). Los logs mostraban que el contenedor **arrancaba sano** en el rollout (`Containers became healthy in 5.04s`) y luego el cold-start por request fallaba. Mitigado con `minScale=1`; **verificado el mismo día que el cold-start se recuperó solo** (`Starting new instance. Reason: AUTOSCALING` + HTTP 200 tras >15 min ocioso) → vuelto a `minScale=0`. Lección: tras restaurar billing, el scale-from-zero tarda en propagarse; no es daño permanente.
+- `[OAuth v1 EN VIVO]`: 6 secretos (Google/Microsoft/Facebook) en Secret Manager + bloque activado en `cloudrun-web.yaml`. Verificado con el flujo CSRF real: los 3 redirigen a `accounts.google.com` / `www.facebook.com` / `login.microsoftonline.com`.
+  - `[Trampa]`: un GET a `/api/auth/signin/{provider}` devuelve `UnknownAction` → NextAuth v5 exige **POST con csrfToken**. No confundir con un error de configuración.
+  - `[Fix]` `AUTH_URL` apuntaba a `clicks-web-798903122073...` pero el tráfico se sirve por `clicks-web-2myrvivvhq-uc...`. Los redirect URIs de OAuth se registran contra esa base → con la URL vieja el login fallaba. Mismo fix en `PUBLIC_WEB_URL` (los emails del PriceAlertAgent llevaban a un link muerto).
+- `[Costos — presupuesto $25/mes vs gasto real ~$75-95]`:
+  - `[LB eliminado]` (~$20/mes): `clicks-http-fw` + proxy + url-map + backend + NEG + IP estática. Era **HTTP puro, sin dominio ni SSL**, duplicando lo que ya sirve Cloud Run. Recrear solo cuando haya dominio (ahí aporta SSL gestionado + CDN).
+  - `[minScale 1→0]` (~$30-50/mes) tras verificar la recuperación del cold-start.
+  - `[Cloud SQL 100GB SSD → 10GB HDD]` (~$16/mes): la base real pesa **9.2 MB** sobre 100 GB provisionados con `storageAutoResize=true` (solo crece). **Los discos de Cloud SQL no se achican** → export a GCS → instancia nueva `clicks-db2` → import → verificación → switch → borrado de la vieja. Migración con red: dump verificado ANTES de borrar, instancia nueva con nombre distinto (nunca hubo ventana sin base), y `deletion-protection` re-activada en la nueva. Verificado post-switch: 70 productos/9 tipos, 32 retailers, 71 precios, FK + 3 CHECKs intactos, 0 inconsistencias, OAuth y home OK.
+  - `[Trampas]`: Postgres 18 asume edición `ENTERPRISE_PLUS` (rechaza `db-f1-micro`) → hay que pasar `--edition=ENTERPRISE`. El password del `DATABASE_URL` está **URL-encoded** (decodificar con `unquote`). La instancia tenía `deletion-protection` (desactivar antes de borrar).
+- `[Estado]`: gasto proyectado ~$9-12/mes (vs ~$75-95) — **dentro del presupuesto**. Bloqueante de negocio: registrar redirect URIs en las 3 consolas + alta en redes de afiliados.

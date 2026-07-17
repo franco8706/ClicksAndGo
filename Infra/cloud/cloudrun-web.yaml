@@ -33,7 +33,7 @@ spec:
         # 💰 CPU facturada solo durante requests.
         run.googleapis.com/cpu-throttling: "true"
         # NextAuth (adaptador pg) conecta a Cloud SQL por socket unix.
-        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db
+        run.googleapis.com/cloudsql-instances: clicks-and-go:us-central1:clicks-db2
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
       containerConcurrency: 80
