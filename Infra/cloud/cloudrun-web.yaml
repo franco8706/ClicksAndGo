@@ -2,7 +2,10 @@
 # ☁️ CLOUD RUN — Next.js Frontend (La Fachada)
 # Deploy: gcloud run services replace Infra/cloud/cloudrun-web.yaml --region us-central1
 #
-# Para picos de tráfico, poner Cloud CDN delante (ya hay un LB: clicks-lb).
+# Sirve directo por su URL de Cloud Run. El Load Balancer (clicks-lb + IP
+# estática) se ELIMINÓ el 2026-07-17: era HTTP puro, sin dominio ni SSL, y
+# costaba ~US$20/mes duplicando lo que ya sirve Cloud Run. Recrearlo recién
+# cuando haya dominio propio (ahí sí aporta SSL gestionado + Cloud CDN).
 # =========================================================
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -12,20 +15,20 @@ metadata:
     app: clicks-and-go
     tier: frontend
   annotations:
-    # Único servicio realmente público (frontend). Detrás del LB clicks-lb.
+    # Único servicio realmente público (frontend). Expuesto directo, sin LB.
     run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
       annotations:
-        # 💰 Pre-lanzamiento: escala a 0 para gasto casi nulo (1ª visita ~2-4s de
-        # cold-start). Poner "1" para mantener el frontend siempre caliente en prod.
-        # ⚠️ minScale=1 (no 0): tras la suspensión por billing (2026-07-17) el
-        # cold-start desde cero quedó fallando ("no available instance", HTTP 429)
-        # aunque el contenedor arranca sano en el rollout. Mantener 1 instancia
-        # caliente es lo que devolvió el servicio. Revisar volver a 0 (ahorro)
-        # cuando se confirme que el scale-from-zero se recuperó.
-        autoscaling.knative.dev/minScale: "1"
+        # 💰 minScale=0 — escala a cero (1ª visita paga ~1-4s de cold-start).
+        # Historia: el 2026-07-17, durante la ventana de recuperación tras la
+        # suspensión por billing, el scale-from-zero devolvía 429 ("no available
+        # instance") aunque el contenedor arrancaba sano. Se mitigó temporalmente
+        # con minScale=1. Verificado el mismo día que el cold-start se recuperó
+        # (log "Starting new instance. Reason: AUTOSCALING" + HTTP 200) → vuelto
+        # a 0. Si reaparece el 429 tras un corte de billing, subir a 1 y esperar.
+        autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "50"
         # 💰 CPU facturada solo durante requests.
         run.googleapis.com/cpu-throttling: "true"

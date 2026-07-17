@@ -19,12 +19,14 @@ spec:
         # 💰 Escala a 0 cuando no hay misiones — el NewsRadar ya NO corre en un
         # loop interno (NEWS_LOOP_ENABLED=false); lo dispara Cloud Scheduler
         # (scheduler-news.yaml). Así no pagamos una instancia 24/7.
-        # ⚠️ minScale=1 (no 0): tras la suspensión por billing (2026-07-17) el
-        # cold-start desde cero quedó fallando ("no available instance", HTTP 429)
-        # aunque el contenedor arranca sano en el rollout. Mantener 1 instancia
-        # caliente es lo que devolvió el servicio. Revisar volver a 0 (ahorro)
-        # cuando se confirme que el scale-from-zero se recuperó.
-        autoscaling.knative.dev/minScale: "1"
+        # 💰 minScale=0 — escala a cero (1ª visita paga ~1-4s de cold-start).
+        # Historia: el 2026-07-17, durante la ventana de recuperación tras la
+        # suspensión por billing, el scale-from-zero devolvía 429 ("no available
+        # instance") aunque el contenedor arrancaba sano. Se mitigó temporalmente
+        # con minScale=1. Verificado el mismo día que el cold-start se recuperó
+        # (log "Starting new instance. Reason: AUTOSCALING" + HTTP 200) → vuelto
+        # a 0. Si reaparece el 429 tras un corte de billing, subir a 1 y esperar.
+        autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "5"
         run.googleapis.com/cpu-throttling: "true"
     spec:
@@ -63,8 +65,10 @@ spec:
         - name: RUST_BENCHMARK_URL
           value: https://clicks-rust-798903122073.us-central1.run.app/api/v1/benchmarks/run
         # 📧 PriceAlertAgent: link de "ver producto" dentro del email de alerta.
+        # Debe ser la URL que realmente sirve el sitio (misma base que AUTH_URL
+        # en cloudrun-web.yaml), o el usuario recibe un link que no abre.
         - name: PUBLIC_WEB_URL
-          value: https://clicks-web-798903122073.us-central1.run.app
+          value: https://clicks-web-2myrvivvhq-uc.a.run.app
         - name: AUTH_FROM_EMAIL
           value: noreply@clicksandgo.com
         - name: MONGODB_URI
