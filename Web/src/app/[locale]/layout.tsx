@@ -74,7 +74,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
           <footer className="bg-[#f5f6f8] text-[#414855] py-16 border-t border-[#e6e8ec] z-10 relative select-none">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
 
                 <div className="space-y-4">
                   <div className="flex items-center">
@@ -89,24 +89,16 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                   <p className="text-[11px] text-[#9aa1ac] leading-relaxed">{dict.footer?.disclaimer}</p>
                 </div>
 
+                {/* Ítems con destino REAL (anclas del home + legales) — nada de
+                    jerga técnica ni links muertos: es la cara pública. */}
                 <div>
-                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.products || "Productos"}</h4>
+                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.resources || "La empresa"}</h4>
                   <ul className="space-y-2.5 text-sm text-[#6b7280]">
-                    {/* 🚀 FIX SPA: Sustituido <a> por <Link> para evitar recarga de página (Full Page Reload) */}
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.gaming}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.workstation}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.ultrabook}</Link></li>
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.common?.creator}</Link></li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.resources || "Recursos"}</h4>
-                  <ul className="space-y-2.5 text-sm text-[#6b7280]">
-                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">API / GraphQL</span></li>
-                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">{dict.footer?.statusLink || "Estado del Sistema"}</span></li>
-                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">Rust Axum Engine</span></li>
-                    <li><span className="hover:text-blue-600 transition-colors cursor-pointer">Zero-Trust Security</span></li>
+                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.footer?.catalogLink || "Catálogo de productos"}</Link></li>
+                    <li><Link href={`/${locale}/#ofertas`} className="hover:text-blue-600 transition-colors">{dict.footer?.dealsLink || "Mejores ofertas"}</Link></li>
+                    <li><Link href={`/${locale}/privacidad`} className="hover:text-blue-600 transition-colors">{dict.footer?.privacyFullLink || "Política de privacidad"}</Link></li>
+                    <li><Link href={`/${locale}/terminos`} className="hover:text-blue-600 transition-colors">{dict.footer?.termsFullLink || "Términos y condiciones"}</Link></li>
+                    <li><a href="mailto:info@clicksandgo.com" className="hover:text-blue-600 transition-colors">{dict.footer?.contactLink || "Contactanos"}</a></li>
                   </ul>
                 </div>
 
@@ -144,7 +136,6 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                 <div className="flex space-x-6">
                   <Link href={`/${locale}/privacidad`} className="hover:text-[#0a0e14] transition-colors">{dict.footer?.privacyLink || "Privacy"}</Link>
                   <Link href={`/${locale}/terminos`} className="hover:text-[#0a0e14] transition-colors">{dict.footer?.termsLink || "Terms"}</Link>
-                  <Link href="#" className="hover:text-[#0a0e14] transition-colors">{dict.footer?.cookiesLink || "Cookies"}</Link>
                 </div>
               </div>
 

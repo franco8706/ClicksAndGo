@@ -45,13 +45,13 @@
   },
   "hero": {
     "verifiedDeals": "Prices updated instantly",
-    "aiTag": "Find the perfect laptop for you",
-    "title1": "Your Next Laptop,",
+    "aiTag": "Find the right tech at the right price",
+    "title1": "Your Next Tech Buy,",
     "title2": "At the Best Price",
     "titleSub": "Expert Analysis Included",
     "ctaCatalog": "View Catalog",
     "ctaDeals": "Best Deals",
-    "subtitle": "We compare thousands of deals across top stores so you find the best laptop in price-quality.",
+    "subtitle": "We compare thousands of deals on laptops, monitors, peripherals and printers across top stores so you get the best price-quality ratio.",
     "searchPlaceholder": "What product are you looking for?",
     "suggestions": "Popular searches",
     "tags": [
@@ -143,7 +143,7 @@
     "buttonSecondary": "How does it work?"
   },
   "footer": {
-    "description": "Clicks & Go compares laptop prices in real time so you always pay a fair price.",
+    "description": "Clicks & Go compares tech prices in real time — laptops, monitors, peripherals, printers and more — so you always pay what's fair.",
     "disclaimer": "Prices and availability may vary. We do our best to keep information up to date.",
     "products": "Categories",
     "resources": "Company",
@@ -153,7 +153,12 @@
     "termsLink": "Terms",
     "cookiesLink": "Cookies",
     "copyright": "© 2026 Clicks & Go. All rights reserved.",
-    "affiliateDisclosure": "Affiliate disclosure: Clicks & Go takes part in affiliate programs. If you buy through our links, we may earn a commission at no extra cost to you. This does not affect the prices you see or our recommendations."
+    "affiliateDisclosure": "Affiliate disclosure: Clicks & Go takes part in affiliate programs. If you buy through our links, we may earn a commission at no extra cost to you. This does not affect the prices you see or our recommendations.",
+    "catalogLink": "Product catalog",
+    "dealsLink": "Best deals",
+    "privacyFullLink": "Privacy policy",
+    "termsFullLink": "Terms & conditions",
+    "contactLink": "Contact us"
   },
   "condition": {
     "new": "Brand new",

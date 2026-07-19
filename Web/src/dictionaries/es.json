@@ -45,13 +45,13 @@
   },
   "hero": {
     "verifiedDeals": "Precios actualizados al instante",
-    "aiTag": "Encuentra la laptop perfecta para vos",
-    "title1": "Tu Próxima Laptop,",
+    "aiTag": "Encuentra el precio justo en tecnología",
+    "title1": "Tu Próxima Compra Tech,",
     "title2": "Al Mejor Precio",
     "titleSub": "Con Análisis Experto",
     "ctaCatalog": "Ver Catálogo",
     "ctaDeals": "Mejores Ofertas",
-    "subtitle": "Comparamos miles de ofertas en las principales tiendas para que encuentres la mejor laptop en precio-calidad.",
+    "subtitle": "Comparamos miles de ofertas de laptops, monitores, periféricos e impresoras en las principales tiendas para que encuentres la mejor relación precio-calidad.",
     "searchPlaceholder": "¿Qué producto estás buscando?",
     "suggestions": "Búsquedas populares",
     "tags": [
@@ -143,7 +143,7 @@
     "buttonSecondary": "¿Cómo funciona?"
   },
   "footer": {
-    "description": "Clicks & Go compara precios de laptops en tiempo real para que siempre pagues lo justo.",
+    "description": "Clicks & Go compara precios de tecnología en tiempo real — laptops, monitores, periféricos, impresoras y más — para que siempre pagues lo justo.",
     "disclaimer": "Los precios y la disponibilidad pueden variar. Hacemos el mejor esfuerzo para mantener la información actualizada.",
     "products": "Categorías",
     "resources": "La empresa",
@@ -153,7 +153,12 @@
     "termsLink": "Términos",
     "cookiesLink": "Cookies",
     "copyright": "© 2026 Clicks & Go. Todos los derechos reservados.",
-    "affiliateDisclosure": "Divulgación de afiliados: Clicks & Go participa en programas de afiliados. Si comprás a través de nuestros enlaces, podemos recibir una comisión sin costo adicional para vos. Esto no influye en los precios que ves ni en nuestras recomendaciones."
+    "affiliateDisclosure": "Divulgación de afiliados: Clicks & Go participa en programas de afiliados. Si comprás a través de nuestros enlaces, podemos recibir una comisión sin costo adicional para vos. Esto no influye en los precios que ves ni en nuestras recomendaciones.",
+    "catalogLink": "Catálogo de productos",
+    "dealsLink": "Mejores ofertas",
+    "privacyFullLink": "Política de privacidad",
+    "termsFullLink": "Términos y condiciones",
+    "contactLink": "Contactanos"
   },
   "condition": {
     "new": "Nuevo",
