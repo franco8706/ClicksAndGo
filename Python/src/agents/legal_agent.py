@@ -26,8 +26,16 @@ from bs4 import BeautifulSoup
 
 from src.providers import TASK_LEGAL_AUDIT
 
-# URL del motor Rust — preprocesa el diff antes de llamar a Gemini
-_RUST_DIFF_URL = os.getenv("RUST_API_URL", "http://rust_engine:8080").rstrip("/") + "/api/v1/legal/diff"
+# URL del motor Rust — preprocesa el diff antes de llamar a Gemini.
+# RUST_API_URL puede venir como base (docker: http://rust_engine:8080) o como
+# endpoint completo (Cloud Run: https://.../api/v1/score/batch) — recortamos
+# cualquier path /api/... para quedarnos con la base. Sin esto, en Cloud Run
+# se armaba .../score/batch/api/v1/legal/diff (404) y TODOS los diffs legales
+# caían a Antigravity sin el pre-análisis barato de Rust.
+_RUST_DIFF_URL = (
+    os.getenv("RUST_API_URL", "http://rust_engine:8080").split("/api/")[0].rstrip("/")
+    + "/api/v1/legal/diff"
+)
 
 # ── Retardo humano para no saturar servidores legales ────────────────────────
 def _polite_delay():
@@ -59,13 +67,12 @@ MONITORED_SOURCES = [
         "region":   "ES/EU/GB",
         "priority": "HIGH",
     },
-    {
-        "source":   "cj_publisher_service_agreement",
-        "url":      "https://www.cj.com/legal/publisher-service-agreement",
-        "network":  "CJ",
-        "region":   "US/CA",
-        "priority": "HIGH",
-    },
+    # ⚠️ El Publisher Service Agreement de CJ dejó de ser público (verificado
+    # 2026-07-19: /legal/publisher-service-agreement → 404 real, sin URL nueva;
+    # el texto completo solo se ve dentro de la cuenta de publisher). Al dar de
+    # alta la cuenta CJ: revisar el PSA manualmente al aceptar y en cada aviso
+    # de cambio que CJ notifica por email al publisher. Mientras tanto, las dos
+    # páginas legales públicas de CJ (abajo) siguen monitoreadas.
     {
         "source":   "cj_terms_of_use",
         "url":      "https://www.cj.com/legal/terms",
@@ -82,15 +89,22 @@ MONITORED_SOURCES = [
     },
     {
         "source":   "mercadolibre_api_terms",
-        "url":      "https://developers.mercadolibre.com.ar/es_ar/terminos-condiciones",
+        # 2026-07-19: el dominio developers.mercadolibre.com.ar murió (404);
+        # la doc vive ahora en developers.mercadolibre.com (sin .ar).
+        "url":      "https://developers.mercadolibre.com/es_ar/terminos-condiciones",
         "network":  "MERCADOLIBRE",
         "region":   "AR/MX/BR/CO/CL",
         "priority": "HIGH",
     },
     # ── Programas de afiliados de retailers ────────────────────────────────
+    # Los programas de afiliados de las marcas corren DENTRO de las redes
+    # (Awin/CJ) — estas páginas se monitorean como señal temprana de cambios
+    # de términos del retailer. URLs re-verificadas el 2026-07-19.
     {
-        "source":   "hp_affiliate_program",
-        "url":      "https://www.hp.com/us-en/shop/cv/affiliate",
+        "source":   "hp_terms_of_use",
+        # La landing del programa (shop/cv/affiliate) bloquea bots (timeout);
+        # los términos generales sí son públicos y estables.
+        "url":      "https://www.hp.com/us-en/terms-of-use.html",
         "network":  "HP",
         "region":   "US",
         "priority": "NORMAL",
@@ -103,15 +117,17 @@ MONITORED_SOURCES = [
         "priority": "NORMAL",
     },
     {
-        "source":   "lenovo_affiliate_program",
-        "url":      "https://www.lenovo.com/us/en/affiliate/",
+        "source":   "lenovo_legal_hub",
+        # /us/en/affiliate/ murió (404); el hub legal cubre los términos.
+        "url":      "https://www.lenovo.com/us/en/legal/",
         "network":  "LENOVO",
         "region":   "US",
         "priority": "NORMAL",
     },
     {
         "source":   "asus_affiliate_program",
-        "url":      "https://www.asus.com/us/landing-page/affiliate/",
+        # URL nueva verificada (la vieja /us/landing-page/affiliate/ → 404).
+        "url":      "https://www.asus.com/us/site/affiliate-program/",
         "network":  "ASUS",
         "region":   "US",
         "priority": "NORMAL",
@@ -194,6 +210,11 @@ class LegalComplianceAgent:
                 _polite_delay()
                 result = self._audit_source(source_def, force_full=force_full)
                 results["checked"] += 1
+                # Un fetch fallido es un ERROR de monitoreo, no "sin novedad":
+                # contarlo como NONE ocultaría que la fuente quedó sin vigilar.
+                if result.get("error") == "fetch_failed":
+                    results["errors"] += 1
+                    continue
                 sev = result.get("severity", "NONE").upper()
                 results[sev.lower()] = results.get(sev.lower(), 0) + 1
                 if result.get("changed"):
@@ -240,7 +261,31 @@ class LegalComplianceAgent:
         # 1. Descargar y limpiar el texto público
         curr_text = self._fetch_clean_text(url)
         if not curr_text:
+            # 🛡️ CEGUERA LEGAL: un fetch fallido NO puede ser silencioso. Si una
+            # fuente HIGH lleva 3+ ciclos inaccesible (anti-bot, cambio de URL,
+            # caída), el monitoreo de ese contrato está ciego — y no enterarse
+            # de un cambio de ToS es exactamente el riesgo que este agente
+            # existe para prevenir. Escalamos como CRITICAL para que dispare
+            # la alerta por email (Cloud Monitoring observa "- [CRITICAL]").
+            fails = self._register_fetch_failure(source)
+            if fails >= 3 and source_def.get("priority") == "HIGH":
+                self.orchestrator.log_action(
+                    "LegalAgent",
+                    f"CEGUERA LEGAL: {source} ({source_def['network']}) lleva "
+                    f"{fails} ciclos inaccesible desde Cloud Run. El monitoreo "
+                    f"de ese contrato está CIEGO — revisar manualmente {url}",
+                    "CRITICAL",
+                )
+                self._post_alert_to_rails(source_def, {
+                    "severity": "HIGH",
+                    "summary": (
+                        f"Fuente legal inaccesible hace {fails} ciclos "
+                        f"({source_def['network']}). Sin monitoreo automático: "
+                        "revisar los términos manualmente."
+                    ),
+                })
             return {"severity": "NONE", "changed": False, "error": "fetch_failed"}
+        self._register_fetch_success(source)
 
         curr_hash = hashlib.sha256(curr_text.encode()).hexdigest()
         curr_len  = len(curr_text)
@@ -437,6 +482,27 @@ Return ONLY valid JSON:
         return (snap or {}).get("text_preview", "") if snap else ""
 
     # ── Persistencia MongoDB ──────────────────────────────────────────────────
+
+    def _register_fetch_failure(self, source: str) -> int:
+        """Incrementa el contador de ciclos consecutivos sin poder leer la fuente.
+        Devuelve el total actual (1 si Mongo no está disponible: sin historial
+        no se puede acumular, y alertar al primer fallo sería ruido)."""
+        if not self.db_connected:
+            return 1
+        doc = self.db[self.MONGO_STATE].find_one_and_update(
+            {"key": f"fetch_fail:{source}"},
+            {"$inc": {"count": 1},
+             "$set": {"last_failure": datetime.datetime.utcnow().isoformat()}},
+            upsert=True,
+            return_document=True,
+        )
+        return int((doc or {}).get("count", 1))
+
+    def _register_fetch_success(self, source: str):
+        """Un fetch exitoso resetea el contador de ceguera de esa fuente."""
+        if not self.db_connected:
+            return
+        self.db[self.MONGO_STATE].delete_one({"key": f"fetch_fail:{source}"})
 
     def _load_snapshot(self, source: str) -> Optional[dict]:
         if not self.db_connected:

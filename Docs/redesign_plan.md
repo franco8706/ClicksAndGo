@@ -17,7 +17,7 @@
 4. ✅ **Build real de Rust validado** — `cargo build --release` en Docker + fix crítico de boot (timeout Mongo 30s→2s) + `/health` y scoring vivos en Cloud Run.
 5. **Resolver Vertex AI 403 billing** (proyecto GCP `clicks-and-go`) — opera con Antigravity mientras tanto.
 6. **Configurar cuentas externas**: OAuth reales (Google/Azure/Facebook), Resend (verificar dominio + API key → descomentar `AUTH_RESEND_KEY` en `cloudrun-web.yaml`/`cloudrun-python.yaml` y crear el secreto), `AUTH_URL` → dominio final.
-7. **Registrarse en las redes de afiliados** (Awin, CJ, Amazon Associates) — manual. **← EL bloqueante de negocio actual: ya hay URL pública para el registro.**
+7. **Registrarse en las redes de afiliados** (Awin, CJ, Amazon Associates) — manual. **← EL bloqueante de negocio actual.** Revisión pre-afiliación completada 2026-07-19: sitio cumple requisitos (disclosure visible, privacidad/términos públicos, `/out` con allowlist), vigilancia legal autónoma con alertas por email armada. Al firmar CJ: revisar el PSA manualmente (dejó de ser público). Pendiente técnico: **adaptador Amazon PAAPI** en MarketHunter (hoy solo hay MercadoLibre/Awin/CJ) — construirlo al obtener las keys de Associates.
 8. **Registro AAIP** (Ley 25.326, Argentina) — responsabilidad del titular.
 
 ### 🟠 Corazón agéntico / re-engagement (post-lanzamiento cercano)
