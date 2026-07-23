@@ -11,6 +11,7 @@ import { auth } from "@/auth";
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
+import itDict from "@/dictionaries/it.json";
 
 const barlow = Barlow({
   subsets: ["latin"],
@@ -33,7 +34,7 @@ interface LayoutProps {
 
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
   const { locale } = await params;
-  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   return {
     title: `Clicks & Go | ${dict.hero?.title1 || "Encuentra tu Laptop Ideal"}`,
@@ -44,6 +45,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
         'es': '/es',
         'en': '/en',
         'pt': '/pt',
+        'it': '/it',
       },
     },
     openGraph: {
@@ -56,7 +58,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
 
 export default async function RootLayout({ children, params }: LayoutProps) {
   const { locale } = await params;
-  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   const session = await auth().catch(() => null);
 
@@ -98,7 +100,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                     <li><Link href={`/${locale}/#ofertas`} className="hover:text-blue-600 transition-colors">{dict.footer?.dealsLink || "Mejores ofertas"}</Link></li>
                     <li><Link href={`/${locale}/privacidad`} className="hover:text-blue-600 transition-colors">{dict.footer?.privacyFullLink || "Política de privacidad"}</Link></li>
                     <li><Link href={`/${locale}/terminos`} className="hover:text-blue-600 transition-colors">{dict.footer?.termsFullLink || "Términos y condiciones"}</Link></li>
-                    <li><a href="mailto:info@clicksandgo.com" className="hover:text-blue-600 transition-colors">{dict.footer?.contactLink || "Contactanos"}</a></li>
+                    <li><a href="mailto:info@clicks-and-go.com" className="hover:text-blue-600 transition-colors">{dict.footer?.contactLink || "Contactanos"}</a></li>
                   </ul>
                 </div>
 
@@ -107,7 +109,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-center gap-3">
                       <Mail size={14} className="text-blue-600 shrink-0" />
-                      <span className="truncate text-[#414855] font-medium">info@clicksandgo.com</span>
+                      <span className="truncate text-[#414855] font-medium">info@clicks-and-go.com</span>
                     </li>
                     <li className="flex items-center gap-3">
                       <ShieldCheck size={14} className="text-emerald-600 shrink-0" />

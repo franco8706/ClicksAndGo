@@ -68,9 +68,9 @@ spec:
         # Debe ser la URL que realmente sirve el sitio (misma base que AUTH_URL
         # en cloudrun-web.yaml), o el usuario recibe un link que no abre.
         - name: PUBLIC_WEB_URL
-          value: https://clicks-web-2myrvivvhq-uc.a.run.app
+          value: https://clicks-and-go.com
         - name: AUTH_FROM_EMAIL
-          value: noreply@clicksandgo.com
+          value: noreply@clicks-and-go.com
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:

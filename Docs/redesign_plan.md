@@ -82,7 +82,10 @@ Rust como pre-procesador de bajo costo para Gemini; monitoreo legal de afiliados
 - [x] `seeds_catalog.sql` (25 retailers, 40 laptops), páginas legales, stats honestos.
 - [x] NewsRadar (11 feeds RSS, auto-loop 6h), disclosure de afiliados en cards/footer.
 - [ ] Registrar en redes de afiliados (Awin, CJ, Amazon Associates) — manual.
-- [ ] Deploy a Cloud Run con URL pública (bloqueante para aprobación de afiliados).
+- [x] Deploy a Cloud Run con URL pública (bloqueante para aprobación de afiliados) — EN VIVO desde 2026-07-14.
+- [x] **SEO indexable** (2026-07-21): `app/robots.ts` + `app/sitemap.ts` sirven `/robots.txt` y `/sitemap.xml` reales en la raíz (base leída de `AUTH_URL` → migra sola al dominio); fix del middleware i18n que los redirigía a 404.
+- [x] **Dominio propio EN VIVO** (2026-07-23): `clicks-and-go.com` registrado + verificado en Google Search Console + Cloud Run domain mapping (apex y `www`, ambos con cert de Google Trust Services). `AUTH_URL`/`PUBLIC_WEB_URL`/`AUTH_FROM_EMAIL` movidos al dominio propio; login Google/Microsoft verificado end-to-end (Facebook pendiente — falta cargar su redirect URI, decisión del titular). Email routing (`info@clicks-and-go.com` → Gmail) activo vía Cloudflare.
+- [ ] Registrarse en Amazon Associates / Awin / MercadoLibre Afiliados y pasar credenciales → cablear en los adaptadores ya construidos (`market_hunter.py`).
 
 ## 🟢 FASE 5: Autenticación — OAuth + Magic Links (Completado)
 Registro/login sin contraseñas: OAuth (Google/Microsoft/Facebook) + magic link (Resend).

@@ -3,11 +3,11 @@ import type { NextRequest } from 'next/server';
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
 
-const locales = ['es', 'en', 'pt'];
+const locales = ['es', 'en', 'pt', 'it'];
 const defaultLocale = 'es';
 
 // Países que soportamos nativamente con API-First
-const SUPPORTED_COUNTRIES = ['AR', 'ES', 'US', 'MX', 'BR', 'CO', 'CL'];
+const SUPPORTED_COUNTRIES = ['AR', 'ES', 'US', 'MX', 'BR', 'CO', 'CL', 'IT'];
 
 const GEO_CURRENCY_MAP: Record<string, string> = {
   AR: 'ARS',
@@ -17,12 +17,14 @@ const GEO_CURRENCY_MAP: Record<string, string> = {
   BR: 'BRL',
   CO: 'COP',
   CL: 'CLP',
+  IT: 'EUR',
 };
 
 // Configuración de Tags de Afiliados para conversión optimizada
 const AFFILIATE_TAGS: Record<string, Record<string, string>> = {
-  ES: { tag: 'clicksandgo-es-21', domain: 'amazon.es', network: 'AWIN' },
-  US: { tag: 'clickgo08-20', domain: 'amazon.com', network: 'CJ' },
+  ES: { tag: 'clicksandgo-21', domain: 'amazon.es', network: 'AMAZON' },
+  US: { tag: 'clicksandgo-20', domain: 'amazon.com', network: 'AMAZON' },
+  IT: { tag: 'clicksandgo08-21', domain: 'amazon.it', network: 'AMAZON' },
   AR: { tag: 'clicksandgo-ar-20', domain: 'mercadolibre.com.ar', network: 'MERCADOLIBRE' },
   MX: { tag: 'clicksandgo-mx-20', domain: 'mercadolibre.com.mx', network: 'MERCADOLIBRE' },
   // 🚀 FIX afiliación: países LATAM que antes perdían el tag (comisiones no atribuidas)
@@ -35,6 +37,7 @@ const AFFILIATE_TAGS: Record<string, Record<string, string>> = {
 const COUNTRY_LOCALE_MAP: Record<string, string> = {
   BR: 'pt',
   US: 'en',
+  IT: 'it',
   ES: 'es', AR: 'es', MX: 'es', CO: 'es', CL: 'es',
 };
 
@@ -49,7 +52,7 @@ const ALLOWED_OUT_DOMAINS = [
   'mercadolibre.com.ar', 'mercadolibre.com.mx', 'mercadolibre.com.br',
   'mercadolibre.com.co', 'mercadolibre.cl', 'mercadolibre.com',
   'mercadolivre.com.br',
-  'amazon.com', 'amazon.es', 'amazon.com.mx', 'amazon.com.br',
+  'amazon.com', 'amazon.es', 'amazon.it', 'amazon.com.mx', 'amazon.com.br',
   // Redirectores de redes de afiliados (Awin / CJ)
   'awin1.com', 'anrdoezrs.net', 'jdoqocy.com', 'tkqlhce.com', 'dpbolvw.net',
   // Tiendas oficiales de marca (programa retailer directo)
@@ -100,6 +103,22 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
+// Base pública canónica del sitio, inyectada en BUILD (NEXT_PUBLIC_* queda
+// inlined en el edge runtime del middleware — process.env NO se lee en runtime
+// acá). Detrás de Cloudflare el Host que llega al server es `*.run.app` (hay un
+// override de Host para que Cloud Run enrute), así que construir el redirect
+// desde el Host filtraría esa URL interna al navegador. Con esta base los
+// redirects siempre apuntan al dominio real.
+const PUBLIC_BASE = process.env.NEXT_PUBLIC_SITE_URL || '';
+
+// Redirect interno SIEMPRE absoluto y válido: base pública si está bakeada, si
+// no el origin real de la request (p.ej. el startup probe interno de Cloud Run,
+// que pega a `/` sin pasar por Cloudflare — así nunca rompe con Invalid URL).
+function publicRedirect(request: NextRequest, path: string, status: 307 | 308 = 307): NextResponse {
+  const base = PUBLIC_BASE || request.nextUrl.origin;
+  return NextResponse.redirect(new URL(path, base), status);
+}
+
 function getLocale(request: NextRequest): string {
   const negotiatorHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
@@ -136,9 +155,7 @@ export function middleware(request: NextRequest) {
 
     // Guard 1: URL absoluta y válida. Guard 2: SOLO dominios verificados (anti open-redirect)
     if (!targetUrl || targetUrl === '#' || !targetUrl.startsWith('http') || !isAllowedOutUrl(targetUrl)) {
-      return NextResponse.redirect(
-        new URL(`/${getLocale(request)}`, request.url), 307
-      );
+      return publicRedirect(request, `/${getLocale(request)}`);
     }
 
     let monetizedUrl = targetUrl;
@@ -152,16 +169,24 @@ export function middleware(request: NextRequest) {
         const host = target.hostname.toLowerCase();
         const isAmazonHost =
           host === 'amazon.com' || host.endsWith('.amazon.com') ||
-          host === 'amazon.es'  || host.endsWith('.amazon.es');
+          host === 'amazon.es'  || host.endsWith('.amazon.es') ||
+          host === 'amazon.it'  || host.endsWith('.amazon.it');
         const isMeliHost = host.includes('mercadolibre') || host.includes('mercadolivre');
 
-        if (isAmazonHost && config.network !== 'MERCADOLIBRE') {
-          // Traducción de dominio precisa: SOLO amazon.com → amazon.es para España.
+        if (isAmazonHost && config.network === 'AMAZON') {
+          // Traducción de dominio genérica por país (ES→amazon.es, IT→amazon.it, …):
+          // SOLO si la URL original es amazon.com genérico. Impulsada por
+          // `config.domain` — un país nuevo con programa Amazon propio no
+          // requiere tocar esta lógica, solo agregar su entrada en AFFILIATE_TAGS.
           // (El replace por substring anterior convertía amazon.com.mx → amazon.es.mx, inválido.)
-          if (countryCode === 'ES' && (host === 'amazon.com' || host.endsWith('.amazon.com'))) {
-            target.hostname = 'amazon.es';
+          if (
+            config.domain.startsWith('amazon.') &&
+            host !== config.domain &&
+            (host === 'amazon.com' || host.endsWith('.amazon.com'))
+          ) {
+            target.hostname = config.domain;
           }
-          // Inyectar tag de Amazon SOLO para países con programa Amazon Associates (ES, US)
+          // Inyectar tag de Amazon SOLO para países con programa Amazon Associates propio
           target.searchParams.set('tag', config.tag);
           monetizedUrl = target.toString();
         } else if (isMeliHost && config.network === 'MERCADOLIBRE') {
@@ -178,15 +203,13 @@ export function middleware(request: NextRequest) {
 
     // Revalidar tras la traducción de dominio/tags (defensa en profundidad)
     if (!isAllowedOutUrl(monetizedUrl)) {
-      return NextResponse.redirect(new URL(`/${getLocale(request)}`, request.url), 307);
+      return publicRedirect(request, `/${getLocale(request)}`);
     }
 
     try {
       return NextResponse.redirect(new URL(monetizedUrl).toString(), 307);
     } catch {
-      return NextResponse.redirect(
-        new URL(`/${getLocale(request)}`, request.url), 307
-      );
+      return publicRedirect(request, `/${getLocale(request)}`);
     }
   }
 
@@ -218,14 +241,19 @@ export function middleware(request: NextRequest) {
   // y caemos al idioma negociado por el navegador para países no mapeados.
   const geoLocale = COUNTRY_LOCALE_MAP[countryCode];
   const detectedLocale = geoLocale && locales.includes(geoLocale) ? geoLocale : getLocale(request);
-  const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = `/${detectedLocale}${pathname}`;
-  return NextResponse.redirect(redirectUrl, 307);
+  // En la raíz, pathname === '/', así que `/${locale}${pathname}` daría `/en/`
+  // (barra final) → Next hace 308 a `/en` → doble salto. Lo evitamos: para la
+  // raíz redirigimos directo a `/en` (un solo salto, mejor para SEO).
+  const suffix = pathname === '/' ? '' : pathname;
+  return publicRedirect(request, `/${detectedLocale}${suffix}${request.nextUrl.search}`);
 }
 
 export const config = {
   matcher: [
     '/out',
-    '/((?!api|_next/static|_next/image|assets|favicon.ico|sw.js).*)',
+    // robots.txt y sitemap.xml quedan EXCLUIDOS: los sirve Next en la raíz
+    // (app/robots.ts, app/sitemap.ts) y NO deben recibir el redirect de idioma
+    // — si no, Google los pide en /robots.txt, cae a /es/robots.txt y da 404.
+    '/((?!api|_next/static|_next/image|assets|favicon.ico|sw.js|robots.txt|sitemap.xml).*)',
   ],
 };

@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
+import itDict from "@/dictionaries/it.json";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -15,6 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     es: "Términos y Condiciones | Clicks & Go",
     en: "Terms & Conditions | Clicks & Go",
     pt: "Termos e Condições | Clicks & Go",
+    it: "Termini e Condizioni | Clicks & Go",
   };
   return { title: titles[locale] ?? titles.es };
 }
@@ -49,11 +51,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "4. Precios, disponibilidad y exactitud",
-        body: "Los precios, descuentos, disponibilidad y características que mostramos provienen de las tiendas y pueden cambiar sin previo aviso. Hacemos un esfuerzo continuo y automatizado por mantener la información actualizada, pero:\n• El precio final y las condiciones válidas son SIEMPRE los que muestre la tienda al momento de la compra.\n• Un error de precio, conversión de moneda o disponibilidad en Clicks & Go no genera derecho a exigir ese precio.\n• Las conversiones de moneda son estimaciones informativas basadas en tipos de cambio de referencia.\n\nSi detecta un error, agradecemos el aviso a info@clicksandgo.com.",
+        body: "Los precios, descuentos, disponibilidad y características que mostramos provienen de las tiendas y pueden cambiar sin previo aviso. Hacemos un esfuerzo continuo y automatizado por mantener la información actualizada, pero:\n• El precio final y las condiciones válidas son SIEMPRE los que muestre la tienda al momento de la compra.\n• Un error de precio, conversión de moneda o disponibilidad en Clicks & Go no genera derecho a exigir ese precio.\n• Las conversiones de moneda son estimaciones informativas basadas en tipos de cambio de referencia.\n\nSi detecta un error, agradecemos el aviso a info@clicks-and-go.com.",
       },
       {
         heading: "5. Cuenta de usuario",
-        body: "Puede navegar sin cuenta. Para usar favoritos y alertas de precio necesita crear una cuenta con Google, Microsoft, Facebook o mediante enlace de acceso por email.\n\nUsted se compromete a:\n• Proporcionar información veraz y mantenerla actualizada.\n• No crear cuentas para terceros sin su autorización, ni cuentas automatizadas.\n• Mantener el control de su email y de sus proveedores de acceso: toda actividad realizada desde su sesión se considera suya.\n\nPuede eliminar su cuenta en cualquier momento desde su panel o escribiendo a info@clicksandgo.com (ver Política de Privacidad para plazos de borrado).",
+        body: "Puede navegar sin cuenta. Para usar favoritos y alertas de precio necesita crear una cuenta con Google, Microsoft, Facebook o mediante enlace de acceso por email.\n\nUsted se compromete a:\n• Proporcionar información veraz y mantenerla actualizada.\n• No crear cuentas para terceros sin su autorización, ni cuentas automatizadas.\n• Mantener el control de su email y de sus proveedores de acceso: toda actividad realizada desde su sesión se considera suya.\n\nPuede eliminar su cuenta en cualquier momento desde su panel o escribiendo a info@clicks-and-go.com (ver Política de Privacidad para plazos de borrado).",
       },
       {
         heading: "6. Alertas de precio y comunicaciones",
@@ -85,11 +87,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "13. Ley aplicable y jurisdicción",
-        body: "Clicks & Go opera a nivel mundial. Estos Términos se interpretan de acuerdo con principios generales de derecho contractual internacional y, supletoriamente, la ley del domicilio del operador de la plataforma.\n\nSi usted es consumidor, conserva siempre la protección de las normas imperativas de su país de residencia y el derecho a reclamar ante los tribunales o autoridades de consumo de su propio país, cuando su legislación así lo disponga.\n\nAntes de cualquier acción formal, le proponemos intentar una resolución amistosa escribiendo a info@clicksandgo.com.",
+        body: "Clicks & Go opera a nivel mundial. Estos Términos se interpretan de acuerdo con principios generales de derecho contractual internacional y, supletoriamente, la ley del domicilio del operador de la plataforma.\n\nSi usted es consumidor, conserva siempre la protección de las normas imperativas de su país de residencia y el derecho a reclamar ante los tribunales o autoridades de consumo de su propio país, cuando su legislación así lo disponga.\n\nAntes de cualquier acción formal, le proponemos intentar una resolución amistosa escribiendo a info@clicks-and-go.com.",
       },
       {
         heading: "14. Cambios y contacto",
-        body: "Podemos actualizar estos Términos. Los cambios sustanciales se anunciarán por email (si tiene cuenta) o mediante aviso destacado en el sitio, con antelación razonable. La versión vigente es siempre la publicada en esta página, con su fecha de actualización.\n\nContacto: info@clicksandgo.com",
+        body: "Podemos actualizar estos Términos. Los cambios sustanciales se anunciarán por email (si tiene cuenta) o mediante aviso destacado en el sitio, con antelación razonable. La versión vigente es siempre la publicada en esta página, con su fecha de actualización.\n\nContacto: info@clicks-and-go.com",
       },
     ],
   },
@@ -112,11 +114,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "4. Prices, availability and accuracy",
-        body: "Prices, discounts, availability and specifications shown come from the stores and may change without notice. We make a continuous, automated effort to keep information current, but:\n• The final price and valid conditions are ALWAYS those displayed by the store at the time of purchase.\n• A price, currency-conversion or availability error on Clicks & Go creates no right to demand that price.\n• Currency conversions are informational estimates based on reference exchange rates.\n\nIf you spot an error, we appreciate a note to info@clicksandgo.com.",
+        body: "Prices, discounts, availability and specifications shown come from the stores and may change without notice. We make a continuous, automated effort to keep information current, but:\n• The final price and valid conditions are ALWAYS those displayed by the store at the time of purchase.\n• A price, currency-conversion or availability error on Clicks & Go creates no right to demand that price.\n• Currency conversions are informational estimates based on reference exchange rates.\n\nIf you spot an error, we appreciate a note to info@clicks-and-go.com.",
       },
       {
         heading: "5. User accounts",
-        body: "You can browse without an account. Favorites and price alerts require an account via Google, Microsoft, Facebook or an email sign-in link.\n\nYou agree to:\n• Provide truthful information and keep it current.\n• Not create accounts for third parties without authorization, nor automated accounts.\n• Keep control of your email and sign-in providers: all activity from your session is considered yours.\n\nYou can delete your account at any time from your dashboard or by writing to info@clicksandgo.com (see the Privacy Policy for deletion timelines).",
+        body: "You can browse without an account. Favorites and price alerts require an account via Google, Microsoft, Facebook or an email sign-in link.\n\nYou agree to:\n• Provide truthful information and keep it current.\n• Not create accounts for third parties without authorization, nor automated accounts.\n• Keep control of your email and sign-in providers: all activity from your session is considered yours.\n\nYou can delete your account at any time from your dashboard or by writing to info@clicks-and-go.com (see the Privacy Policy for deletion timelines).",
       },
       {
         heading: "6. Price alerts and communications",
@@ -148,11 +150,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "13. Governing law and jurisdiction",
-        body: "Clicks & Go operates worldwide. These Terms are construed under general principles of international contract law and, supplementarily, the law of the platform operator's domicile.\n\nIf you are a consumer, you always keep the protection of the mandatory rules of your country of residence and the right to bring claims before the courts or consumer authorities of your own country, where your legislation so provides.\n\nBefore any formal action, we invite you to attempt an amicable resolution by writing to info@clicksandgo.com.",
+        body: "Clicks & Go operates worldwide. These Terms are construed under general principles of international contract law and, supplementarily, the law of the platform operator's domicile.\n\nIf you are a consumer, you always keep the protection of the mandatory rules of your country of residence and the right to bring claims before the courts or consumer authorities of your own country, where your legislation so provides.\n\nBefore any formal action, we invite you to attempt an amicable resolution by writing to info@clicks-and-go.com.",
       },
       {
         heading: "14. Changes and contact",
-        body: "We may update these Terms. Substantial changes will be announced by email (if you have an account) or via a prominent site notice, with reasonable advance. The current version is always the one published on this page, with its update date.\n\nContact: info@clicksandgo.com",
+        body: "We may update these Terms. Substantial changes will be announced by email (if you have an account) or via a prominent site notice, with reasonable advance. The current version is always the one published on this page, with its update date.\n\nContact: info@clicks-and-go.com",
       },
     ],
   },
@@ -175,11 +177,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "4. Preços, disponibilidade e exatidão",
-        body: "Preços, descontos, disponibilidade e especificações exibidos vêm das lojas e podem mudar sem aviso. Fazemos um esforço contínuo e automatizado para manter as informações atualizadas, mas:\n• O preço final e as condições válidas são SEMPRE os exibidos pela loja no momento da compra.\n• Um erro de preço, conversão de moeda ou disponibilidade no Clicks & Go não gera direito de exigir esse preço.\n• Conversões de moeda são estimativas informativas baseadas em taxas de câmbio de referência.\n\nSe encontrar um erro, agradecemos o aviso em info@clicksandgo.com.",
+        body: "Preços, descontos, disponibilidade e especificações exibidos vêm das lojas e podem mudar sem aviso. Fazemos um esforço contínuo e automatizado para manter as informações atualizadas, mas:\n• O preço final e as condições válidas são SEMPRE os exibidos pela loja no momento da compra.\n• Um erro de preço, conversão de moeda ou disponibilidade no Clicks & Go não gera direito de exigir esse preço.\n• Conversões de moeda são estimativas informativas baseadas em taxas de câmbio de referência.\n\nSe encontrar um erro, agradecemos o aviso em info@clicks-and-go.com.",
       },
       {
         heading: "5. Conta de usuário",
-        body: "Você pode navegar sem conta. Favoritos e alertas de preço exigem conta via Google, Microsoft, Facebook ou link de acesso por email.\n\nVocê se compromete a:\n• Fornecer informações verdadeiras e mantê-las atualizadas.\n• Não criar contas para terceiros sem autorização, nem contas automatizadas.\n• Manter o controle do seu email e provedores de acesso: toda atividade da sua sessão é considerada sua.\n\nVocê pode excluir sua conta a qualquer momento no seu painel ou escrevendo para info@clicksandgo.com (veja a Política de Privacidade para prazos de exclusão).",
+        body: "Você pode navegar sem conta. Favoritos e alertas de preço exigem conta via Google, Microsoft, Facebook ou link de acesso por email.\n\nVocê se compromete a:\n• Fornecer informações verdadeiras e mantê-las atualizadas.\n• Não criar contas para terceiros sem autorização, nem contas automatizadas.\n• Manter o controle do seu email e provedores de acesso: toda atividade da sua sessão é considerada sua.\n\nVocê pode excluir sua conta a qualquer momento no seu painel ou escrevendo para info@clicks-and-go.com (veja a Política de Privacidade para prazos de exclusão).",
       },
       {
         heading: "6. Alertas de preço e comunicações",
@@ -211,11 +213,74 @@ const CONTENT: Record<string, {
       },
       {
         heading: "13. Lei aplicável e jurisdição",
-        body: "O Clicks & Go opera mundialmente. Estes Termos são interpretados segundo princípios gerais de direito contratual internacional e, supletivamente, pela lei do domicílio do operador da plataforma.\n\nSe você é consumidor, mantém sempre a proteção das normas imperativas do seu país de residência e o direito de reclamar perante os tribunais ou autoridades de consumo do seu próprio país, quando a sua legislação assim dispuser.\n\nAntes de qualquer ação formal, propomos tentar uma resolução amigável escrevendo para info@clicksandgo.com.",
+        body: "O Clicks & Go opera mundialmente. Estes Termos são interpretados segundo princípios gerais de direito contratual internacional e, supletivamente, pela lei do domicílio do operador da plataforma.\n\nSe você é consumidor, mantém sempre a proteção das normas imperativas do seu país de residência e o direito de reclamar perante os tribunais ou autoridades de consumo do seu próprio país, quando a sua legislação assim dispuser.\n\nAntes de qualquer ação formal, propomos tentar uma resolução amigável escrevendo para info@clicks-and-go.com.",
       },
       {
         heading: "14. Alterações e contato",
-        body: "Podemos atualizar estes Termos. Mudanças substanciais serão anunciadas por email (se você tiver conta) ou por aviso em destaque no site, com antecedência razoável. A versão vigente é sempre a publicada nesta página, com sua data de atualização.\n\nContato: info@clicksandgo.com",
+        body: "Podemos atualizar estes Termos. Mudanças substanciais serão anunciadas por email (se você tiver conta) ou por aviso em destaque no site, com antecedência razoável. A versão vigente é sempre a publicada nesta página, com sua data de atualização.\n\nContato: info@clicks-and-go.com",
+      },
+    ],
+  },
+  it: {
+    title: "Termini e Condizioni",
+    updated: "Ultimo aggiornamento: 23 luglio 2026",
+    backLabel: "← Torna alla home",
+    sections: [
+      {
+        heading: "1. Chi siamo e accettazione",
+        body: "Clicks & Go è una piattaforma di comparazione prezzi di prodotti tecnologici (laptop, monitor, periferiche, stampanti e altro) che opera a livello mondiale. Accedendo o utilizzando il sito, lei accetta questi Termini. Se non è d'accordo, non utilizzi il servizio.\n\nQuesti Termini non limitano né sostituiscono i diritti non rinunciabili riconosciuti dalla legislazione sui consumatori del suo paese di residenza: in caso di conflitto, tali diritti prevalgono.",
+      },
+      {
+        heading: "2. Cosa facciamo (e cosa non facciamo)",
+        body: "Clicks & Go confronta prezzi e offerte pubblicati da negozi e marketplace di terze parti, e rimanda a essi.\n\nCosa NON siamo:\n• Non siamo un negozio: non vendiamo prodotti, non elaboriamo pagamenti, non gestiamo spedizioni.\n• Non siamo parte del suo contratto di acquisto: quando acquista, il contratto è tra lei e il negozio di destinazione.\n• Non siamo rappresentanti né agenti dei negozi o marchi elencati.",
+      },
+      {
+        heading: "3. Link di affiliazione (divulgazione)",
+        body: "Partecipiamo a programmi di affiliazione (ad esempio Amazon Associates, Awin, CJ Affiliate, MercadoLibre). Quando lei clicca su \"Acquista\" e completa un acquisto nel negozio di destinazione, potremmo ricevere una commissione, senza costi aggiuntivi per lei.\n\nI nostri impegni:\n• La commissione non modifica il prezzo che lei paga.\n• L'esistenza o l'importo di una commissione non altera i punteggi (deal score) né l'ordine dei risultati, calcolati secondo criteri tecnici di prezzo e caratteristiche del prodotto.\n• Ogni pulsante di acquisto è accompagnato da un avviso di link di affiliazione.\n\nIn qualità di partecipante al programma Amazon Associates, Clicks & Go può percepire compensi dagli acquisti idonei.",
+      },
+      {
+        heading: "4. Prezzi, disponibilità ed esattezza",
+        body: "Prezzi, sconti, disponibilità e caratteristiche mostrati provengono dai negozi e possono cambiare senza preavviso. Facciamo uno sforzo continuo e automatizzato per mantenere le informazioni aggiornate, ma:\n• Il prezzo finale e le condizioni valide sono SEMPRE quelli mostrati dal negozio al momento dell'acquisto.\n• Un errore di prezzo, conversione valutaria o disponibilità su Clicks & Go non genera il diritto di pretendere quel prezzo.\n• Le conversioni valutarie sono stime informative basate su tassi di cambio di riferimento.\n\nSe rileva un errore, gradiamo una segnalazione a info@clicks-and-go.com.",
+      },
+      {
+        heading: "5. Account utente",
+        body: "Può navigare senza account. Per usare preferiti e avvisi di prezzo serve un account tramite Google, Microsoft, Facebook o un link di accesso via email.\n\nLei si impegna a:\n• Fornire informazioni veritiere e mantenerle aggiornate.\n• Non creare account per terzi senza autorizzazione, né account automatizzati.\n• Mantenere il controllo della sua email e dei suoi provider di accesso: ogni attività svolta dalla sua sessione è considerata sua.\n\nPuò eliminare il suo account in qualsiasi momento dal suo pannello o scrivendo a info@clicks-and-go.com (vedi l'Informativa sulla Privacy per i tempi di cancellazione).",
+      },
+      {
+        heading: "6. Avvisi di prezzo e comunicazioni",
+        body: "Gli avvisi di prezzo sono un servizio facoltativo che lei configura: le inviamo un'email quando un prodotto raggiunge il prezzo obiettivo da lei definito. Non sono comunicazioni pubblicitarie di terzi. Può disattivarli in qualsiasi momento dal suo pannello. La consegna di un'email di avviso dipende da servizi di terze parti e non garantiamo che il prezzo sia ancora valido al momento della lettura.",
+      },
+      {
+        heading: "7. Uso accettabile",
+        body: "Lei si impegna a NON:\n• Effettuare scraping massivo, reverse engineering o accesso automatizzato non autorizzato al sito o alle sue API.\n• Interferire con il funzionamento del servizio (sovraccarico deliberato, elusione dei limiti, iniezione di codice).\n• Usare il servizio per attività illecite o per generare frodi di affiliazione (clic o acquisti artificiali).\n• Rivendere, sublicenziare o sfruttare commercialmente i contenuti del sito senza autorizzazione scritta.\n\nPossiamo sospendere o chiudere account che violino queste regole, comunicandole il motivo salvo impedimento legale.",
+      },
+      {
+        heading: "8. Proprietà intellettuale",
+        body: "Il sito, il suo design, il software, i testi originali e i punteggi sono di proprietà di Clicks & Go o dei suoi licenzianti.\n\nMarchi, loghi, nomi di prodotti e immagini di produttori e negozi appartengono ai rispettivi titolari; sono usati a fini identificativi e di comparazione, senza implicare sponsorizzazione o affiliazione societaria con Clicks & Go.\n\nPuò condividere liberamente link al sito.",
+      },
+      {
+        heading: "9. Acquisti presso negozi di terze parti",
+        body: "Ogni acquisto avviato dai nostri link è disciplinato dai termini, prezzi, politiche di spedizione, garanzia e resi del negozio di destinazione. I reclami relativi all'acquisto (pagamenti, consegne, prodotti difettosi, rimborsi) devono essere indirizzati al negozio. Ciò non toglie che i suoi diritti di consumatore nei confronti del negozio siano quelli della legislazione del suo paese.",
+      },
+      {
+        heading: "10. Disponibilità del servizio",
+        body: "Il servizio è offerto \"così com'è\" e \"secondo disponibilità\". Non garantiamo un funzionamento ininterrotto o privo di errori: potrebbero verificarsi manutenzioni, interruzioni dell'infrastruttura o modifiche di funzionalità. Ci riserviamo il diritto di modificare o interrompere funzionalità, avvisando con ragionevole anticipo per i cambiamenti sostanziali.",
+      },
+      {
+        heading: "11. Limitazione di responsabilità",
+        body: "Nella misura massima consentita dalla legge applicabile nel suo paese:\n• Clicks & Go non risponde per danni indiretti, mancato guadagno o perdita di dati derivanti dall'uso del sito.\n• Non rispondiamo per il contenuto, i prezzi, le scorte né la condotta dei negozi di terze parti.\n• La nostra responsabilità totale complessiva nei suoi confronti non supererà l'importo che lei ci ha pagato per usare il servizio (il servizio è gratuito, quindi in pratica: zero), salvo dolo o colpa grave.\n\nNulla di quanto sopra esclude o limita responsabilità che la legge del suo paese non consente di escludere (ad esempio, dolo, o diritti irrinunciabili del consumatore).",
+      },
+      {
+        heading: "12. Manleva",
+        body: "Lei terrà indenne Clicks & Go da reclami di terzi derivanti dal suo uso del servizio in violazione di questi Termini o della legge, nella misura in cui la legislazione del suo paese consenta questo tipo di clausole.",
+      },
+      {
+        heading: "13. Legge applicabile e giurisdizione",
+        body: "Clicks & Go opera a livello mondiale. Questi Termini sono interpretati secondo principi generali di diritto contrattuale internazionale e, in via suppletiva, secondo la legge del domicilio dell'operatore della piattaforma.\n\nSe lei è un consumatore, mantiene sempre la protezione delle norme imperative del suo paese di residenza e il diritto di agire dinanzi ai tribunali o alle autorità di tutela dei consumatori del proprio paese, quando la sua legislazione lo preveda.\n\nPrima di qualsiasi azione formale, le proponiamo di tentare una risoluzione amichevole scrivendo a info@clicks-and-go.com.",
+      },
+      {
+        heading: "14. Modifiche e contatto",
+        body: "Potremmo aggiornare questi Termini. Le modifiche sostanziali saranno annunciate via email (se ha un account) o tramite avviso in evidenza sul sito, con ragionevole anticipo. La versione vigente è sempre quella pubblicata in questa pagina, con la relativa data di aggiornamento.\n\nContatto: info@clicks-and-go.com",
       },
     ],
   },
@@ -224,7 +289,7 @@ const CONTENT: Record<string, {
 export default async function TerminosPage({ params }: Props) {
   const { locale } = await params;
   const content = CONTENT[locale] ?? CONTENT.es;
-  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   return (
     <div className="min-h-screen bg-white pt-32 pb-20">

@@ -78,7 +78,14 @@ class DataNormalizerAgent:
     Escudo Zero-Trust de Normalización v4.0.
     Garantiza que ningún dato tóxico o mal tipado llegue a la IA o a la Base de Datos.
     """
-    
+
+    # Espejo de `product_categories.code` (migration_integrity_v5.sql). Único
+    # vocabulario de producto que este sitio vende: nada fuera de tecnología.
+    DIGITAL_CATEGORIES = {
+        "laptop", "desktop", "monitor", "keyboard",
+        "mouse", "headphones", "webcam", "printer", "supplies",
+    }
+
     @staticmethod
     def sanitize_string(text: str) -> str:
         if not text: return ""
@@ -123,10 +130,22 @@ class DataNormalizerAgent:
         except ValueError:
             return default
 
-    def normalize_laptop_data(self, raw_data: dict) -> dict:
-        """Convierte datos crudos de APIs al contrato estricto de Clicks & Go v4.0."""
-        
+    def normalize_laptop_data(self, raw_data: dict):
+        """Convierte datos crudos de APIs al contrato estricto de Clicks & Go v4.0.
+
+        Devuelve None si el producto no clasifica en el catálogo digital
+        (`DIGITAL_CATEGORIES`) — antes, cualquier `product_type` ausente o
+        desconocido caía por defecto a "laptop", así que un adaptador que
+        alguna vez traiga algo fuera de tema (ropa, un feed mixto de Awin,
+        etc.) se insertaba igual, mal etiquetado. Ahora se descarta: nada
+        entra a la base salvo que matchee explícitamente el catálogo real.
+        """
+
         title = self.sanitize_string(raw_data.get("name", ""))
+
+        product_type = self.sanitize_string(raw_data.get("product_type", "")).lower()
+        if product_type not in self.DIGITAL_CATEGORIES:
+            return None
 
         # RAM: primero ancla a la palabra RAM/Memoria (en cualquier orden);
         # si no hay ancla, cae al primer "N GB" que NO sea almacenamiento.
@@ -172,10 +191,9 @@ class DataNormalizerAgent:
         if original_price > current_price and original_price > 0:
             discount_pct = int(((original_price - current_price) / original_price) * 100)
 
-        # 📦 Multi-producto: tipo + specs genéricas (impresoras, teclados, mouse…).
-        # Passthrough retrocompatible — sin `product_type` se asume 'laptop'.
+        # 📦 Multi-producto: specs genéricas (impresoras, teclados, mouse…).
+        # `product_type` ya quedó validado y asignado arriba (guard de catálogo).
         raw_specs = raw_data.get("specs")
-        product_type = (self.sanitize_string(raw_data.get("product_type", "laptop")) or "laptop").lower()
 
         return {
             "sku_original": self.sanitize_string(raw_data.get("sku_original", "")),

@@ -192,7 +192,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   // 🛡️ Requerido en self-hosted (fuera de Vercel). La defensa contra
   // host-header injection en los callbacks OAuth / magic-links viene de
-  // fijar AUTH_URL en el entorno (ej. https://clicksandgo.com) — el flujo
+  // fijar AUTH_URL en el entorno (ej. https://clicks-and-go.com) — el flujo
   // usa esa URL canónica en vez del Host header entrante.
   trustHost: true,
 
@@ -207,7 +207,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       ? [Facebook({ clientId: process.env.AUTH_FACEBOOK_ID, clientSecret: process.env.AUTH_FACEBOOK_SECRET })]
       : []),
     ...(process.env.AUTH_RESEND_KEY
-      ? [Resend({ apiKey: process.env.AUTH_RESEND_KEY, from: process.env.AUTH_FROM_EMAIL ?? "noreply@clicksandgo.com" })]
+      ? [Resend({ apiKey: process.env.AUTH_RESEND_KEY, from: process.env.AUTH_FROM_EMAIL ?? "noreply@clicks-and-go.com" })]
       : []),
   ],
 

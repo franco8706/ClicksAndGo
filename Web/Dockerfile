@@ -18,6 +18,13 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Dominio público canónico. Se inyecta en BUILD porque el middleware corre en el
+# edge runtime, donde NEXT_PUBLIC_* queda inlined (process.env NO se lee en
+# runtime ahí). Los redirects de idioma se construyen contra esta base para no
+# filtrar la URL interna *.run.app cuando Cloudflare reescribe el Host.
+ARG NEXT_PUBLIC_SITE_URL=https://clicks-and-go.com
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 RUN npm run build
 
 # =========================================================

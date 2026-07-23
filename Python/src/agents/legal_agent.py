@@ -268,7 +268,14 @@ class LegalComplianceAgent:
             # existe para prevenir. Escalamos como CRITICAL para que dispare
             # la alerta por email (Cloud Monitoring observa "- [CRITICAL]").
             fails = self._register_fetch_failure(source)
-            if fails >= 3 and source_def.get("priority") == "HIGH":
+            # Alertar en el cruce del umbral y luego cada 7 ciclos (~semanal):
+            # una fuente bloqueada por anti-bot (IP de datacenter) no se
+            # resuelve reintentando, así que repetir el CRITICAL a diario es
+            # ruido que erosiona la confianza en la alerta sin dar ninguna
+            # acción nueva. Se mantiene la escalada periódica para no volver
+            # a caer en la ceguera silenciosa que este bloque previene.
+            should_alert = fails == 3 or (fails > 3 and fails % 7 == 0)
+            if should_alert and source_def.get("priority") == "HIGH":
                 self.orchestrator.log_action(
                     "LegalAgent",
                     f"CEGUERA LEGAL: {source} ({source_def['network']}) lleva "

@@ -32,9 +32,9 @@ class PriceAlertAgent:
 
         self.internal_key = os.getenv("INTERNAL_API_KEY", "")
         self.resend_key = os.getenv("AUTH_RESEND_KEY", "")
-        self.from_email = os.getenv("AUTH_FROM_EMAIL", "noreply@clicksandgo.com")
+        self.from_email = os.getenv("AUTH_FROM_EMAIL", "noreply@clicks-and-go.com")
         # Base pública para armar el link al producto en el email.
-        self.web_url = os.getenv("PUBLIC_WEB_URL", "https://clicksandgo.com").rstrip("/")
+        self.web_url = os.getenv("PUBLIC_WEB_URL", "https://clicks-and-go.com").rstrip("/")
 
     def _log(self, action, status="SUCCESS"):
         # Reutiliza el logger Zero-Trust del orquestador si está disponible.

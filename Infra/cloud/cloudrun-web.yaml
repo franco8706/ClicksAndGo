@@ -55,9 +55,9 @@ spec:
         # URL pública para NextAuth (protección de host-header). DEBE ser la URL
         # real que sirve el tráfico: los redirect URIs de Google/Microsoft/Facebook
         # se registran contra esta base y OAuth falla si no coincide exactamente.
-        # Cambiar al dominio final (https://clicksandgo.com) cuando se conecte por el LB.
+        # Dominio final ya conectado: clicks-and-go.com (2026-07-23).
         - name: AUTH_URL
-          value: https://clicks-web-2myrvivvhq-uc.a.run.app
+          value: https://clicks-and-go.com
         - name: AUTH_TRUST_HOST
           value: "true"
         # Secretos desde Secret Manager
@@ -84,7 +84,7 @@ spec:
         # ⏸️ Descomentar cuando exista la cuenta Resend + el secreto en Secret Manager
         # (si se referencia un secreto inexistente, Cloud Run rechaza el deploy).
         - name: AUTH_FROM_EMAIL
-          value: noreply@clicksandgo.com
+          value: noreply@clicks-and-go.com
         # - name: AUTH_RESEND_KEY
         #   valueFrom:
         #     secretKeyRef:

@@ -4,6 +4,7 @@ import { ShieldCheck } from "lucide-react";
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
+import itDict from "@/dictionaries/it.json";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -15,6 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     es: "Política de Privacidad | Clicks & Go",
     en: "Privacy Policy | Clicks & Go",
     pt: "Política de Privacidade | Clicks & Go",
+    it: "Informativa sulla Privacy | Clicks & Go",
   };
   return { title: titles[locale] ?? titles.es };
 }
@@ -38,7 +40,7 @@ const CONTENT: Record<string, {
     sections: [
       {
         heading: "1. Alcance mundial y responsable del tratamiento",
-        body: "Clicks & Go es una plataforma de comparación de precios de productos de tecnología que opera a nivel mundial. Esta política se aplica a todas las personas que usan el servicio, en cualquier país.\n\nEl responsable del tratamiento de los datos personales es el operador de Clicks & Go. Contacto para cualquier consulta de privacidad: info@clicksandgo.com.\n\nSegún su lugar de residencia, le protegen además normas locales como el GDPR (Unión Europea) y UK GDPR (Reino Unido), la CCPA/CPRA (California, EE. UU.), la LGPD (Brasil), la Ley 25.326 (Argentina), la PIPEDA (Canadá) u otras equivalentes. Nada en esta política limita los derechos que esas normas le reconocen.",
+        body: "Clicks & Go es una plataforma de comparación de precios de productos de tecnología que opera a nivel mundial. Esta política se aplica a todas las personas que usan el servicio, en cualquier país.\n\nEl responsable del tratamiento de los datos personales es el operador de Clicks & Go. Contacto para cualquier consulta de privacidad: info@clicks-and-go.com.\n\nSegún su lugar de residencia, le protegen además normas locales como el GDPR (Unión Europea) y UK GDPR (Reino Unido), la CCPA/CPRA (California, EE. UU.), la LGPD (Brasil), la Ley 25.326 (Argentina), la PIPEDA (Canadá) u otras equivalentes. Nada en esta política limita los derechos que esas normas le reconocen.",
       },
       {
         heading: "2. Datos que recopilamos",
@@ -78,11 +80,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "11. Sus derechos (todas las regiones)",
-        body: "Sea cual sea su país, le reconocemos como mínimo estos derechos sobre sus datos:\n• Acceso: saber qué datos tenemos sobre usted y obtener copia.\n• Rectificación: corregir datos inexactos.\n• Supresión: eliminar su cuenta y sus datos (\"derecho al olvido\").\n• Portabilidad: recibir sus datos en formato estructurado de uso común.\n• Oposición y limitación del tratamiento, cuando aplique.\n• Retirar el consentimiento en cualquier momento, sin afectar la licitud previa.\n• No recibir discriminación por ejercer estos derechos (CCPA).\n\nAdemás: no vendemos ni \"compartimos\" datos personales en el sentido de la CCPA/CPRA, por lo que no existe nada de lo que \"optar por no vender\".\n\nPara ejercerlos: escriba a info@clicksandgo.com desde el email de su cuenta. Respondemos dentro de los 30 días (o el plazo menor que exija su legislación). También tiene derecho a reclamar ante la autoridad de protección de datos de su país (por ejemplo: su Autoridad de Control en la UE, el ICO en Reino Unido, la ANPD en Brasil, la AAIP en Argentina).",
+        body: "Sea cual sea su país, le reconocemos como mínimo estos derechos sobre sus datos:\n• Acceso: saber qué datos tenemos sobre usted y obtener copia.\n• Rectificación: corregir datos inexactos.\n• Supresión: eliminar su cuenta y sus datos (\"derecho al olvido\").\n• Portabilidad: recibir sus datos en formato estructurado de uso común.\n• Oposición y limitación del tratamiento, cuando aplique.\n• Retirar el consentimiento en cualquier momento, sin afectar la licitud previa.\n• No recibir discriminación por ejercer estos derechos (CCPA).\n\nAdemás: no vendemos ni \"compartimos\" datos personales en el sentido de la CCPA/CPRA, por lo que no existe nada de lo que \"optar por no vender\".\n\nPara ejercerlos: escriba a info@clicks-and-go.com desde el email de su cuenta. Respondemos dentro de los 30 días (o el plazo menor que exija su legislación). También tiene derecho a reclamar ante la autoridad de protección de datos de su país (por ejemplo: su Autoridad de Control en la UE, el ICO en Reino Unido, la ANPD en Brasil, la AAIP en Argentina).",
       },
       {
         heading: "12. Menores de edad",
-        body: "Clicks & Go no está dirigido a menores de 16 años y no recopilamos conscientemente datos de menores. Si un padre, madre o tutor detecta que un menor creó una cuenta, escríbanos a info@clicksandgo.com y la eliminaremos de inmediato.",
+        body: "Clicks & Go no está dirigido a menores de 16 años y no recopilamos conscientemente datos de menores. Si un padre, madre o tutor detecta que un menor creó una cuenta, escríbanos a info@clicks-and-go.com y la eliminaremos de inmediato.",
       },
       {
         heading: "13. Señales \"Do Not Track\" y GPC",
@@ -101,7 +103,7 @@ const CONTENT: Record<string, {
     sections: [
       {
         heading: "1. Worldwide scope and data controller",
-        body: "Clicks & Go is a technology price-comparison platform operating worldwide. This policy applies to everyone who uses the service, in any country.\n\nThe data controller is the operator of Clicks & Go. Privacy contact: info@clicksandgo.com.\n\nDepending on where you live, you are additionally protected by local frameworks such as the GDPR (European Union) and UK GDPR, the CCPA/CPRA (California, USA), the LGPD (Brazil), Law 25.326 (Argentina), PIPEDA (Canada) or equivalent laws. Nothing in this policy limits the rights those laws grant you.",
+        body: "Clicks & Go is a technology price-comparison platform operating worldwide. This policy applies to everyone who uses the service, in any country.\n\nThe data controller is the operator of Clicks & Go. Privacy contact: info@clicks-and-go.com.\n\nDepending on where you live, you are additionally protected by local frameworks such as the GDPR (European Union) and UK GDPR, the CCPA/CPRA (California, USA), the LGPD (Brazil), Law 25.326 (Argentina), PIPEDA (Canada) or equivalent laws. Nothing in this policy limits the rights those laws grant you.",
       },
       {
         heading: "2. Data we collect",
@@ -141,11 +143,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "11. Your rights (all regions)",
-        body: "Wherever you live, we grant you at minimum these rights over your data:\n• Access: know what data we hold about you and get a copy.\n• Rectification: correct inaccurate data.\n• Erasure: delete your account and data (\"right to be forgotten\").\n• Portability: receive your data in a structured, commonly used format.\n• Objection and restriction of processing, where applicable.\n• Withdraw consent at any time, without affecting prior lawfulness.\n• No discrimination for exercising these rights (CCPA).\n\nAlso: we do not sell or \"share\" personal data within the meaning of the CCPA/CPRA, so there is nothing to opt out of.\n\nTo exercise them: write to info@clicksandgo.com from your account email. We respond within 30 days (or any shorter period your law requires). You may also complain to your country's data protection authority (e.g. your EU Supervisory Authority, the ICO in the UK, the ANPD in Brazil, the AAIP in Argentina).",
+        body: "Wherever you live, we grant you at minimum these rights over your data:\n• Access: know what data we hold about you and get a copy.\n• Rectification: correct inaccurate data.\n• Erasure: delete your account and data (\"right to be forgotten\").\n• Portability: receive your data in a structured, commonly used format.\n• Objection and restriction of processing, where applicable.\n• Withdraw consent at any time, without affecting prior lawfulness.\n• No discrimination for exercising these rights (CCPA).\n\nAlso: we do not sell or \"share\" personal data within the meaning of the CCPA/CPRA, so there is nothing to opt out of.\n\nTo exercise them: write to info@clicks-and-go.com from your account email. We respond within 30 days (or any shorter period your law requires). You may also complain to your country's data protection authority (e.g. your EU Supervisory Authority, the ICO in the UK, the ANPD in Brazil, the AAIP in Argentina).",
       },
       {
         heading: "12. Children",
-        body: "Clicks & Go is not directed at children under 16 and we do not knowingly collect data from minors. If a parent or guardian finds that a minor created an account, write to info@clicksandgo.com and we will delete it immediately.",
+        body: "Clicks & Go is not directed at children under 16 and we do not knowingly collect data from minors. If a parent or guardian finds that a minor created an account, write to info@clicks-and-go.com and we will delete it immediately.",
       },
       {
         heading: "13. \"Do Not Track\" and GPC signals",
@@ -164,7 +166,7 @@ const CONTENT: Record<string, {
     sections: [
       {
         heading: "1. Alcance mundial e responsável pelo tratamento",
-        body: "O Clicks & Go é uma plataforma de comparação de preços de tecnologia que opera mundialmente. Esta política se aplica a todas as pessoas que usam o serviço, em qualquer país.\n\nO responsável pelo tratamento dos dados pessoais é o operador do Clicks & Go. Contato de privacidade: info@clicksandgo.com.\n\nConforme o seu país de residência, você também é protegido por normas locais como o GDPR (União Europeia) e UK GDPR, a CCPA/CPRA (Califórnia, EUA), a LGPD (Brasil), a Lei 25.326 (Argentina), a PIPEDA (Canadá) ou equivalentes. Nada nesta política limita os direitos que essas normas garantem a você.",
+        body: "O Clicks & Go é uma plataforma de comparação de preços de tecnologia que opera mundialmente. Esta política se aplica a todas as pessoas que usam o serviço, em qualquer país.\n\nO responsável pelo tratamento dos dados pessoais é o operador do Clicks & Go. Contato de privacidade: info@clicks-and-go.com.\n\nConforme o seu país de residência, você também é protegido por normas locais como o GDPR (União Europeia) e UK GDPR, a CCPA/CPRA (Califórnia, EUA), a LGPD (Brasil), a Lei 25.326 (Argentina), a PIPEDA (Canadá) ou equivalentes. Nada nesta política limita os direitos que essas normas garantem a você.",
       },
       {
         heading: "2. Dados que coletamos",
@@ -204,11 +206,11 @@ const CONTENT: Record<string, {
       },
       {
         heading: "11. Seus direitos (todas as regiões)",
-        body: "Onde quer que você more, garantimos no mínimo estes direitos sobre seus dados:\n• Acesso: saber quais dados temos sobre você e obter cópia.\n• Retificação: corrigir dados imprecisos.\n• Exclusão: eliminar sua conta e seus dados (\"direito ao esquecimento\").\n• Portabilidade: receber seus dados em formato estruturado de uso comum.\n• Oposição e limitação do tratamento, quando aplicável.\n• Retirar o consentimento a qualquer momento, sem afetar a licitude anterior.\n• Não sofrer discriminação por exercer esses direitos (CCPA).\n\nAlém disso: não vendemos nem \"compartilhamos\" dados pessoais no sentido da CCPA/CPRA — não há nada de que \"optar por sair\".\n\nPara exercê-los: escreva para info@clicksandgo.com a partir do email da sua conta. Respondemos em até 30 dias (ou no prazo menor que a sua lei exigir). Você também pode reclamar à autoridade de proteção de dados do seu país (ex.: sua Autoridade de Controle na UE, o ICO no Reino Unido, a ANPD no Brasil, a AAIP na Argentina).",
+        body: "Onde quer que você more, garantimos no mínimo estes direitos sobre seus dados:\n• Acesso: saber quais dados temos sobre você e obter cópia.\n• Retificação: corrigir dados imprecisos.\n• Exclusão: eliminar sua conta e seus dados (\"direito ao esquecimento\").\n• Portabilidade: receber seus dados em formato estruturado de uso comum.\n• Oposição e limitação do tratamento, quando aplicável.\n• Retirar o consentimento a qualquer momento, sem afetar a licitude anterior.\n• Não sofrer discriminação por exercer esses direitos (CCPA).\n\nAlém disso: não vendemos nem \"compartilhamos\" dados pessoais no sentido da CCPA/CPRA — não há nada de que \"optar por sair\".\n\nPara exercê-los: escreva para info@clicks-and-go.com a partir do email da sua conta. Respondemos em até 30 dias (ou no prazo menor que a sua lei exigir). Você também pode reclamar à autoridade de proteção de dados do seu país (ex.: sua Autoridade de Controle na UE, o ICO no Reino Unido, a ANPD no Brasil, a AAIP na Argentina).",
       },
       {
         heading: "12. Menores de idade",
-        body: "O Clicks & Go não é direcionado a menores de 16 anos e não coletamos conscientemente dados de menores. Se um responsável identificar que um menor criou uma conta, escreva para info@clicksandgo.com e a excluiremos imediatamente.",
+        body: "O Clicks & Go não é direcionado a menores de 16 anos e não coletamos conscientemente dados de menores. Se um responsável identificar que um menor criou uma conta, escreva para info@clicks-and-go.com e a excluiremos imediatamente.",
       },
       {
         heading: "13. Sinais \"Do Not Track\" e GPC",
@@ -220,12 +222,75 @@ const CONTENT: Record<string, {
       },
     ],
   },
+  it: {
+    title: "Informativa sulla Privacy",
+    updated: "Ultimo aggiornamento: 23 luglio 2026",
+    backLabel: "← Torna alla home",
+    sections: [
+      {
+        heading: "1. Ambito mondiale e titolare del trattamento",
+        body: "Clicks & Go è una piattaforma di comparazione prezzi di prodotti tecnologici che opera a livello mondiale. Questa informativa si applica a tutte le persone che usano il servizio, in qualsiasi paese.\n\nIl titolare del trattamento dei dati personali è l'operatore di Clicks & Go. Contatto per qualsiasi richiesta sulla privacy: info@clicks-and-go.com.\n\nA seconda del suo luogo di residenza, lei è inoltre protetto da normative locali come il GDPR (Unione Europea) e UK GDPR (Regno Unito), il CCPA/CPRA (California, USA), la LGPD (Brasile), la Legge 25.326 (Argentina), il PIPEDA (Canada) o normative equivalenti. Nulla in questa informativa limita i diritti che tali normative le riconoscono.",
+      },
+      {
+        heading: "2. Dati che raccogliamo",
+        body: "Raccogliamo solo ciò che è necessario per gestire il servizio:\n\nSe crea un account:\n• Email (obbligatoria: è il suo identificativo di account)\n• Nome e foto profilo (se il suo provider di accesso — Google, Microsoft o Facebook — li condivide)\n• Telefono e città (facoltativi, se li compila nel suo pannello)\n• Lingua preferita e paese preferito per il catalogo\n• I suoi preferiti e avvisi di prezzo\n\nAutomaticamente durante la visita:\n• Paese approssimativo, derivato dal suo indirizzo IP. L'IP viene usato solo in transito per questa derivazione e NON viene memorizzato. Viene conservato solo il codice del paese (es. \"IT\"), per mostrarle catalogo, valuta e offerte della sua regione.\n• Cookie di sessione (solo se effettua l'accesso).\n\nNON raccogliamo: indirizzo postale, dati di pagamento o carte (gli acquisti avvengono nei negozi, mai su Clicks & Go), dati biometrici, né categorie sensibili di informazioni (salute, religione, orientamento, affiliazione politica o sindacale).",
+      },
+      {
+        heading: "3. Come usiamo i dati (finalità e basi giuridiche)",
+        body: "• Autenticare la sua sessione e mantenere il suo account — base giuridica: esecuzione del contratto di servizio.\n• Mostrare catalogo, valuta e offerte della sua regione — base giuridica: legittimo interesse a offrire un servizio pertinente.\n• Inviare l'avviso di prezzo che lei stesso ha configurato — base giuridica: esecuzione del servizio richiesto.\n• Inviarle un link di accesso (magic link) quando lo richiede — base giuridica: esecuzione del servizio.\n• Sicurezza, prevenzione di frodi e abusi — base giuridica: legittimo interesse.\n\nNON usiamo i suoi dati per: venderli o affittarli a terzi, pubblicità personalizzata di terzi, né decisioni automatizzate con effetti giuridici su di lei. I punteggi che vede sul sito (deal score) valutano prodotti, mai persone.",
+      },
+      {
+        heading: "4. Accesso con Google, Microsoft o Facebook (OAuth)",
+        body: "Se sceglie di accedere con Google, Microsoft o Facebook, quel provider ci trasmette il suo identificativo di account, la sua email e — a seconda del provider — il suo nome e foto profilo, secondo l'informativa sulla privacy del provider stesso. Memorizziamo solo questi dati minimi. Non otteniamo accesso ai suoi contatti, file, pubblicazioni né a nessun altro contenuto di quegli account. Può revocare l'accesso in qualsiasi momento dalle impostazioni di sicurezza del suo provider.",
+      },
+      {
+        heading: "5. Link di affiliazione",
+        body: "Clicks & Go partecipa a programmi di affiliazione (ad esempio Amazon Associates, Awin, CJ Affiliate, MercadoLibre). Cliccando su \"Acquista\" viene reindirizzato al negozio ufficiale tramite il nostro gateway /out. In questo reindirizzamento NON trasferiamo i suoi dati personali al negozio: il negozio riceve solo la visita, come se fosse arrivata da qualsiasi altro link. Potremmo ricevere una commissione se completa un acquisto, senza costi aggiuntivi per lei. Il rapporto di compravendita (pagamento, spedizione, garanzia, resi) è esclusivamente tra lei e il negozio.",
+      },
+      {
+        heading: "6. Cookie e tecnologie simili",
+        body: "Usiamo esclusivamente cookie strettamente necessari:\n• Cookie di sessione (NextAuth) — mantiene attiva la sua sessione. Scade dopo 30 giorni o alla disconnessione.\n• Cookie di preferenza tema/lingua, se applicabile.\n\nNON usiamo cookie pubblicitari, tracciamento cross-site né pixel di terze parti. Per questo non mostriamo un banner di consenso ai cookie: quelli essenziali sono esenti da consenso nella maggior parte delle legislazioni. Se ciò dovesse cambiare, chiederemo il consenso preventivo dove la legge lo richieda.",
+      },
+      {
+        heading: "7. Con chi condividiamo i dati (responsabili del trattamento)",
+        body: "Non vendiamo né cediamo i suoi dati. Per operare usiamo fornitori che trattano i dati per nostro conto, secondo i propri impegni di protezione:\n• Google Cloud Platform (USA) — hosting della piattaforma e database cifrato.\n• Resend — invio di email transazionali (link di accesso e avvisi di prezzo).\n• Google, Microsoft e Facebook — solo se sceglie di accedere tramite questi servizi.\n\nLa telemetria tecnica interna del sistema (metriche degli agenti e log operativi) non contiene i suoi dati personali.\n\nPotremmo divulgare dati se una legge o un ordine giudiziario valido lo richiede, limitandoci al minimo necessario.",
+      },
+      {
+        heading: "8. Trasferimenti internazionali",
+        body: "I nostri server sono gestiti da Google Cloud Platform negli Stati Uniti. Se risiede fuori dagli USA, i suoi dati vengono trasferiti in quel paese per poter fornire il servizio. Questi trasferimenti si basano sui meccanismi di legalità applicabili alla sua regione (ad esempio, le Clausole Contrattuali Standard e il Data Privacy Framework UE-USA, di cui Google è partecipante).",
+      },
+      {
+        heading: "9. Sicurezza",
+        body: "• Cifratura in transito (TLS/HTTPS) su tutto il sito e cifratura a riposo nel database.\n• Nessuna password: l'accesso avviene tramite provider OAuth o link monouso via email, eliminando il rischio di furto di password.\n• Accesso interno ai dati limitato dal principio del minimo privilegio, con chiavi gestite in un gestore di segreti.\n• Architettura zero-trust tra i componenti interni del sistema.\n\nNessun sistema è infallibile: se rilevassimo una violazione della sicurezza che riguarda i suoi dati, la informeremo secondo i termini previsti dalla legge applicabile alla sua regione.",
+      },
+      {
+        heading: "10. Conservazione dei dati",
+        body: "• Dati dell'account: finché l'account è attivo.\n• Se richiede l'eliminazione dell'account: cancelliamo i suoi dati personali entro massimo 30 giorni, salvo quanto la legge ci obbliga a conservare (e solo per quel periodo legale).\n• Le sessioni scadono automaticamente dopo 30 giorni.\n• Il codice del paese derivato per visita non è collegato alla sua identità se non ha un account.",
+      },
+      {
+        heading: "11. I suoi diritti (tutte le regioni)",
+        body: "Qualunque sia il suo paese, le riconosciamo come minimo questi diritti sui suoi dati:\n• Accesso: sapere quali dati abbiamo su di lei e ottenerne copia.\n• Rettifica: correggere dati inesatti.\n• Cancellazione: eliminare il suo account e i suoi dati (\"diritto all'oblio\").\n• Portabilità: ricevere i suoi dati in formato strutturato di uso comune.\n• Opposizione e limitazione del trattamento, quando applicabile.\n• Revocare il consenso in qualsiasi momento, senza pregiudicare la liceità precedente.\n• Non subire discriminazioni per l'esercizio di questi diritti (CCPA).\n\nInoltre: non vendiamo né \"condividiamo\" dati personali ai sensi del CCPA/CPRA, quindi non c'è nulla da cui \"rinunciare alla vendita\".\n\nPer esercitarli: scriva a info@clicks-and-go.com dall'email del suo account. Rispondiamo entro 30 giorni (o il termine inferiore richiesto dalla sua legislazione). Ha inoltre il diritto di presentare reclamo all'autorità di protezione dati del suo paese (ad esempio: la sua Autorità di Controllo nell'UE, l'ICO nel Regno Unito, l'ANPD in Brasile, l'AAIP in Argentina).",
+      },
+      {
+        heading: "12. Minori",
+        body: "Clicks & Go non è rivolto a minori di 16 anni e non raccogliamo consapevolmente dati di minori. Se un genitore o tutore rileva che un minore ha creato un account, ci scriva a info@clicks-and-go.com e lo elimineremo immediatamente.",
+      },
+      {
+        heading: "13. Segnali \"Do Not Track\" e GPC",
+        body: "Poiché non tracciamo gli utenti tra siti diversi né vendiamo dati, l'effetto dei segnali Do Not Track o Global Privacy Control è già garantito di default per tutti i visitatori.",
+      },
+      {
+        heading: "14. Modifiche a questa informativa",
+        body: "Potremmo aggiornare questa informativa. In caso di modifiche significative, la informeremo via email (se ha un account) o con un avviso in evidenza sul sito, con ragionevole anticipo. La data \"ultimo aggiornamento\" in alto riflette sempre la versione vigente. L'uso del servizio dopo l'entrata in vigore delle modifiche implica accettazione, fatti salvi i diritti non rinunciabili secondo la sua legge locale.",
+      },
+    ],
+  },
 };
 
 export default async function PrivacidadPage({ params }: Props) {
   const { locale } = await params;
   const content = CONTENT[locale] ?? CONTENT.es;
-  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   return (
     <div className="min-h-screen bg-white pt-32 pb-20">

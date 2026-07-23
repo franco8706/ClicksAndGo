@@ -36,6 +36,7 @@ export default function LanguageSelector() {
         <option value="es" className="bg-white text-[#0a0e14] font-bold py-2">ESPAÑOL</option>
         <option value="en" className="bg-white text-[#0a0e14] font-bold py-2">ENGLISH</option>
         <option value="pt" className="bg-white text-[#0a0e14] font-bold py-2">PORTUGUÊS</option>
+        <option value="it" className="bg-white text-[#0a0e14] font-bold py-2">ITALIANO</option>
       </select>
 
       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">

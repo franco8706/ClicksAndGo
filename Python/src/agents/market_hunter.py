@@ -15,6 +15,52 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
 ]
 
+# ==============================================================================
+# 🛡️ CLASIFICADOR DE CATÁLOGO DIGITAL — allowlist + denylist
+# Único punto de verdad para "esto es un producto de tecnología que vendemos".
+# Se aplica a TODO lo que traiga cualquier adaptador (presente o futuro, ej. un
+# Amazon PA-API): nada entra al catálogo salvo que matchee explícitamente estas
+# categorías. El denylist es defensa en profundidad — rechaza aunque alguna
+# keyword del allowlist matchee por coincidencia (ej. un feed mixto de Awin).
+# ==============================================================================
+_CATEGORY_KEYWORDS = {
+    "laptop":     ["laptop", "notebook", "portátil", "portatil"],
+    "desktop":    ["desktop", "pc de escritorio", "computadora de escritorio",
+                   "all-in-one", "all in one", "torre pc", "cpu de escritorio"],
+    "monitor":    ["monitor", "pantalla gamer", "display led", "display monitor"],
+    "keyboard":   ["teclado", "keyboard"],
+    "mouse":      ["mouse", "raton", "ratón"],
+    "headphones": ["auricular", "audífono", "audifono", "headphone", "headset", "earphone"],
+    "webcam":     ["webcam", "cámara web", "camara web"],
+    "printer":    ["impresora", "printer"],
+    "supplies":   ["tóner", "toner", "cartucho", "tinta", "ink cartridge", "insumo"],
+}
+
+_DENYLIST_KEYWORDS = [
+    "ropa", "remera", "camiseta", "pantalon", "pantalón", "zapatilla", "calzado",
+    "zapato", "moda", "joyer", "bijouterie", "mueble", "juguete", "perfume",
+    "maquillaje", "cosmétic", "alimento", "bebida", "clothing", "apparel",
+    "shoes", "jewelry", "furniture", "toy", "makeup", "cosmetic", "grocery",
+]
+
+
+def classify_digital_product(title: str, category_hint: str = ""):
+    """Clasifica un item en una de las 9 categorías reales o None si no aplica.
+
+    None = descartar. No hay categoría "genérica" de fallback: un producto que
+    no matchea ninguna keyword del catálogo real (ej. ropa, un accesorio no
+    tecnológico, o cualquier cosa ambigua) se rechaza en vez de colarse mal
+    etiquetado — así el sitio nunca muestra algo fuera de tecnología.
+    """
+    combined = f"{title or ''} {category_hint or ''}".lower()
+    if any(term in combined for term in _DENYLIST_KEYWORDS):
+        return None
+    for code, keywords in _CATEGORY_KEYWORDS.items():
+        if any(kw in combined for kw in keywords):
+            return code
+    return None
+
+
 def _human_delay(min_s: float = 2.0, max_s: float = 6.0):
     """Pausa aleatoria no-fija — imita comportamiento humano y evita detección WAF."""
     time.sleep(random.uniform(min_s, max_s))
@@ -100,6 +146,14 @@ class MercadoLibreAPI(RetailerAPI):
         normalized = []
         for item in raw_data[:50]:
             title = str(item.get("title", "Laptop Genérica"))
+            # fetch_deals siempre busca `q=laptop`: el título real (marca+modelo,
+            # ej. "Lenovo IdeaPad 3 15.6") casi nunca repite la palabra "laptop",
+            # así que se pasa como pista de categoría. El denylist sigue activo
+            # como red de seguridad ante un resultado desalineado del buscador.
+            product_type = classify_digital_product(title, category_hint="laptop")
+            if not product_type:
+                continue  # fuera del catálogo digital — se descarta, no se etiqueta a ciegas
+
             image = str(item.get("thumbnail", "")).replace("http://", "https://").replace("-I.jpg", "-O.jpg")
             raw_deal = {
                 "sku_original":  str(item.get("id", "")),
@@ -107,6 +161,7 @@ class MercadoLibreAPI(RetailerAPI):
                 "country_code":  country_code,
                 "brand":         self._detect_brand(title),
                 "name":          title,
+                "product_type":  product_type,
                 "financials": {
                     "original_price": float(item.get("original_price") or item.get("price", 0)),
                     "current_price":  float(item.get("price", 0)),
@@ -116,7 +171,9 @@ class MercadoLibreAPI(RetailerAPI):
                     "affiliate_raw": str(item.get("permalink", "")),
                 },
             }
-            normalized.append(self.normalizer.normalize_laptop_data(raw_deal))
+            result = self.normalizer.normalize_laptop_data(raw_deal)
+            if result:
+                normalized.append(result)
         return normalized
 
 
@@ -173,13 +230,18 @@ class AwinNetworkAPI(RetailerAPI):
             if resp and resp.status_code == 200:
                 data = resp.json()
                 items = data if isinstance(data, list) else data.get("data", [])
-                # Filtrar solo laptops/notebooks del feed completo
-                laptops = [
+                # El feed trae el catálogo COMPLETO del merchant (ropa, hogar,
+                # todo) — filtrar acá con el clasificador de las 9 categorías
+                # reales es obligatorio, no una optimización. Sin costo extra
+                # de red: ya está todo descargado, solo se descarta en Python.
+                digital_items = [
                     i for i in items
-                    if "laptop" in str(i.get("category_name", "")).lower()
-                    or "notebook" in str(i.get("category_name", "")).lower()
+                    if classify_digital_product(
+                        str(i.get("product_name", "")),
+                        str(i.get("category_name", "")),
+                    )
                 ]
-                return self._normalize(laptops[:100], country_code)
+                return self._normalize(digital_items[:100], country_code)
         except Exception as e:
             print(f"❌ [Awin] {country_code}: {e}")
         return []
@@ -187,12 +249,18 @@ class AwinNetworkAPI(RetailerAPI):
     def _normalize(self, raw_data: list, country_code: str) -> list:
         normalized = []
         for item in raw_data:
+            name = str(item.get("product_name", ""))
+            product_type = classify_digital_product(name, str(item.get("category_name", "")))
+            if not product_type:
+                continue  # defensa en profundidad — ya se filtró en fetch_deals, pero no se asume
+
             raw_deal = {
                 "sku_original":  str(item.get("aw_product_id") or item.get("merchant_product_id", "")),
                 "retailer_slug": str(item.get("merchant_name", "awin")).lower().replace(" ", "_"),
                 "country_code":  country_code,
                 "brand":         str(item.get("brand_name", "Genérica")),
-                "name":          str(item.get("product_name", "")),
+                "name":          name,
+                "product_type":  product_type,
                 "financials": {
                     "original_price": float(item.get("store_price") or item.get("search_price") or 0),
                     "current_price":  float(item.get("search_price") or 0),
@@ -202,7 +270,9 @@ class AwinNetworkAPI(RetailerAPI):
                     "affiliate_raw": str(item.get("display_url", "")),
                 },
             }
-            normalized.append(self.normalizer.normalize_laptop_data(raw_deal))
+            result = self.normalizer.normalize_laptop_data(raw_deal)
+            if result:
+                normalized.append(result)
         return normalized
 
 
@@ -263,12 +333,22 @@ class CJAffiliateAPI(RetailerAPI):
 
         normalized = []
         for item in raw_data:
+            name = str(item.get("name", ""))
+            # Mismo motivo que MercadoLibre: la búsqueda ya filtró por
+            # keywords=laptop+notebook, pero el nombre real del producto
+            # (marca+modelo) puede no repetir esas palabras. Se pasa como pista;
+            # el denylist sigue protegiendo ante un falso positivo del buscador.
+            product_type = classify_digital_product(name, category_hint="laptop notebook")
+            if not product_type:
+                continue
+
             raw_deal = {
                 "sku_original":  str(item.get("sku") or item.get("@id", "")),
                 "retailer_slug": str(item.get("advertiser-name", "cj")).lower().replace(" ", "_"),
                 "country_code":  country_code,
                 "brand":         str(item.get("brand", "Genérica")),
-                "name":          str(item.get("name", "")),
+                "name":          name,
+                "product_type":  product_type,
                 "financials": {
                     "original_price": clean_price(item.get("retail-price", 0)),
                     "current_price":  clean_price(item.get("sale-price") or item.get("retail-price", 0)),
@@ -278,7 +358,9 @@ class CJAffiliateAPI(RetailerAPI):
                     "affiliate_raw": str(item.get("buy-url", "")),
                 },
             }
-            normalized.append(self.normalizer.normalize_laptop_data(raw_deal))
+            result = self.normalizer.normalize_laptop_data(raw_deal)
+            if result:
+                normalized.append(result)
         return normalized
 
 
