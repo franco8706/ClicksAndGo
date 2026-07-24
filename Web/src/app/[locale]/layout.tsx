@@ -64,6 +64,11 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
   return (
     <html lang={locale} className={`${barlow.variable} ${barlowCondensed.variable} scroll-smooth`} suppressHydrationWarning>
+      {/* Verificación de propiedad del sitio para Impact.com (red de afiliados).
+          Se renderiza crudo (atributo `value=`, NO `content=`) porque el crawler
+          de Impact busca específicamente `value`; la Metadata API de Next emite
+          `content=` y la verificación fallaría. React 19 lo hoistea al <head>. */}
+      <meta {...({ name: "impact-site-verification", value: "c697e065-b482-46fc-a612-d26eac2d1e18" } as Record<string, string>)} />
       <body className="antialiased font-sans min-h-screen flex flex-col transition-colors selection-premium">
         <ThemeProvider>
 

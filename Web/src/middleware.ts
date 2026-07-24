@@ -20,17 +20,16 @@ const GEO_CURRENCY_MAP: Record<string, string> = {
   IT: 'EUR',
 };
 
-// Configuración de Tags de Afiliados para conversión optimizada
+// Configuración de Tags de Afiliados para conversión optimizada.
+// Solo países con afiliación REAL y aprobada. MercadoLibre (AR/MX/BR/CO/CL) se
+// sacó de acá: el programa de afiliados de MercadoLibre Argentina exige ser
+// monotributista (la cuenta operativa es responsable inscripto) y MX/BR/CO/CL
+// nunca se registraron. Los links a MercadoLibre siguen funcionando vía /out
+// (están en ALLOWED_OUT_DOMAINS), solo que sin tag hasta tener afiliación real.
 const AFFILIATE_TAGS: Record<string, Record<string, string>> = {
   ES: { tag: 'clicksandgo-21', domain: 'amazon.es', network: 'AMAZON' },
   US: { tag: 'clicksandgo-20', domain: 'amazon.com', network: 'AMAZON' },
   IT: { tag: 'clicksandgo08-21', domain: 'amazon.it', network: 'AMAZON' },
-  AR: { tag: 'clicksandgo-ar-20', domain: 'mercadolibre.com.ar', network: 'MERCADOLIBRE' },
-  MX: { tag: 'clicksandgo-mx-20', domain: 'mercadolibre.com.mx', network: 'MERCADOLIBRE' },
-  // 🚀 FIX afiliación: países LATAM que antes perdían el tag (comisiones no atribuidas)
-  BR: { tag: 'clicksandgo-br-20', domain: 'mercadolibre.com.br', network: 'MERCADOLIBRE' },
-  CO: { tag: 'clicksandgo-co-20', domain: 'mercadolibre.com.co', network: 'MERCADOLIBRE' },
-  CL: { tag: 'clicksandgo-cl-20', domain: 'mercadolibre.cl', network: 'MERCADOLIBRE' },
 };
 
 // 🌍 Idioma sugerido según el país (redirección acorde a la ubicación)
