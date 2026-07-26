@@ -23,7 +23,8 @@
     },
     "allProducts": "Todos",
     "products": "produtos",
-    "productSingular": "produto"
+    "productSingular": "produto",
+    "clearFilter": "Remover filtro"
   },
   "news": {
     "title": "Notícias de Tecnologia",
@@ -38,7 +39,8 @@
     "updated": "Atualizado",
     "realTime": "AO VIVO",
     "login": "Entrar",
-    "register": "Cadastrar"
+    "register": "Cadastrar",
+    "catalog": "Catálogo"
   },
   "nav": {
     "cta": "Pesquisar"
@@ -118,7 +120,8 @@
     "descCreator": "A escolha ideal para criadores digitais. Perfeita para editar vídeo em 4K, processar fotos RAW, trabalhar no Adobe Suite ou produzir áudio profissional. Tela de alta precisão e equilíbrio entre CPU e GPU para eliminar qualquer gargalo no fluxo criativo.",
     "descUltrabook": "Elegante, silenciosa e extremamente portátil, feita para profissionais em movimento constante. Adapta-se perfeitamente a coworkings, viagens de negócios e home office. Bateria de longa autonomia e design ultracompacto sem abrir mão de desempenho ou conectividade.",
     "descBudget": "A escolha inteligente para quem quer o melhor preço sem abrir mão da qualidade. Ideal para trabalho de escritório, navegação fluida, aulas online e entretenimento do dia a dia. Desempenho estável e confiável para todas as tarefas cotidianas sem frustrações.",
-    "descStudent": "A companheira acadêmica perfeita. Desenvolvida para anotações rápidas, pesquisa, organização de projetos universitários e entrega de trabalhos no prazo. Leve para levar à faculdade, com bateria que dura o dia todo e agilidade para múltiplas abas e aplicativos."
+    "descStudent": "A companheira acadêmica perfeita. Desenvolvida para anotações rápidas, pesquisa, organização de projetos universitários e entrega de trabalhos no prazo. Leve para levar à faculdade, com bateria que dura o dia todo e agilidade para múltiplas abas e aplicativos.",
+    "outOfStock": "Sem estoque"
   },
   "featuredDeal": "Melhor custo-benefício",
   "greatOpportunity": "Ótima oferta",
@@ -294,5 +297,29 @@
     "webcam": "Chamadas nítidas e streaming em alta definição.",
     "printer": "Impressão confiável para casa ou escritório.",
     "supplies": "Suprimentos originais pelo melhor preço verificado."
+  },
+  "showcase": {
+    "eyebrow": "Catálogo digital",
+    "title": "Explore por categoria"
+  },
+  "families": {
+    "computing": "Computação",
+    "peripherals": "Periféricos",
+    "printing": "Impressão"
+  },
+  "promos": {
+    "computingTitle": "Potência para trabalhar e jogar",
+    "peripheralsTitle": "Complete seu setup ideal",
+    "upTo": "Até",
+    "viewOffers": "Ver ofertas"
+  },
+  "events": {
+    "live": "Ao vivo",
+    "upcoming": "Em breve",
+    "cta": "Ver ofertas do evento"
+  },
+  "forYou": {
+    "eyebrow": "Com base na sua atividade",
+    "title": "Escolhidos para você"
   }
 }

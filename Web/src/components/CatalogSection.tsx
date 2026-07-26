@@ -1,14 +1,19 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { X } from "lucide-react";
 import LaptopCard from "./LaptopCard";
 import type { Laptop } from "@/types/laptop";
-import { PRODUCT_TYPES } from "@/types/product";
+import { PRODUCT_TYPES, PRODUCT_FAMILY, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
 
 const ALL = "all";
 const VALID_TYPES = new Set<string>(PRODUCT_TYPES);
+// Familias filtrables (banners promocionales): agrupan varios tipos.
+const VALID_FAMILIES = new Set<string>(["computing", "peripherals", "printing"]);
 const typeOf = (p: Laptop): string => p.product_type || "laptop";
+const familyOf = (p: Laptop): string | undefined =>
+  PRODUCT_FAMILY[typeOf(p) as ProductType];
 
 interface CatalogSectionProps {
   readonly laptops: Laptop[];
@@ -28,18 +33,18 @@ export default function CatalogSection({
   const [activeFilter, setActiveFilter] = useState<string>(ALL);
   const [expandedId, setExpandedId]     = useState<string | null>(null);
 
-  // 📦 Multi-producto: los chips se derivan de los tipos presentes en el
-  // catálogo (ordenados por la taxonomía canónica). Así se auto-adaptan a
-  // medida que los retailers suman impresoras, teclados, mouse, etc.
-  const availableTypes = useMemo<string[]>(() => {
-    const present = new Set(laptops.map(typeOf));
-    return PRODUCT_TYPES.filter((t) => present.has(t));
-  }, [laptops]);
-  const filters = useMemo(() => [ALL, ...availableTypes], [availableTypes]);
-
-  const catDict = (dict.categories ?? {}) as Record<string, string>;
-  const labelFor = (key: string) =>
-    key === ALL ? (dict.common?.allProducts || dict.common?.allLaptops || "Todos") : (catDict[key] || key);
+  // Etiqueta del filtro activo (tipo o familia) para el pill "quitar filtro".
+  // Los chips de categoría se movieron a "Explorá por categoría" (patrón ML):
+  // acá solo se muestra qué filtro está aplicado, con opción de limpiarlo.
+  const activeLabel = (): string | null => {
+    if (activeFilter === ALL) return null;
+    if (VALID_FAMILIES.has(activeFilter)) {
+      const famDict = (dict.families ?? {}) as Record<string, string>;
+      return famDict[activeFilter] || activeFilter;
+    }
+    const catDict = (dict.categories ?? {}) as Record<string, string>;
+    return catDict[activeFilter] || activeFilter;
+  };
 
   // Lee ?cat= al montar (para links compartidos). Solo aplica si es un tipo válido.
   useEffect(() => {
@@ -48,11 +53,11 @@ export default function CatalogSection({
     if (cat && VALID_TYPES.has(cat)) setActiveFilter(cat);
   }, []);
 
-  // Escucha el evento del HeroSection (buscador) — filtra por tipo de producto.
+  // Escucha el evento de hero/buscador/banners — filtra por tipo o familia.
   useEffect(() => {
     const handler = (e: Event) => {
       const { category } = (e as CustomEvent<{ category: string }>).detail;
-      if (VALID_TYPES.has(category)) {
+      if (VALID_TYPES.has(category) || VALID_FAMILIES.has(category)) {
         setActiveFilter(category);
         setExpandedId(null);
       }
@@ -63,6 +68,9 @@ export default function CatalogSection({
 
   const filtered = useMemo(() => {
     if (activeFilter === ALL) return laptops;
+    if (VALID_FAMILIES.has(activeFilter)) {
+      return laptops.filter((l) => familyOf(l) === activeFilter);
+    }
     return laptops.filter((l) => typeOf(l) === activeFilter);
   }, [laptops, activeFilter]);
 
@@ -80,38 +88,33 @@ export default function CatalogSection({
 
   return (
     <>
-      {/* ── Filtros por categoría de producto ──────────────────────────── */}
-      {filters.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-8">
-          {filters.map((key) => {
-            const isActive = activeFilter === key;
-            return (
-              <button
-                key={key}
-                onClick={() => handleFilterChange(key)}
-                className={`px-5 py-2.5 rounded-[2px] text-sm font-bold transition-all duration-200 border cursor-pointer select-none ${
-                  isActive
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "border-[#e6e8ec] text-[#6b7280] bg-white hover:border-blue-300 hover:text-blue-600"
-                }`}
-              >
-                {labelFor(key)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Results count ──────────────────────────────────────────────── */}
+      {/* ── Conteo + filtro activo (removible, estilo MercadoLibre) ─────── */}
       {filtered.length > 0 && (
-        <p className="text-[#9aa1ac] text-[11px] font-black uppercase tracking-widest mb-6">
-          {countNoun(filtered.length)}
-        </p>
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
+          <p className="text-[#9aa1ac] text-[11px] font-black uppercase tracking-widest">
+            {countNoun(filtered.length)}
+          </p>
+          {activeFilter !== ALL && (
+            <button
+              onClick={() => handleFilterChange(ALL)}
+              aria-label={dict.common?.clearFilter || "Quitar filtro"}
+              className="inline-flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-[2px] px-3 py-1.5 hover:bg-blue-100 transition-colors cursor-pointer select-none"
+            >
+              {activeLabel()}
+              <X size={12} />
+            </button>
+          )}
+        </div>
       )}
 
       {/* ── Grid ───────────────────────────────────────────────────────── */}
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+        /* key={activeFilter} → la cascada de entrada se repite al filtrar
+           (patrón ML: el grid "responde" a cada cambio de categoría) */
+        <div
+          key={activeFilter}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start stagger-children"
+        >
           {filtered.map((laptop) => (
             <LaptopCard
               key={laptop.id}

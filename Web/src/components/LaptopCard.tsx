@@ -2,9 +2,11 @@
 
 import React, { useState, useTransition } from "react";
 import Image from "next/image";
-import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart, TrendingDown } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
-import type { Laptop } from "@/types/laptop";
+import { recordSignal } from "@/lib/affinity";
+import { isPromoExpired } from "@/components/EventBanner";
+import type { Laptop, AIScoreLabel } from "@/types/laptop";
 import { SPEC_SCHEMA, formatSpec, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
 
@@ -88,6 +90,26 @@ function productTypeLabel(product: Laptop, dict: Dict): string {
   return cats[type] || type;
 }
 
+/* Señal de precio del backend (ai_score_label) → texto localizado.
+   El serializer emite los valores en español; ai_labels usa claves EN. */
+const AI_LABEL_KEY: Record<AIScoreLabel, string> = {
+  "ÓPTIMO": "OPTIMAL",
+  "BUENO": "GOOD",
+  "REGULAR": "REGULAR",
+  "BAJO": "LOW",
+};
+function priceSignal(product: Laptop, dict: Dict): { text: string; positive: boolean } | null {
+  const label = product.intelligence?.ai_score_label;
+  if (!label) return null;
+  const labels = (dict.ai_labels ?? {}) as Record<string, string>;
+  const text = labels[AI_LABEL_KEY[label] || ""];
+  if (!text) return null;
+  // Solo las señales que empujan la compra se muestran (ÓPTIMO/BUENO);
+  // "precio elevado" no aporta en la card (sí en el detalle).
+  if (label !== "ÓPTIMO" && label !== "BUENO") return null;
+  return { text, positive: label === "ÓPTIMO" };
+}
+
 export default function LaptopCard({
   laptop, dict, isExpanded, onToggle, isFavorite, toggleFavoriteAction,
 }: LaptopCardProps) {
@@ -96,8 +118,12 @@ export default function LaptopCard({
   const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
   const [favPending, startFavTransition] = useTransition();
 
+  // Señales de afinidad: locales al navegador (ver lib/affinity.ts).
+  const signalInfo = { product_type: laptop.product_type || "laptop", brand: laptop.brand };
+
   const handleToggleFavorite = () => {
     if (!toggleFavoriteAction) return;
+    recordSignal("favorite", signalInfo);
     startFavTransition(async () => {
       await toggleFavoriteAction(String(laptop.id));
     });
@@ -109,6 +135,17 @@ export default function LaptopCard({
     laptop.currency !== "USD" && exchangeRate && exchangeRate > 0
       ? currentPriceLocal / exchangeRate
       : null;
+
+  /* ── Anclaje de precio (patrón MercadoLibre) ──────────────────────
+     original tachado + % OFF verde. Ambos vienen CALCULADOS por Rails
+     (financials.original_price / discount_pct) — acá solo se formatea,
+     jamás se recalcula (regla Zero-Trust). */
+  const originalPrice = laptop.financials?.original_price || 0;
+  const discountPct   = laptop.financials?.discount_pct || 0;
+  const hasDiscount   = discountPct > 0 && originalPrice > currentPriceLocal;
+  const priceDropped  = laptop.intelligence?.price_trend === "down";
+  const outOfStock    = laptop.financials?.in_stock === false;
+  const signal        = priceSignal(laptop, dict);
 
   const score             = laptop.intelligence?.deal_score || 0;
   const isGranOportunidad = score >= 8.5;
@@ -124,9 +161,21 @@ export default function LaptopCard({
   const description = buildDescription(laptop, dict);
   const typeLabel   = productTypeLabel(laptop, dict);
 
+  /* Evento comercial detectado por el agente (Vertex/Gemini/Antigravity
+     vía Python → Rails): si el producto participa de un Hot Sale /
+     CyberMonday activo, se muestra el chip sobre la imagen.
+     isPromoExpired() lo suprime si `promo_ends_at` ya pasó (dato viejo). */
+  const promoEvent =
+    laptop.metadata_extra?.is_promo_season &&
+    !isPromoExpired(laptop.metadata_extra) &&
+    typeof laptop.metadata_extra?.promo_event === "string" &&
+    laptop.metadata_extra.promo_event !== "Standard"
+      ? laptop.metadata_extra.promo_event
+      : null;
+
   return (
     <div
-      className={`bg-white rounded-md border transition-all duration-200 flex flex-col overflow-hidden shadow-sm hover:shadow-md group ${
+      className={`bg-white rounded-md border card-bloom flex flex-col overflow-hidden group ${
         isExpanded
           ? "border-blue-400 shadow-md"
           : isGranOportunidad
@@ -163,6 +212,12 @@ export default function LaptopCard({
 
       {/* ── Imagen ── */}
       <div className="relative aspect-video bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border-b border-[#e6e8ec] overflow-hidden">
+        {/* Chip de evento comercial activo (dato del agente de mercado) */}
+        {promoEvent && (
+          <span className="absolute top-3 left-3 z-10 bg-[#0a0e14] text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[2px] select-none">
+            {promoEvent}
+          </span>
+        )}
         {/* ♥ Guardar en favoritos (dashboard del usuario) */}
         {toggleFavoriteAction && (
           <button
@@ -206,39 +261,75 @@ export default function LaptopCard({
           {laptop.name}
         </h3>
 
-        {/* Precio */}
+        {/* ── Precio (anclaje estilo MercadoLibre) ──
+            original tachado → precio protagonista + % OFF verde,
+            señal del backend ("Precio mínimo histórico") y trend. */}
         <div className="mt-auto mb-4">
-          <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
-            {dict.card?.final_price || "Precio Verificado"}
-          </span>
-          <div className="flex flex-col">
-            <span className="text-lg font-semibold text-[#0a0e14] leading-none">
+          {hasDiscount ? (
+            <span className="text-[11px] text-[#9aa1ac] line-through leading-none block mb-0.5">
+              {formatCurrencyString(originalPrice, laptop.currency)}
+            </span>
+          ) : (
+            <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
+              {dict.card?.final_price || "Precio Verificado"}
+            </span>
+          )}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-2xl font-bold text-[#0a0e14] leading-none tracking-tight">
               {formatCurrencyString(currentPriceLocal, laptop.currency)}
             </span>
-            {usdReference && (
-              <span className="text-[10px] text-[#9aa1ac] mt-1 block">
-                {dict.card?.usd_ref || "Ref"}: U$D{" "}
-                {usdReference.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            {hasDiscount && (
+              <span className="bg-emerald-500 text-white text-[11px] font-bold px-1.5 py-1 rounded-[2px] leading-none">
+                {Math.round(discountPct)}% OFF
               </span>
             )}
           </div>
+          {usdReference && (
+            <span className="text-[10px] text-[#9aa1ac] mt-1 block">
+              {dict.card?.usd_ref || "Ref"}: U$D{" "}
+              {usdReference.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </span>
+          )}
+          {/* Señales de confianza/urgencia (datos del backend, solo formateo) */}
+          {(signal || priceDropped) && (
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {signal && (
+                <span className={`text-[10px] font-bold leading-none ${signal.positive ? "text-emerald-600" : "text-[#6b7280]"}`}>
+                  {signal.text}
+                </span>
+              )}
+              {priceDropped && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 leading-none">
+                  <TrendingDown size={11} />
+                  {dict.deals?.limitedTime || "Precio bajó"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Botón de compra */}
-        {hasValidUrl ? (
+        {/* Botón de compra (sin stock → informativo, no clickeable) */}
+        {hasValidUrl && outOfStock && (
+          <div className="w-full mb-3 bg-[#f5f6f8] text-[#9aa1ac] font-semibold text-[11px] py-2.5 rounded-[2px] flex items-center justify-center gap-1.5 border border-[#e6e8ec] cursor-not-allowed select-none uppercase tracking-wider">
+            <ShoppingCart size={12} />
+            {dict.card?.outOfStock || "Sin stock"}
+          </div>
+        )}
+        {hasValidUrl && !outOfStock && (
           <a
             href={monetizedUrl!}
             target="_blank"
             rel="sponsored noopener noreferrer"
+            onClick={() => recordSignal("buy_click", signalInfo)}
             className="w-full mb-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-[11px] py-2.5 rounded-[2px] flex items-center justify-center gap-1.5 transition-colors uppercase tracking-wider"
           >
             <ShoppingCart size={12} />
             {dict.card?.buy_at || "Comprar en"} {retailerName}
           </a>
-        ) : null}
+        )}
 
         {/* Divulgación de afiliado (FTC/RGPD) — visible y contigua al enlace */}
-        {hasValidUrl && (
+        {hasValidUrl && !outOfStock && (
           <p className="text-[9px] text-[#9aa1ac] text-center mb-3 -mt-1 leading-tight">
             {dict.card?.affiliateNote || "Enlace de afiliado · podemos ganar una comisión"}
           </p>
@@ -253,7 +344,10 @@ export default function LaptopCard({
 
         {/* Botón "Ver descripción" */}
         <button
-          onClick={onToggle}
+          onClick={() => {
+            if (!isExpanded) recordSignal("expand", signalInfo);
+            onToggle();
+          }}
           className={`flex items-center justify-center py-2.5 rounded-[2px] transition-all duration-200 border cursor-pointer ${
             isExpanded
               ? "text-blue-600 bg-blue-50 border-blue-200"

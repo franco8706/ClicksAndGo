@@ -9,12 +9,18 @@ import type { Laptop, HardwareNews } from "@/types/laptop";
 import type { Dict } from "@/types/dictionary";
 
 import HeroSection from "@/components/HeroSection";
+import CategoryShowcase from "@/components/CategoryShowcase";
 import CatalogSection from "@/components/CatalogSection";
 import AIDealsSection from "@/components/AIDealsSection";
+import PromoBanners from "@/components/PromoBanners";
+import EventBanner from "@/components/EventBanner";
+import ForYouRail from "@/components/ForYouRail";
+import Reveal from "@/components/Reveal";
 
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
+import itDict from "@/dictionaries/it.json";
 
 // ── Why trust us ─────────────────────────────────────────────────────────────
 // (StatsBanner eliminado: quedó como código muerto cuando se dejó de renderizar
@@ -63,7 +69,7 @@ function WhyTrustUs({ dict }: { dict: Dict }) {
               key={title}
               className="group p-7 rounded bg-[#f5f6f8] border border-[#e6e8ec] hover:border-[#d3d7dd] hover:bg-white hover:shadow-md transition-all duration-200"
             >
-              <div className="w-11 h-11 rounded bg-white border border-[#e6e8ec] flex items-center justify-center mb-5 group-hover:border-blue-200 transition-colors">
+              <div className="w-11 h-11 rounded bg-white border border-[#e6e8ec] flex items-center justify-center mb-5 group-hover:border-blue-200 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-200">
                 {icon}
               </div>
               <h3 className="text-[#0a0e14] font-semibold text-sm mb-2">{title}</h3>
@@ -79,7 +85,7 @@ function WhyTrustUs({ dict }: { dict: Dict }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : esDict;
+  const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   const headersList = await headers();
   const ipCountry = headersList.get("x-country-code") || "US";
@@ -149,10 +155,31 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* 1. Hero + ticker de noticias integrado */}
       <HeroSection dict={dict} news={news} />
 
+      {/* 1b. Cartel de evento comercial (Hot Sale/CyberMonday…) — solo
+          aparece si el agente de mercado marcó productos en promoción. */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 pt-10">
+        <EventBanner laptops={laptops} dict={dict} />
+      </section>
+
       {/* 2. Why trust us */}
       <div className="relative z-10">
-        <WhyTrustUs dict={dict} />
+        <Reveal>
+          <WhyTrustUs dict={dict} />
+        </Reveal>
       </div>
+
+      {/* 3. Escaparate de categorías (acceso rápido estilo MercadoLibre) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-16">
+        <Reveal>
+          <CategoryShowcase laptops={laptops} dict={dict} />
+        </Reveal>
+      </section>
+
+      {/* 3b. Rail personalizado por actividad local del visitante —
+          invisible para visitantes nuevos (sin historial). */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 pb-10">
+        <ForYouRail laptops={laptops} dict={dict} />
+      </section>
 
       {/* 4. Laptop catalog with filters */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
@@ -179,10 +206,19 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
-      {/* 5. Mejores Ofertas — accesible desde el navbar */}
+      {/* 5. Banners promocionales por familia (patrón MercadoLibre) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 pb-14 pt-4">
+        <Reveal>
+          <PromoBanners laptops={laptops} dict={dict} />
+        </Reveal>
+      </section>
+
+      {/* 6. Mejores Ofertas — accesible desde el navbar */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-16 border-t border-[#e6e8ec]">
         <div id="ofertas" className="scroll-mt-28">
-          <AIDealsSection laptops={laptops} countryCode={countryCode} dict={dict} />
+          <Reveal>
+            <AIDealsSection laptops={laptops} countryCode={countryCode} dict={dict} />
+          </Reveal>
         </div>
       </section>
 

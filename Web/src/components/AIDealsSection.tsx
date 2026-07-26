@@ -1,81 +1,25 @@
-import React, { useMemo } from "react";
-import { TrendingDown, Sparkles } from "lucide-react";
+"use client";
+
+/**
+ * Mejores Ofertas — escaparate con el patrón hero-carousel de NVIDIA:
+ * escenario grande + tab-bar inferior donde la pestaña activa tiene una
+ * barra de progreso animada (7s linear, medido en nvidia.com) y el slide
+ * rota solo. El anclaje de precio (tachado + % OFF verde) es el patrón
+ * de conversión de MercadoLibre. 100% presentacional: los datos llegan
+ * ya calculados de Rails (deal_score, discount_pct, original_price) —
+ * acá solo se ordena para mostrar y se formatea.
+ */
+
+import React, { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
+import Image from "next/image";
+import { ShoppingCart, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { Laptop } from "@/types/laptop";
 import { formatCurrencyString } from "@/lib/currency";
 import type { Dict } from "@/types/dictionary";
 
-interface DealRowProps {
-  readonly laptop: Laptop;
-  readonly countryCode: string;
-  readonly dict: Dict;
-}
-
-function DealRow({ laptop, countryCode, dict }: DealRowProps) {
-  const currentPrice  = laptop.financials?.current_price || 0;
-  const originalPrice = laptop.financials?.original_price || currentPrice;
-  const isGranOportunidad = (laptop.intelligence?.deal_score ?? 0) >= 8.5;
-  const retailerName  = laptop.metadata_extra?.retailer?.toUpperCase() || laptop.brand;
-  const savingsBase   = Math.max(0, originalPrice - currentPrice);
-
-  const rawUrl      = laptop.urls?.affiliate_raw;
-  const hasValidUrl = !!rawUrl && rawUrl !== "#" && rawUrl.startsWith("http");
-  const monetizedUrl = hasValidUrl
-    ? `/out?url=${encodeURIComponent(rawUrl)}&country=${countryCode}`
-    : undefined;
-
-  const rowClass =
-    "group flex items-center gap-4 px-6 py-5 rounded-md bg-white hover:bg-[#f5f6f8] transition-colors border border-[#e6e8ec] hover:border-[#d3d7dd] shadow-sm hover:shadow-md w-full mb-4 last:mb-0";
-
-  const inner = (
-    <>
-      <div className="w-12 h-12 rounded bg-[#f5f6f8] border border-[#e6e8ec] flex items-center justify-center shrink-0">
-        <TrendingDown size={20} className="text-blue-600" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <h3 className="text-base font-bold text-[#0a0e14] truncate mb-1">
-          {laptop.name}
-        </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-[#9aa1ac] uppercase tracking-widest">
-            {retailerName}
-          </span>
-          {isGranOportunidad && (
-            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <Sparkles size={10} className="fill-current" />
-              {dict.deals?.hot || "GRAN OPORTUNIDAD"}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="text-right shrink-0">
-        <p className="text-[10px] font-bold text-[#9aa1ac] uppercase tracking-widest mb-0.5">
-          {dict.deals?.youSave || "AHORRAS"}
-        </p>
-        <p className="text-lg md:text-xl font-black text-emerald-600">
-          {savingsBase > 0
-            ? `-${formatCurrencyString(savingsBase, laptop.currency)}`
-            : dict.common?.viewDeal || "VER OFERTA"}
-        </p>
-      </div>
-    </>
-  );
-
-  if (hasValidUrl) {
-    return (
-      <a href={monetizedUrl} target="_blank" rel="sponsored noopener noreferrer" className={rowClass}>
-        {inner}
-      </a>
-    );
-  }
-
-  return (
-    <div className={`${rowClass} opacity-50 cursor-not-allowed`}>
-      {inner}
-    </div>
-  );
-}
+const SLIDE_MS = 7000; // firma NVIDIA: 7s por slide, avance linear
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=85&auto=format&fit=crop";
 
 interface AIDealsSectionProps {
   readonly laptops: Laptop[];
@@ -83,7 +27,129 @@ interface AIDealsSectionProps {
   readonly dict: Dict;
 }
 
+/* ── Escenario del deal activo ──────────────────────────────────────── */
+function DealStage({
+  laptop, countryCode, dict,
+}: { readonly laptop: Laptop; readonly countryCode: string; readonly dict: Dict }) {
+  // El componente se monta con key={laptop.id} desde el padre, así que
+  // el estado de imagen nace fresco en cada cambio de slide (sin effects).
+  const normalizeImg = (url?: string) =>
+    (url || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
+  const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
+
+  const currentPrice  = laptop.financials?.current_price || 0;
+  const originalPrice = laptop.financials?.original_price || currentPrice;
+  const discountPct   = laptop.financials?.discount_pct || 0;
+  const hasDiscount   = discountPct > 0 && originalPrice > currentPrice;
+  const savings       = Math.max(0, originalPrice - currentPrice);
+  const isGranOportunidad = (laptop.intelligence?.deal_score ?? 0) >= 8.5;
+
+  const retailerName = laptop.metadata_extra?.retailer
+    ?.replace(/_(ar|es|us|mx|br|co|cl)$/i, "")
+    .replace(/_/g, " ")
+    .toUpperCase() || "TIENDA OFICIAL";
+
+  const rawUrl       = laptop.urls?.affiliate_raw;
+  const hasValidUrl  = !!rawUrl && rawUrl !== "#" && rawUrl.startsWith("http");
+  const monetizedUrl = hasValidUrl
+    ? `/out?url=${encodeURIComponent(rawUrl)}&country=${countryCode}`
+    : undefined;
+
+  return (
+    <div
+      key={laptop.id}
+      className="grid grid-cols-1 md:grid-cols-2 items-center gap-8 md:gap-12"
+      style={{ animation: "slideFade 0.4s ease-out" }}
+    >
+      {/* Columna de texto */}
+      <div className="order-2 md:order-1">
+        {/* Eyebrow "RETAILER | BADGE" (patrón de card NVIDIA) */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-black text-[#6b7280] uppercase tracking-widest">
+            {retailerName}
+          </span>
+          {isGranOportunidad && (
+            <>
+              <span className="text-[#d3d7dd]">|</span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                <Sparkles size={10} className="fill-current" />
+                {dict.deals?.hot || "OFERTA TOP"}
+              </span>
+            </>
+          )}
+        </div>
+
+        <h3 className="text-2xl sm:text-3xl font-bold text-[#0a0e14] tracking-tight leading-tight mb-4">
+          {laptop.name}
+        </h3>
+
+        {/* Anclaje de precio (MercadoLibre) */}
+        {hasDiscount && (
+          <span className="text-sm text-[#9aa1ac] line-through block mb-1">
+            {formatCurrencyString(originalPrice, laptop.currency)}
+          </span>
+        )}
+        <div className="flex items-baseline gap-3 flex-wrap mb-2">
+          <span className="text-4xl font-bold text-[#0a0e14] tracking-tight leading-none">
+            {formatCurrencyString(currentPrice, laptop.currency)}
+          </span>
+          {hasDiscount && (
+            <span className="bg-emerald-500 text-white text-sm font-bold px-2 py-1.5 rounded-[2px] leading-none">
+              {Math.round(discountPct)}% OFF
+            </span>
+          )}
+        </div>
+        {savings > 0 && (
+          <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-6">
+            {dict.deals?.youSave || "Ahorras"}{" "}
+            {formatCurrencyString(savings, laptop.currency)}
+          </p>
+        )}
+
+        {/* CTA sólido (NVIDIA) */}
+        {hasValidUrl ? (
+          <>
+            <a
+              href={monetizedUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              className="btn-nvidia inline-flex items-center gap-2 px-7 py-3.5 text-sm"
+            >
+              <ShoppingCart size={15} />
+              {dict.card?.buy_at || "Comprar en"} {retailerName}
+            </a>
+            <p className="text-[10px] text-[#9aa1ac] mt-3">
+              {dict.card?.affiliateNote || "Enlace de afiliado · podemos ganar una comisión"}
+            </p>
+          </>
+        ) : (
+          <div className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold rounded-[2px] bg-[#f5f6f8] text-[#9aa1ac] border border-[#e6e8ec] cursor-not-allowed select-none">
+            <ShoppingCart size={15} />
+            {dict.card?.unavailable || "Enlace no disponible"}
+          </div>
+        )}
+      </div>
+
+      {/* Columna de imagen */}
+      <div className="order-1 md:order-2 relative aspect-[4/3] rounded bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border border-[#e6e8ec] overflow-hidden">
+        <Image
+          src={imgSrc}
+          alt={`${laptop.brand} ${laptop.name}`}
+          fill
+          quality={90}
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-contain p-8 drop-shadow-2xl"
+          onError={() => setImgSrc(FALLBACK_IMAGE)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Sección completa ───────────────────────────────────────────────── */
 export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AIDealsSectionProps) {
+  // Orden de exhibición por el score que YA calculó Rust/Rails (no es
+  // matemática de negocio — es elegir qué mostrar primero).
   const topDeals = useMemo(() => {
     if (!Array.isArray(laptops)) return [];
     return [...laptops]
@@ -91,34 +157,132 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
       .slice(0, 3);
   }, [laptops]);
 
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Autoplay solo si el usuario no pidió menos movimiento. En SSR se asume
+  // "reducido" (sin animación) y el cliente lo corrige al hidratar.
+  const prefersReduced = useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => true
+  );
+  const autoplay = !prefersReduced && topDeals.length > 1;
+
+  const goTo = useCallback((idx: number, total: number) => {
+    setActive(((idx % total) + total) % total);
+  }, []);
+
+  // Avance automático — reinicia con cada cambio de slide o pausa.
+  useEffect(() => {
+    if (!autoplay || paused || topDeals.length < 2) return;
+    timerRef.current = setTimeout(() => {
+      setActive((prev) => (prev + 1) % topDeals.length);
+    }, SLIDE_MS);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [active, autoplay, paused, topDeals.length]);
+
   if (topDeals.length === 0) return null;
+  const current = topDeals[Math.min(active, topDeals.length - 1)];
 
   return (
-    <section className="w-full relative z-10">
-      <div className="flex flex-col mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center">
-            <span className="text-white text-lg">🏷️</span>
-          </div>
-          <h2 className="text-2xl font-bold text-[#0a0e14] tracking-tight">
-            {dict.deals?.title || "Radar de Oportunidades"}
+    <section
+      className="w-full relative z-10"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Header de sección + flechas cuadradas (layout NVIDIA) */}
+      <div className="flex items-end justify-between mb-8 gap-4">
+        <div className="flex flex-col">
+          <span className="text-blue-600 text-[10px] font-black uppercase tracking-widest mb-2">
+            {dict.deals?.eyebrow || "Destacados del día"}
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#0a0e14] tracking-tight">
+            {dict.deals?.title || "Las Mejores Ofertas"}
           </h2>
+          <p className="text-sm text-[#6b7280] mt-2">
+            {dict.deals?.subtitle || "Seleccionadas para tu región hoy"}
+          </p>
         </div>
-        <p className="text-[10px] font-bold text-[#9aa1ac] uppercase tracking-widest ml-14">
-          {dict.deals?.subtitle || "Selección algorítmica por Clicks & Go v4.0"}
-        </p>
+        {topDeals.length > 1 && (
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => goTo(active - 1, topDeals.length)}
+              className="carousel-arrow"
+              aria-label="Oferta anterior"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => goTo(active + 1, topDeals.length)}
+              className="carousel-arrow"
+              aria-label="Oferta siguiente"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="w-full">
-        {topDeals.map((laptop) => (
-          <DealRow key={laptop.id} laptop={laptop} countryCode={countryCode} dict={dict} />
-        ))}
+      {/* Escenario — key remonta el stage por deal (estado de imagen fresco) */}
+      <div className="bg-white border border-[#e6e8ec] rounded-md card-bloom p-6 sm:p-10 mb-6">
+        <DealStage key={current.id} laptop={current} countryCode={countryCode} dict={dict} />
       </div>
 
-      {/* Divulgación de afiliado (FTC/RGPD) — contigua a los enlaces de oferta */}
-      <p className="text-[10px] text-[#9aa1ac] mt-4 ml-1">
-        {dict.card?.affiliateNote || "Enlace de afiliado · podemos ganar una comisión"}
-      </p>
+      {/* Tab-bar con barra de progreso (firma NVIDIA) */}
+      {topDeals.length > 1 && (
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${topDeals.length}, minmax(0, 1fr))` }} role="tablist">
+          {topDeals.map((deal, i) => {
+            const isActive = i === active;
+            const savings = Math.max(
+              0,
+              (deal.financials?.original_price || 0) - (deal.financials?.current_price || 0)
+            );
+            return (
+              <button
+                key={deal.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => goTo(i, topDeals.length)}
+                className="text-left group cursor-pointer select-none"
+              >
+                {/* Línea superior: base gris + progreso azul animado */}
+                <div className="h-[3px] w-full bg-[#e6e8ec] mb-3 overflow-hidden rounded-full">
+                  {isActive && (
+                    <div
+                      key={`progress-${active}`}
+                      className="h-full bg-blue-600"
+                      style={
+                        autoplay
+                          ? {
+                              animation: `progressBar ${SLIDE_MS}ms linear forwards`,
+                              animationPlayState: paused ? "paused" : "running",
+                            }
+                          : { width: "100%" }
+                      }
+                    />
+                  )}
+                </div>
+                <span className={`block text-[9px] font-black uppercase tracking-widest mb-1 transition-colors duration-200 ${isActive ? "text-blue-600" : "text-[#9aa1ac] group-hover:text-[#6b7280]"}`}>
+                  {savings > 0
+                    ? `${dict.deals?.youSave || "Ahorras"} ${formatCurrencyString(savings, deal.currency)}`
+                    : (dict.deals?.verified || "Precio verificado")}
+                </span>
+                <span className={`block text-xs sm:text-sm font-semibold leading-snug line-clamp-2 transition-colors duration-200 ${isActive ? "text-[#0a0e14]" : "text-[#6b7280] group-hover:text-[#414855]"}`}>
+                  {deal.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

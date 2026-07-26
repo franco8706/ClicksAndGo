@@ -23,7 +23,8 @@
     },
     "allProducts": "All",
     "products": "products",
-    "productSingular": "product"
+    "productSingular": "product",
+    "clearFilter": "Clear filter"
   },
   "news": {
     "title": "Tech News",
@@ -38,7 +39,8 @@
     "updated": "Updated",
     "realTime": "LIVE",
     "login": "Log in",
-    "register": "Sign up"
+    "register": "Sign up",
+    "catalog": "Catalog"
   },
   "nav": {
     "cta": "Search"
@@ -118,7 +120,8 @@
     "descCreator": "The ideal choice for digital creatives. Perfect for editing 4K video, processing RAW photography, designing in Adobe Suite or managing professional audio projects. Its accurate display and balanced CPU-GPU remove every bottleneck from your creative workflow.",
     "descUltrabook": "Elegant, quiet and incredibly portable, built for professionals always on the move. Fits seamlessly into coworking spaces, business trips and remote work setups. Long battery life and an ultralight chassis without sacrificing performance or connectivity.",
     "descBudget": "The smart pick for those who want the best price without compromising quality. Ideal for office work, smooth browsing, online classes and everyday entertainment. Stable and reliable performance for every task you throw at it throughout the day.",
-    "descStudent": "The perfect academic companion. Built for quick note-taking, research, organizing university projects and meeting deadlines. Light enough for campus life, with all-day battery and the multitasking agility needed to keep up with every open tab and app."
+    "descStudent": "The perfect academic companion. Built for quick note-taking, research, organizing university projects and meeting deadlines. Light enough for campus life, with all-day battery and the multitasking agility needed to keep up with every open tab and app.",
+    "outOfStock": "Out of stock"
   },
   "featuredDeal": "Best value for money",
   "greatOpportunity": "Great deal",
@@ -294,5 +297,29 @@
     "webcam": "Sharp video calls and high-definition streaming.",
     "printer": "Reliable printing for home or office.",
     "supplies": "Genuine supplies at the best verified price."
+  },
+  "showcase": {
+    "eyebrow": "Digital catalog",
+    "title": "Browse by category"
+  },
+  "families": {
+    "computing": "Computing",
+    "peripherals": "Peripherals",
+    "printing": "Printing"
+  },
+  "promos": {
+    "computingTitle": "Power for work and play",
+    "peripheralsTitle": "Complete your ideal setup",
+    "upTo": "Up to",
+    "viewOffers": "See deals"
+  },
+  "events": {
+    "live": "Live now",
+    "upcoming": "Coming soon",
+    "cta": "See event deals"
+  },
+  "forYou": {
+    "eyebrow": "Based on your activity",
+    "title": "Picked for you"
   }
 }

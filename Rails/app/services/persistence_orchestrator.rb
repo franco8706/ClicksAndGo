@@ -129,6 +129,11 @@ class PersistenceOrchestrator
         
         news.recorded_at = item[:recorded_at] || Time.current
         news.source_url  = item[:source_url] if item[:source_url].present?
+        # 🌍 Geo: feed regional → visible solo en su país (NULL = global).
+        # Defensivo con has_attribute? por entornos sin la columna.
+        if news.has_attribute?(:country_code) && item[:country_code].present?
+          news.country_code = item[:country_code].to_s.upcase[0, 2]
+        end
         news.save!
       end
     end

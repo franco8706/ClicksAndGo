@@ -101,8 +101,6 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                 <div>
                   <h4 className="text-[#0a0e14] font-bold text-sm mb-4">{dict.footer?.resources || "La empresa"}</h4>
                   <ul className="space-y-2.5 text-sm text-[#6b7280]">
-                    <li><Link href={`/${locale}/#productos`} className="hover:text-blue-600 transition-colors">{dict.footer?.catalogLink || "Catálogo de productos"}</Link></li>
-                    <li><Link href={`/${locale}/#ofertas`} className="hover:text-blue-600 transition-colors">{dict.footer?.dealsLink || "Mejores ofertas"}</Link></li>
                     <li><Link href={`/${locale}/privacidad`} className="hover:text-blue-600 transition-colors">{dict.footer?.privacyFullLink || "Política de privacidad"}</Link></li>
                     <li><Link href={`/${locale}/terminos`} className="hover:text-blue-600 transition-colors">{dict.footer?.termsFullLink || "Términos y condiciones"}</Link></li>
                     <li><a href="mailto:info@clicks-and-go.com" className="hover:text-blue-600 transition-colors">{dict.footer?.contactLink || "Contactanos"}</a></li>

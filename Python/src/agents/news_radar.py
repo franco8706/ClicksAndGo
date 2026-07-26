@@ -28,6 +28,14 @@ class NewsRadarAgent:
             "Laptop_Mag":       "https://www.laptopmag.com/feeds/all",
         }
 
+        # 🌍 País del feed (ISO alpha-2). Los que no figuran son globales
+        # (country_code NULL → Rails los sirve a todos los países). Un feed
+        # regional se muestra SOLO a los visitantes de su país — el ticker
+        # del hero ya se pide por país detectado por IP.
+        self.feed_country = {
+            "Xataka_ES": "ES",
+        }
+
         # Palabras clave para filtrar solo artículos relevantes a hardware/tech
         self._tech_keywords = {
             "laptop", "notebook", "cpu", "gpu", "processor", "intel", "amd", "nvidia",
@@ -57,6 +65,8 @@ class NewsRadarAgent:
                             "impact_score": evaluated["impact_score"],
                             "source_url":  item.get("url"),
                             "recorded_at": datetime.datetime.utcnow().isoformat(),
+                            # 🌍 Feed regional → noticia solo para su país
+                            "country_code": self.feed_country.get(tag),
                         })
             except Exception as e:
                 self.orchestrator.log_action(

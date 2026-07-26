@@ -11,6 +11,7 @@ import { SPEC_SCHEMA, formatSpec, type ProductType } from "@/types/product";
 import es from "@/dictionaries/es.json";
 import en from "@/dictionaries/en.json";
 import pt from "@/dictionaries/pt.json";
+import it from "@/dictionaries/it.json";
 
 type PageProps = {
   params: Promise<{ locale: string; slug: string }>;
@@ -51,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function LaptopDetailPage({ params }: PageProps) {
   const { locale, slug } = await params;
-  const dict = locale === "en" ? en : locale === "pt" ? pt : es;
+  const dict = locale === "en" ? en : locale === "pt" ? pt : locale === "it" ? it : es;
 
   const laptop = await getLaptopData(slug);
   if (!laptop) notFound();

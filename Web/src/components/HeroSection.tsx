@@ -292,32 +292,14 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
               {dict.hero?.subtitle || "Analizamos miles de ofertas para que encuentres la laptop perfecta, seleccionada bajo estrictas directivas de rendimiento real."}
             </p>
 
-            {/* Buscador */}
+            {/* Buscador — punto de entrada único al catálogo (los CTAs
+                redundantes se quitaron: el buscador + "Explorá por categoría"
+                de abajo ya llevan al catálogo y a las ofertas). */}
             <div
-              className="w-full max-w-2xl animate-hero-entry mb-8"
+              className="w-full max-w-2xl animate-hero-entry"
               style={{ animationDelay: "0.2s" }}
             >
               <PredictiveSearch dict={dict} />
-            </div>
-
-            {/* CTAs — sólido azul + outline, esquinas casi rectas (NVIDIA) */}
-            <div
-              className="flex flex-wrap items-center gap-4 animate-hero-entry"
-              style={{ animationDelay: "0.25s" }}
-            >
-              <a
-                href="#productos"
-                className="btn-nvidia inline-flex items-center gap-2 px-7 py-3.5 text-sm"
-              >
-                {dict.hero?.ctaCatalog || "Ver Catálogo"}
-                <ChevronRight size={16} />
-              </a>
-              <a
-                href="#ofertas"
-                className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold rounded-[2px] text-[#0a0e14] border border-[#d3d7dd] hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
-              >
-                {dict.hero?.ctaDeals || "Mejores Ofertas"}
-              </a>
             </div>
 
           </div>

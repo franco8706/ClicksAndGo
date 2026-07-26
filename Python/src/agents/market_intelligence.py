@@ -117,9 +117,12 @@ class MarketIntelligenceAgent:
                         "is_promo_season": True,
                         "promo_event": event["event_name"],
                         "market_urgency": "CRITICAL" if days_left <= 2 else "HIGH",
-                        "fomo_message": f"🔥 {event['event_name']} activo. Termina en {days_left} días."
+                        "fomo_message": f"🔥 {event['event_name']} activo. Termina en {days_left} días.",
+                        # 🛡️ Vencimiento explícito: el frontend oculta el evento
+                        # pasada esta fecha aunque la ingesta se atrase.
+                        "promo_ends_at": event["end_date"],
                     }
-                
+
                 # Pre-calentamiento (FOMO): Si faltan 5 días o menos para que empiece
                 days_to_start = (start_date - today).days
                 if 0 < days_to_start <= 5:
@@ -127,7 +130,8 @@ class MarketIntelligenceAgent:
                         "is_promo_season": True,
                         "promo_event": event["event_name"],
                         "market_urgency": "MEDIUM",
-                        "fomo_message": f"⏳ Anticipación: {event['event_name']} comienza en {days_to_start} días."
+                        "fomo_message": f"⏳ Anticipación: {event['event_name']} comienza en {days_to_start} días.",
+                        "promo_ends_at": event["end_date"],
                     }
             except Exception:
                 continue

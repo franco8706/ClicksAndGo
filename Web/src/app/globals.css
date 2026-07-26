@@ -69,6 +69,17 @@
     0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
   }
+  /* Barra de progreso del escaparate de ofertas (patrón hero-carousel NVIDIA:
+     7s linear por slide, medido en nvidia.com — div.progress_filled). */
+  @keyframes progressBar {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+  /* Cross-fade del slide activo del escaparate. */
+  @keyframes slideFade {
+    from { opacity: 0; transform: translate3d(0, 6px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
 }
 
 /* =========================================================
@@ -274,6 +285,54 @@
   }
 }
 
+/* Bloom de sombra NVIDIA (medido en .cmp-teaser de nvidia.com):
+   reposo 0 0 5px → hover 0 0 15px, transición 0.5s ease. Sin lift —
+   la card "irradia" en vez de moverse. Adaptado a tinta del sistema. */
+@utility card-bloom {
+  box-shadow: 0 0 5px rgba(10, 14, 20, 0.10);
+  transition: box-shadow 0.5s ease, border-color 0.2s ease-out;
+
+  &:hover {
+    box-shadow: 0 0 15px rgba(10, 14, 20, 0.16);
+  }
+}
+
+/* Flecha cuadrada de carrusel (firma NVIDIA: rectángulo del color de
+   acento, radius 0-2px, chevron blanco). */
+@utility carousel-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-brand-primary);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out;
+
+  &:hover { background-color: var(--color-brand-hover); }
+  &:disabled { background-color: var(--color-line-strong); cursor: not-allowed; }
+}
+
+/* Reveal-on-scroll: estado inicial + entrada al viewport.
+   Con reduced-motion el contenido se muestra sin animación. */
+@utility reveal-init {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition: opacity 0.55s var(--ease-out-nv), transform 0.55s var(--ease-out-nv);
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+@utility reveal-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 @utility neon-glow {
   border-color: var(--color-brand-line);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
@@ -326,4 +385,11 @@
   & > *:nth-child(6) { animation-delay: 0.24s; }
   & > *:nth-child(7) { animation-delay: 0.28s; }
   & > *:nth-child(8) { animation-delay: 0.32s; }
+  /* Hijos 9+ (grids largos): entran después de la primera tanda,
+     nunca antes — evita que el fondo aparezca antes que el frente. */
+  & > *:nth-child(n+9) { animation-delay: 0.36s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > * { animation: none; opacity: 1; }
+  }
 }
