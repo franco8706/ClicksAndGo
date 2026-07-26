@@ -83,3 +83,9 @@ repomix-output.txt
 *.tar
 ClicksAndGo-backup*
 
+# =========================================================
+# Config de herramientas personales (MCP, etc.) — no es código del proyecto
+# =========================================================
+.mcp.json
+.playwright-mcp/
+

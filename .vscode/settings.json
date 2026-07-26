@@ -22,7 +22,12 @@
     "**/Gemfile.lock": true,
     "**/.pnpm-lock.yaml": true,
     ".Agents": true,
-    "gcp-vertex.json": true
+    "gcp-vertex.json": true,
+    ".claude": true,
+    ".dockerignore": true,
+    ".gitignore": true,
+    ".mcp.json": true,
+    ".playwright-mcp": true
   },
   "search.exclude": {
     "**/node_modules": true,
