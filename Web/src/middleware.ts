@@ -54,6 +54,13 @@ const ALLOWED_OUT_DOMAINS = [
   'amazon.com', 'amazon.es', 'amazon.it', 'amazon.com.mx', 'amazon.com.br',
   // Redirectores de redes de afiliados (Awin / CJ)
   'awin1.com', 'anrdoezrs.net', 'jdoqocy.com', 'tkqlhce.com', 'dpbolvw.net',
+  // Redirectores de Impact.com (MSI, Lenovo US/ES/IT/BR). Impact genera el
+  // link con el ID de tracking YA embebido, así que /out lo deja pasar sin
+  // tocarlo (solo Amazon recibe inyección de tag).
+  // ⚠️ Impact también emite links por anunciante con el patrón
+  // `imp.i{advertiserID}.net` — ese host es específico de cada marca y hay
+  // que agregarlo acá cuando se genere el primer link real del programa.
+  'sjv.io', 'pxf.io', 'ojrq.net', '7eer.net', 'evyy.net',
   // Tiendas oficiales de marca (programa retailer directo)
   'lenovo.com', 'hp.com', 'dell.com', 'asus.com', 'acer.com',
   'apple.com', 'msi.com', 'razer.com', 'samsung.com',
