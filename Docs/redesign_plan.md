@@ -36,6 +36,11 @@
 - ✅ **Buscador predictivo del hero** (FASE 9): generalizado a tipos de producto (sugiere las 9 categorías con ícono + tagline, y navega todas al enfocar). Antes sugería categorías de laptop que ya no filtraban nada.
 - ✅ **Overhaul UI/UX consumer v2** (2026-07-26): anclaje de precio ML (tachado + chip % OFF), escaparate NVIDIA de ofertas (tabs progreso 7s), CategoryShowcase, PromoBanners por familia, EventBanner + chip promo (consume `MarketIntelligenceAgent`), ForYouRail (afinidad localStorage), noticias geo por feed. Ver bitácora.
 - **PersonalizationAgent (fase 2 — usuarios logueados):** análisis agéntico real de actividad con Vertex/Gemini. Diseño Zero-Trust: (1) Rails suma tabla `user_activity_events` + endpoints `/api/v1/users/:user_id/activity` (InternalApiAuth); (2) Next.js postea eventos SOLO de usuarios logueados (consentimiento en `/panel`); (3) Python agrega un paso al `MasterOrchestrator` que analiza patrones (Vertex primario / Antigravity fallback) y persiste recomendaciones vía Rails; (4) la Web las lee del DTO. La capa anónima actual (localStorage) queda como fallback sin servidor.
+- 🔴 **Reponer el "% OFF" de forma compliant** (removido el 2026-07-27 por riesgo legal — ver bitácora). Requisitos para poder mostrarlo de nuevo:
+  1. **Rails**: exponer `lowest_price_30d` calculado desde `price_histories` (la Directiva Omnibus UE art. 6a exige comparar contra el mínimo de los 30 días previos, NO contra el MSRP del retailer que hoy trae el pipeline). Aplica sí o sí a ES/IT.
+  2. **Rails**: agregar `price_recorded_at` al DTO (`financials`) — hoy no existe timestamp, y Amazon exige el disclaimer "as of [fecha/hora]".
+  3. **Python**: adaptador de **Amazon PAAPI** (Product Advertising API). Hoy no existe: los productos de Amazon salen de `seeds_products_multi.sql` con precios estáticos. El Operating Agreement exige que el precio provenga de PAAPI y tenga <24h.
+  4. **Web**: mostrar el % OFF solo si el dato es fresco (<24h) y el precio de referencia califica; suprimirlo si no.
 - **`HardwareNewsSlider.tsx`**: código muerto tras el ticker inline — eliminar o reintegrar (decisión de producto).
 
 ---

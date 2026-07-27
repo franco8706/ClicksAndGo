@@ -86,11 +86,9 @@ export default function PromoBanners({ laptops, dict }: PromoBannersProps) {
             <h3 className="text-xl sm:text-2xl font-bold text-[#0a0e14] tracking-tight leading-tight">
               {b.title}
             </h3>
-            {b.maxPct > 0 && (
-              <span className="mt-2 w-fit bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-[2px] leading-none">
-                {dict.promos?.upTo || "Hasta"} {b.maxPct}% OFF
-              </span>
-            )}
+            {/* ⚖️ Sin claim "Hasta X% OFF": el descuento del pipeline se
+                calcula contra el MSRP del retailer, no contra el mínimo de
+                30 días que exige la Directiva Omnibus UE. Ver LaptopCard. */}
             <span className="btn-nvidia inline-flex items-center w-fit gap-2 px-5 py-2.5 text-xs mt-5">
               {dict.promos?.viewOffers || "Ver ofertas"}
             </span>

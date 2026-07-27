@@ -37,11 +37,11 @@ function DealStage({
     (url || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
   const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
 
+  /* ⚖️ Sin claim de descuento (% OFF / tachado / "Ahorras"): el
+     `original_price` del pipeline es MSRP del retailer, no el mínimo de
+     30 días que exige la Directiva Omnibus UE, y Amazon requiere precio
+     de PAAPI <24h con timestamp. Ver nota extensa en LaptopCard.tsx. */
   const currentPrice  = laptop.financials?.current_price || 0;
-  const originalPrice = laptop.financials?.original_price || currentPrice;
-  const discountPct   = laptop.financials?.discount_pct || 0;
-  const hasDiscount   = discountPct > 0 && originalPrice > currentPrice;
-  const savings       = Math.max(0, originalPrice - currentPrice);
   const isGranOportunidad = (laptop.intelligence?.deal_score ?? 0) >= 8.5;
 
   const retailerName = laptop.metadata_extra?.retailer
@@ -83,28 +83,19 @@ function DealStage({
           {laptop.name}
         </h3>
 
-        {/* Anclaje de precio (MercadoLibre) */}
-        {hasDiscount && (
-          <span className="text-sm text-[#9aa1ac] line-through block mb-1">
-            {formatCurrencyString(originalPrice, laptop.currency)}
-          </span>
-        )}
+        {/* Precio (sin claim de descuento — ver nota legal arriba) */}
+        <span className="text-[10px] font-bold text-[#9aa1ac] uppercase tracking-widest block mb-1">
+          {dict.card?.final_price || "Precio Verificado"}
+        </span>
         <div className="flex items-baseline gap-3 flex-wrap mb-2">
           <span className="text-4xl font-bold text-[#0a0e14] tracking-tight leading-none">
             {formatCurrencyString(currentPrice, laptop.currency)}
           </span>
-          {hasDiscount && (
-            <span className="bg-emerald-500 text-white text-sm font-bold px-2 py-1.5 rounded-[2px] leading-none">
-              {Math.round(discountPct)}% OFF
-            </span>
-          )}
         </div>
-        {savings > 0 && (
-          <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-6">
-            {dict.deals?.youSave || "Ahorras"}{" "}
-            {formatCurrencyString(savings, laptop.currency)}
-          </p>
-        )}
+        <p className="text-[10px] text-[#9aa1ac] leading-tight mb-6 max-w-sm">
+          {dict.card?.priceDisclaimer ||
+            "Precio referencial · el vigente es el de la tienda al momento de comprar"}
+        </p>
 
         {/* CTA sólido (NVIDIA) */}
         {hasValidUrl ? (
@@ -241,10 +232,6 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
         <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${topDeals.length}, minmax(0, 1fr))` }} role="tablist">
           {topDeals.map((deal, i) => {
             const isActive = i === active;
-            const savings = Math.max(
-              0,
-              (deal.financials?.original_price || 0) - (deal.financials?.current_price || 0)
-            );
             return (
               <button
                 key={deal.id}
@@ -270,10 +257,9 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
                     />
                   )}
                 </div>
+                {/* Precio, sin claim de ahorro (ver nota legal arriba) */}
                 <span className={`block text-[9px] font-black uppercase tracking-widest mb-1 transition-colors duration-200 ${isActive ? "text-blue-600" : "text-[#9aa1ac] group-hover:text-[#6b7280]"}`}>
-                  {savings > 0
-                    ? `${dict.deals?.youSave || "Ahorras"} ${formatCurrencyString(savings, deal.currency)}`
-                    : (dict.deals?.verified || "Precio verificado")}
+                  {formatCurrencyString(deal.financials?.current_price || 0, deal.currency)}
                 </span>
                 <span className={`block text-xs sm:text-sm font-semibold leading-snug line-clamp-2 transition-colors duration-200 ${isActive ? "text-[#0a0e14]" : "text-[#6b7280] group-hover:text-[#414855]"}`}>
                   {deal.name}

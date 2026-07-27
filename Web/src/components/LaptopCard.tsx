@@ -136,13 +136,16 @@ export default function LaptopCard({
       ? currentPriceLocal / exchangeRate
       : null;
 
-  /* ── Anclaje de precio (patrón MercadoLibre) ──────────────────────
-     original tachado + % OFF verde. Ambos vienen CALCULADOS por Rails
-     (financials.original_price / discount_pct) — acá solo se formatea,
-     jamás se recalcula (regla Zero-Trust). */
-  const originalPrice = laptop.financials?.original_price || 0;
-  const discountPct   = laptop.financials?.discount_pct || 0;
-  const hasDiscount   = discountPct > 0 && originalPrice > currentPriceLocal;
+  /* ── ⚖️ Sin claim de descuento (cumplimiento legal) ────────────────
+     NO se muestra "% OFF" ni precio tachado. El `original_price` que
+     entrega el pipeline es el precio de lista del retailer (MSRP), no
+     "el precio más bajo de los últimos 30 días" que exige la Directiva
+     Omnibus UE (art. 6a) para anunciar una reducción; además Amazon
+     exige que todo precio provenga de PAAPI, tenga <24h y lleve el
+     disclaimer "as of [fecha]" — hoy la ingesta corre 1×/día y no hay
+     timestamp en el DTO. Reponer solo cuando Rails exponga el mínimo
+     real de 30 días desde `price_histories` + la marca temporal.
+     Ver Docs/redesign_plan.md. */
   const priceDropped  = laptop.intelligence?.price_trend === "down";
   const outOfStock    = laptop.financials?.in_stock === false;
   const signal        = priceSignal(laptop, dict);
@@ -261,28 +264,15 @@ export default function LaptopCard({
           {laptop.name}
         </h3>
 
-        {/* ── Precio (anclaje estilo MercadoLibre) ──
-            original tachado → precio protagonista + % OFF verde,
-            señal del backend ("Precio mínimo histórico") y trend. */}
+        {/* ── Precio (sin claim de descuento — ver nota legal arriba) ── */}
         <div className="mt-auto mb-4">
-          {hasDiscount ? (
-            <span className="text-[11px] text-[#9aa1ac] line-through leading-none block mb-0.5">
-              {formatCurrencyString(originalPrice, laptop.currency)}
-            </span>
-          ) : (
-            <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
-              {dict.card?.final_price || "Precio Verificado"}
-            </span>
-          )}
+          <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
+            {dict.card?.final_price || "Precio Verificado"}
+          </span>
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-2xl font-bold text-[#0a0e14] leading-none tracking-tight">
               {formatCurrencyString(currentPriceLocal, laptop.currency)}
             </span>
-            {hasDiscount && (
-              <span className="bg-emerald-500 text-white text-[11px] font-bold px-1.5 py-1 rounded-[2px] leading-none">
-                {Math.round(discountPct)}% OFF
-              </span>
-            )}
           </div>
           {usdReference && (
             <span className="text-[10px] text-[#9aa1ac] mt-1 block">
@@ -306,6 +296,13 @@ export default function LaptopCard({
               )}
             </div>
           )}
+          {/* ⚖️ Disclaimer de precio contiguo al dato (exigencia de Amazon
+              Associates y buena práctica FTC/Omnibus: el precio mostrado es
+              referencial y el vigente es el de la tienda al comprar). */}
+          <p className="text-[9px] text-[#9aa1ac] leading-tight mt-1.5">
+            {dict.card?.priceDisclaimer ||
+              "Precio referencial · el vigente es el de la tienda al momento de comprar"}
+          </p>
         </div>
 
         {/* Botón de compra (sin stock → informativo, no clickeable) */}

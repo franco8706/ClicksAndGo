@@ -80,7 +80,6 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
       >
         {picks.map((p) => {
           const price = p.financials?.current_price || 0;
-          const pct = p.financials?.discount_pct || 0;
           const img = (p.urls?.image || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
           return (
             <a
@@ -113,15 +112,11 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
                 <p className="text-xs font-semibold text-[#0a0e14] line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 transition-colors">
                   {p.name}
                 </p>
+                {/* Precio sin claim de descuento (ver nota en LaptopCard) */}
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-[#0a0e14] leading-none">
                     {formatCurrencyString(price, p.currency)}
                   </span>
-                  {pct > 0 && (
-                    <span className="bg-emerald-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-[2px] leading-none">
-                      {Math.round(pct)}% OFF
-                    </span>
-                  )}
                 </div>
               </div>
             </a>
