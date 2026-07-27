@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Image from "next/image";
-import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart, TrendingDown } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
 import { recordSignal } from "@/lib/affinity";
 import { isPromoExpired } from "@/components/EventBanner";
@@ -145,8 +145,11 @@ export default function LaptopCard({
      disclaimer "as of [fecha]" — hoy la ingesta corre 1×/día y no hay
      timestamp en el DTO. Reponer solo cuando Rails exponga el mínimo
      real de 30 días desde `price_histories` + la marca temporal.
-     Ver Docs/redesign_plan.md. */
-  const priceDropped  = laptop.intelligence?.price_trend === "down";
+     Ver Docs/redesign_plan.md.
+     Tampoco se muestra "Precio bajó": `price_trend: "down"` del DTO
+     significa `current < original_price` (MSRP), NO una bajada real en
+     el tiempo — mismo problema Omnibus. Reponer cuando el trend se
+     calcule contra `price_histories`. */
   const outOfStock    = laptop.financials?.in_stock === false;
   const signal        = priceSignal(laptop, dict);
 
@@ -267,7 +270,7 @@ export default function LaptopCard({
         {/* ── Precio (sin claim de descuento — ver nota legal arriba) ── */}
         <div className="mt-auto mb-4">
           <span className="text-[9px] font-semibold text-[#9aa1ac] uppercase tracking-widest mb-1 block">
-            {dict.card?.final_price || "Precio Verificado"}
+            {dict.card?.final_price || "Precio de referencia"}
           </span>
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-2xl font-bold text-[#0a0e14] leading-none tracking-tight">
@@ -280,20 +283,12 @@ export default function LaptopCard({
               {usdReference.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </span>
           )}
-          {/* Señales de confianza/urgencia (datos del backend, solo formateo) */}
-          {(signal || priceDropped) && (
+          {/* Señal editorial del backend (opinión del scoring, no un hecho) */}
+          {signal && (
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              {signal && (
-                <span className={`text-[10px] font-bold leading-none ${signal.positive ? "text-emerald-600" : "text-[#6b7280]"}`}>
-                  {signal.text}
-                </span>
-              )}
-              {priceDropped && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 leading-none">
-                  <TrendingDown size={11} />
-                  {dict.deals?.limitedTime || "Precio bajó"}
-                </span>
-              )}
+              <span className={`text-[10px] font-bold leading-none ${signal.positive ? "text-emerald-600" : "text-[#6b7280]"}`}>
+                {signal.text}
+              </span>
             </div>
           )}
           {/* ⚖️ Disclaimer de precio contiguo al dato (exigencia de Amazon

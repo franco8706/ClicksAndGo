@@ -329,3 +329,25 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Nota]`: `common.save` y `deals.youSave` quedan en los diccionarios pero **sin uso** (inertes) — se reutilizan cuando vuelva el claim compliant. Paridad i18n 265 claves ×4.
 - `[Verificado]`: tsc 0 · ESLint 0 · vitest 5/5 · build ✓ · barrido del HTML renderizado: **0 ocurrencias** de "% OFF" y **0** elementos con `line-through`; disclaimer presente en las 9 cards. Las 2 apariciones de "Ahorras" en el HTML son solo el diccionario serializado en el payload RSC, ningún componente las renderiza.
 - `[Pendiente]` (ver `redesign_plan.md`): los 4 requisitos para reponer el "% OFF" — `lowest_price_30d` desde `price_histories`, `price_recorded_at` en el DTO, adaptador de Amazon PAAPI, y supresión automática si el dato está vencido.
+
+## 2026-07-27 (cont.) · 👨‍⚖️ Auditoría legal integral — "abogado digital" sobre retailers, consumidor y privacidad
+
+- `[Mandato del titular]`: análisis exhaustivo como abogado digital, resolver TODO problema potencial con retailers. La auditoría cubrió: ToS de redes (Amazon/Impact/CJ/Awin), derecho del consumidor (FTC, Omnibus UE, Ley 24.240), veracidad del copy, emails y privacidad (RGPD/ePrivacy).
+- `[1. Email de PriceAlertAgent — 3 infracciones corregidas]`:
+  - Mostraba el **precio actual en asunto y cuerpo** — Amazon prohíbe exhibir precios de sus productos fuera del sitio aprobado. Ahora el email solo menciona el **objetivo que fijó el propio usuario** (dato suyo) e invita a ver el precio vigente en el sitio.
+  - La nota "Enlace de afiliado" era **incorrecta** (el link va a nuestra página de producto, no a un afiliado) → reescrita con honestidad: "en el sitio encontrarás enlaces de afiliado…".
+  - **Sin gestión de bajas** → agregado link al panel para gestionar/eliminar alertas (buena práctica CAN-SPAM/RGPD).
+- `[2. "Precio bajó" retirado]`: `price_trend: "down"` del serializer significa `current < original_price` (MSRP), NO una bajada real en el tiempo — el mismo vicio Omnibus que el % OFF disfrazado de flecha. Removido de la card con comentario; reponer cuando el trend se calcule contra `price_histories`.
+- `[3. Copy engañoso → veraz (16 claves × 4 idiomas)]`:
+  - "Precios actualizados **al instante**" → "Precios revisados **a diario**" (la ingesta corre 1×/día — el claim viejo era falso y coherente ahora con stats "Actualización: Diario").
+  - `ai_labels.OPTIMAL` "**Precio mínimo histórico**" → "Precio excepcional": era un claim FÁCTICO derivado de un bucket de deal_score, no de comparar el histórico real. Ahora es opinión editorial defendible.
+  - "Precio Verificado" → "**Precio de referencia**" (card, escaparate, detalle): coherente con el disclaimer y sin promesa de verificación en tiempo real.
+  - "**Mejor precio del mercado** / la oferta más baja disponible" → "Buscamos el mejor precio / las mejores ofertas que encontramos" (esfuerzo, no garantía — las garantías de mejor precio exigen sustanciación).
+  - Hero: "Comparamos **miles** de ofertas" → "Comparamos ofertas…" (el catálogo público no sustenta "miles").
+- `[4. Disclosure oficial de Amazon]`: el footer tenía divulgación genérica; el Operating Agreement (§5) exige el wording específico. Agregado en los 4 idiomas: "En calidad de Afiliado de Amazon, Clicks & Go obtiene ingresos por las compras adscritas…" / "As an Amazon Associate…".
+- `[5. Consentimiento ePrivacy (art. 5.3) — AEPD/Garante]`: la personalización "Elegidos para vos" usa localStorage NO esencial → requiere consentimiento previo en la UE (ES/IT son mercados core). Implementado:
+  - `ConsentBanner` (nuevo): diálogo discreto en tinta, "Aceptar" / "Solo lo esencial" con igual prominencia (exigencia AEPD), i18n ×4.
+  - `affinity.ts`: `getConsent()/setConsent()` — sin consentimiento **no se escribe ni se lee** historial (recordSignal y rankByAffinity quedan mudos); retirar el consentimiento **borra lo acumulado** (RGPD art. 7.3); guardar la elección en sí está exento (necesario para recordar el rechazo).
+  - `ForYouRail` escucha `consent:changed` → desaparece al instante si se retira.
+- `[Notas sin cambio de código]`: (a) imágenes de Amazon hotlinkeadas desde seeds — el adaptador PAAPI pendiente es la vía legítima (ya en roadmap); (b) `/out` con `rel="sponsored"` y allowlist OK; (c) links de Impact/CJ pasan intactos OK; (d) `deals.limitedTime`/`youSave`/`common.save` quedan en diccionarios sin uso (inertes).
+- `[Verificado]`: py_compile ✓ · tsc 0 · ESLint 0 · vitest 5/5 · build ✓ · QA en vivo: banner aparece 1 sola vez; **rechazar → cero storage y sin rail** (verificado `localStorage null`); aceptar → rail funciona; barrido HTML: 0 "al instante", 0 "mínimo histórico", 0 "Mejor precio del mercado", 0 "Precio Verificado", "Precio bajó" solo en payload de diccionario (no renderizado); disclosure Amazon presente ×3 (footer por idioma renderizado).

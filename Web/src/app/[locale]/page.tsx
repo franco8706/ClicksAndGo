@@ -29,13 +29,13 @@ function WhyTrustUs({ dict }: { dict: Dict }) {
   const items = [
     {
       icon:  <CheckCircle size={22} className="text-emerald-400" />,
-      title: dict.features?.audit     || "Precios verificados",
-      desc:  dict.features?.auditDesc || "Revisamos cada precio antes de mostrártelo.",
+      title: dict.features?.audit     || "Precios revisados a diario",
+      desc:  dict.features?.auditDesc || "Actualizamos los precios todos los días desde las tiendas oficiales.",
     },
     {
       icon:  <Tag size={22} className="text-blue-400" />,
-      title: dict.features?.finance     || "Mejor precio del mercado",
-      desc:  dict.features?.financeDesc || "Conectamos con tiendas para traerte la oferta más baja.",
+      title: dict.features?.finance     || "Buscamos el mejor precio",
+      desc:  dict.features?.financeDesc || "Nos conectamos con las tiendas para mostrarte las mejores ofertas que encontramos.",
     },
     {
       icon:  <ShieldCheck size={22} className="text-indigo-400" />,
@@ -191,7 +191,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
-              {dict.hero?.verifiedDeals || "Precios auditados en tiempo real"}
+              {dict.hero?.verifiedDeals || "Precios revisados a diario"}
             </span>
           </div>
 

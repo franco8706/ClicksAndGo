@@ -17,6 +17,40 @@
 import type { Laptop } from "@/types/laptop";
 
 const STORAGE_KEY = "cg_affinity_v1";
+const CONSENT_KEY = "cg_consent_v1";
+
+/* ── ⚖️ Consentimiento (ePrivacy art. 5.3 / AEPD / Garante) ─────────────
+   La personalización usa almacenamiento local NO estrictamente necesario
+   → requiere consentimiento previo en la UE (ES/IT son mercados core).
+   Sin consentimiento: no se escribe NI se lee historial (la función queda
+   muda). Guardar la propia elección sí es lícito (exención "necesaria
+   para recordar el rechazo"). */
+export type ConsentChoice = "granted" | "denied";
+
+export function getConsent(): ConsentChoice | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(CONSENT_KEY);
+    return v === "granted" || v === "denied" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setConsent(choice: ConsentChoice) {
+  try {
+    window.localStorage.setItem(CONSENT_KEY, choice);
+    if (choice === "denied") {
+      // Retirar consentimiento borra lo ya acumulado (RGPD art. 7.3).
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    /* almacenamiento bloqueado: el sitio funciona igual sin personalizar */
+  }
+  window.dispatchEvent(new CustomEvent("consent:changed"));
+}
+
+const hasConsent = (): boolean => getConsent() === "granted";
 const MAX_EVENTS = 120;           // historial acotado (los viejos expiran)
 const HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000; // media vida: 7 días
 
@@ -56,12 +90,13 @@ function writeEvents(events: ActivityEvent[]) {
   }
 }
 
-/** Registra una señal de interés del visitante. */
+/** Registra una señal de interés del visitante (solo con consentimiento). */
 export function recordSignal(
   kind: SignalKind,
   info: { product_type?: string; brand?: string }
 ) {
   if (typeof window === "undefined") return;
+  if (!hasConsent()) return; // ⚖️ sin consentimiento no se registra nada
   const events = readEvents();
   events.push({
     kind,
@@ -105,6 +140,7 @@ function buildProfile(): AffinityProfile {
  * afinidad y, a igualdad, por el deal_score que YA calculó el backend.
  */
 export function rankByAffinity(laptops: Laptop[], limit = 8): Laptop[] {
+  if (!hasConsent()) return []; // ⚖️ sin consentimiento no se personaliza
   const { byType, byBrand } = buildProfile();
   if (byType.size === 0 && byBrand.size === 0) return [];
 

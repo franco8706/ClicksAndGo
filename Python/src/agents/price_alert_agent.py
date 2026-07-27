@@ -122,31 +122,37 @@ class PriceAlertAgent:
         brand = alert.get("brand", "")
         model = alert.get("model", "")
         title = f"{brand} {model}".strip() or "tu producto"
-        current = self._fmt_price(alert.get("current_price"), alert.get("moneda"))
+        # ⚖️ Cumplimiento Amazon Associates: PROHIBIDO mostrar precios de
+        # productos fuera del sitio aprobado (los precios solo pueden vivir
+        # en la web, y a futuro deben venir de PAAPI con <24h). El email
+        # solo menciona el OBJETIVO que fijó el propio usuario (dato suyo,
+        # no de Amazon) y lo invita a ver el precio vigente en el sitio.
         target = self._fmt_price(alert.get("target_price"), alert.get("moneda"))
         slug = alert.get("slug", "")
         link = f"{self.web_url}/es/laptop/{slug}" if slug else self.web_url
+        panel_link = f"{self.web_url}/es/panel"
         greeting = f"Hola {alert.get('name')}," if alert.get("name") else "Hola,"
 
         html = f"""
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#0a0e14">
           <p style="font-size:12px;letter-spacing:2px;color:#2563eb;font-weight:700;text-transform:uppercase">Clicks &amp; Go · Alerta de precio</p>
-          <h1 style="font-size:22px;margin:8px 0 4px">💸 ¡Bajó de precio!</h1>
-          <p style="color:#414855">{greeting} el producto que estabas siguiendo alcanzó tu precio objetivo:</p>
+          <h1 style="font-size:22px;margin:8px 0 4px">💸 ¡Tu alerta se activó!</h1>
+          <p style="color:#414855">{greeting} el producto que estabas siguiendo alcanzó el precio objetivo que definiste:</p>
           <div style="border:1px solid #e6e8ec;border-radius:8px;padding:20px;margin:16px 0">
             <p style="font-weight:700;font-size:16px;margin:0 0 8px">{title}</p>
-            <p style="margin:0;color:#059669;font-size:20px;font-weight:800">{current}</p>
-            <p style="margin:4px 0 0;color:#6b7280;font-size:13px">Tu objetivo era {target}</p>
+            <p style="margin:0;color:#059669;font-size:15px;font-weight:700">Tu objetivo: {target}</p>
+            <p style="margin:6px 0 0;color:#6b7280;font-size:13px">El precio vigente lo ves en el sitio — puede variar en cualquier momento.</p>
           </div>
-          <a href="{link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:2px">Ver la oferta →</a>
-          <p style="color:#9aa1ac;font-size:11px;margin-top:24px">Recibís este email porque creaste una alerta de precio en Clicks &amp; Go. Enlace de afiliado · podemos ganar una comisión.</p>
+          <a href="{link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:2px">Ver el precio actual →</a>
+          <p style="color:#9aa1ac;font-size:11px;margin-top:24px">Recibís este email porque creaste una alerta de precio en Clicks &amp; Go. En el sitio encontrarás enlaces de afiliado: si comprás a través de ellos podemos ganar una comisión, sin costo extra para vos. Podés gestionar o eliminar tus alertas desde <a href="{panel_link}" style="color:#6b7280">tu panel</a>.</p>
         </div>
         """.strip()
 
         payload = {
             "from": self.from_email,
             "to": [to],
-            "subject": f"💸 ¡Bajó de precio! {title} a {current}",
+            # Sin precio en el asunto (mismo criterio que el cuerpo).
+            "subject": f"💸 {title} alcanzó tu precio objetivo",
             "html": html,
         }
         try:

@@ -11,7 +11,7 @@
     "showing": "Mostrando {count} laptops verificados",
     "noResults": "Nenhum Resultado",
     "save": "Você economiza",
-    "finalPrice": "Preço Verificado",
+    "finalPrice": "Preço de referência",
     "viewDeal": "Ir para a Loja",
     "soldBy": "Vendido por",
     "optimizingFor": "Laptops verificados em",
@@ -46,14 +46,14 @@
     "cta": "Pesquisar"
   },
   "hero": {
-    "verifiedDeals": "Preços atualizados ao instante",
+    "verifiedDeals": "Preços revisados diariamente",
     "aiTag": "Encontre o preço justo em tecnologia",
     "title1": "Sua Próxima Compra Tech,",
     "title2": "Pelo Melhor Preço",
     "titleSub": "Com Análise Especializada",
     "ctaCatalog": "Ver Catálogo",
     "ctaDeals": "Melhores Ofertas",
-    "subtitle": "Comparamos milhares de ofertas de laptops, monitores, periféricos e impressoras nas principais lojas para você ter o melhor custo-benefício.",
+    "subtitle": "Comparamos ofertas de laptops, monitores, periféricos e impressoras nas principais lojas para você encontrar o melhor custo-benefício.",
     "searchPlaceholder": "Que produto você procura?",
     "suggestions": "Buscas populares",
     "tags": [
@@ -96,7 +96,7 @@
     "limitedTime": "Preço caiu",
     "hot": "OFERTA TOP",
     "youSave": "Você economiza",
-    "verified": "Preço verificado"
+    "verified": "Preço de referência"
   },
   "catalog": {
     "eyebrow": "O melhor disponível",
@@ -104,7 +104,7 @@
     "subtitle": "Melhor preço encontrado para cada modelo na sua região"
   },
   "card": {
-    "final_price": "Preço Verificado",
+    "final_price": "Preço de referência",
     "view_deal": "Ver Oferta",
     "view_description": "Ver descrição",
     "hide_description": "Ocultar descrição",
@@ -126,15 +126,15 @@
   },
   "featuredDeal": "Melhor custo-benefício",
   "greatOpportunity": "Ótima oferta",
-  "analysisPending": "Preço verificado",
+  "analysisPending": "Preço de referência",
   "features": {
     "eyebrow": "Nossa promessa",
     "title": "Por que confiar na Clicks & Go?",
     "subtitle": "Fazemos a comparação de preços para que você não precise",
-    "audit": "Preços verificados",
-    "auditDesc": "Revisamos cada preço antes de mostrá-lo para que você nunca pague mais do que precisa.",
-    "finance": "Melhor preço do mercado",
-    "financeDesc": "Conectamos diretamente com as lojas para trazer a oferta mais baixa disponível.",
+    "audit": "Preços revisados diariamente",
+    "auditDesc": "Atualizamos os preços todos os dias diretamente das lojas oficiais.",
+    "finance": "Buscamos o melhor preço",
+    "financeDesc": "Nos conectamos com as lojas para mostrar as melhores ofertas que encontramos.",
     "security": "Só lojas confiáveis",
     "securityDesc": "Trabalhamos exclusivamente com distribuidores e lojas oficiais verificadas.",
     "curation": "Seleção para você",
@@ -162,7 +162,8 @@
     "dealsLink": "Melhores ofertas",
     "privacyFullLink": "Política de privacidade",
     "termsFullLink": "Termos e condições",
-    "contactLink": "Fale conosco"
+    "contactLink": "Fale conosco",
+    "amazonDisclosure": "Como Associado da Amazon, a Clicks & Go recebe rendimentos de compras qualificadas."
   },
   "condition": {
     "new": "Novo",
@@ -170,7 +171,7 @@
     "open_box": "Caixa aberta"
   },
   "ai_labels": {
-    "OPTIMAL": "Menor preço histórico",
+    "OPTIMAL": "Preço excepcional",
     "GOOD": "Bom preço",
     "REGULAR": "Preço normal",
     "LOW": "Preço elevado"
@@ -322,5 +323,11 @@
   "forYou": {
     "eyebrow": "Com base na sua atividade",
     "title": "Escolhidos para você"
+  },
+  "consent": {
+    "title": "Sua privacidade",
+    "text": "Usamos o armazenamento do seu navegador para lembrar suas preferências e personalizar os produtos exibidos. Essa informação nunca sai do seu dispositivo. Os cookies de login são essenciais e não são usados para publicidade.",
+    "accept": "Aceitar",
+    "decline": "Somente o essencial"
   }
 }

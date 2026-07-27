@@ -133,7 +133,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
             <div className="p-10 rounded-xl border border-[#e6e8ec] bg-white shadow-md relative overflow-hidden">
               <div className="flex flex-col mb-8">
                 <p className="text-xs font-bold text-[#9aa1ac] uppercase tracking-[0.2em] mb-3">
-                  {dict.common?.finalPrice || "Precio Final Verificado"}
+                  {dict.common?.finalPrice || "Precio de referencia"}
                 </p>
                 <div className="flex items-baseline gap-3">
                   <span className="text-5xl font-black text-[#0a0e14] tracking-tighter">{localPriceString}</span>

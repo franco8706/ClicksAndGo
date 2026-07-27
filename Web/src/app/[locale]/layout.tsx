@@ -4,6 +4,7 @@ import Link from "next/link";
 import "../globals.css";
 
 import Navbar from "@/components/Navbar";
+import ConsentBanner from "@/components/ConsentBanner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Cpu, Mail, ShieldCheck, MessageSquare, Briefcase, Code2 } from "lucide-react";
 import { auth } from "@/auth";
@@ -134,6 +135,12 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                   {dict.footer?.affiliateDisclosure ||
                     "Clicks & Go participa en programas de afiliados y puede recibir una comisión por compras hechas a través de sus enlaces, sin costo adicional para vos."}
                 </p>
+                {/* ⚖️ Declaración específica que exige el Operating Agreement de
+                    Amazon Associates (§5), con el wording oficial por idioma. */}
+                <p className="text-[11px] leading-relaxed text-[#9aa1ac] max-w-4xl mt-2">
+                  {dict.footer?.amazonDisclosure ||
+                    "En calidad de Afiliado de Amazon, Clicks & Go obtiene ingresos por las compras adscritas que cumplen los requisitos aplicables."}
+                </p>
               </div>
 
               <div className="border-t border-[#e6e8ec] pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9aa1ac] gap-4">
@@ -146,6 +153,9 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
             </div>
           </footer>
+
+          {/* ⚖️ Consentimiento ePrivacy para personalización local */}
+          <ConsentBanner dict={dict} />
 
         </ThemeProvider>
       </body>

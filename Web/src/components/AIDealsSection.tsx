@@ -85,7 +85,7 @@ function DealStage({
 
         {/* Precio (sin claim de descuento — ver nota legal arriba) */}
         <span className="text-[10px] font-bold text-[#9aa1ac] uppercase tracking-widest block mb-1">
-          {dict.card?.final_price || "Precio Verificado"}
+          {dict.card?.final_price || "Precio de referencia"}
         </span>
         <div className="flex items-baseline gap-3 flex-wrap mb-2">
           <span className="text-4xl font-bold text-[#0a0e14] tracking-tight leading-none">

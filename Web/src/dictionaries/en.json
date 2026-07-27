@@ -11,7 +11,7 @@
     "showing": "Showing {count} verified laptops",
     "noResults": "No Results Found",
     "save": "You save",
-    "finalPrice": "Verified Price",
+    "finalPrice": "Reference price",
     "viewDeal": "Go to Store",
     "soldBy": "Sold by",
     "optimizingFor": "Verified laptops in",
@@ -46,14 +46,14 @@
     "cta": "Search"
   },
   "hero": {
-    "verifiedDeals": "Prices updated instantly",
+    "verifiedDeals": "Prices reviewed daily",
     "aiTag": "Find the right tech at the right price",
     "title1": "Your Next Tech Buy,",
     "title2": "At the Best Price",
     "titleSub": "Expert Analysis Included",
     "ctaCatalog": "View Catalog",
     "ctaDeals": "Best Deals",
-    "subtitle": "We compare thousands of deals on laptops, monitors, peripherals and printers across top stores so you get the best price-quality ratio.",
+    "subtitle": "We compare laptop, monitor, peripheral and printer deals across leading stores so you can find the best value for your money.",
     "searchPlaceholder": "What product are you looking for?",
     "suggestions": "Popular searches",
     "tags": [
@@ -96,7 +96,7 @@
     "limitedTime": "Price dropped",
     "hot": "TOP DEAL",
     "youSave": "You save",
-    "verified": "Verified price"
+    "verified": "Reference price"
   },
   "catalog": {
     "eyebrow": "Best available",
@@ -104,7 +104,7 @@
     "subtitle": "Best price found for every model in your region"
   },
   "card": {
-    "final_price": "Verified Price",
+    "final_price": "Reference price",
     "view_deal": "View Deal",
     "view_description": "View description",
     "hide_description": "Hide description",
@@ -126,15 +126,15 @@
   },
   "featuredDeal": "Best value for money",
   "greatOpportunity": "Great deal",
-  "analysisPending": "Verified price",
+  "analysisPending": "Reference price",
   "features": {
     "eyebrow": "Our promise",
     "title": "Why trust Clicks & Go?",
     "subtitle": "We do the price comparison work so you don't have to",
-    "audit": "Verified prices",
-    "auditDesc": "We review every price before showing it so you never overpay.",
-    "finance": "Best market price",
-    "financeDesc": "We connect directly with stores to bring you the lowest available price.",
+    "audit": "Prices reviewed daily",
+    "auditDesc": "We refresh prices every day straight from official stores.",
+    "finance": "We hunt for the best price",
+    "financeDesc": "We connect with stores to show you the best deals we find.",
     "security": "Trusted stores only",
     "securityDesc": "We work exclusively with verified official retailers and distributors.",
     "curation": "Curated for you",
@@ -162,7 +162,8 @@
     "dealsLink": "Best deals",
     "privacyFullLink": "Privacy policy",
     "termsFullLink": "Terms & conditions",
-    "contactLink": "Contact us"
+    "contactLink": "Contact us",
+    "amazonDisclosure": "As an Amazon Associate, Clicks & Go earns from qualifying purchases."
   },
   "condition": {
     "new": "Brand new",
@@ -170,7 +171,7 @@
     "open_box": "Open box"
   },
   "ai_labels": {
-    "OPTIMAL": "Lowest price ever",
+    "OPTIMAL": "Exceptional price",
     "GOOD": "Good price",
     "REGULAR": "Average price",
     "LOW": "Above average"
@@ -322,5 +323,11 @@
   "forYou": {
     "eyebrow": "Based on your activity",
     "title": "Picked for you"
+  },
+  "consent": {
+    "title": "Your privacy",
+    "text": "We use your browser's storage to remember your preferences and personalize which products you see. That information never leaves your device. Login cookies are essential and are not used for advertising.",
+    "accept": "Accept",
+    "decline": "Essential only"
   }
 }

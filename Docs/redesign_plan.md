@@ -41,6 +41,7 @@
   2. **Rails**: agregar `price_recorded_at` al DTO (`financials`) — hoy no existe timestamp, y Amazon exige el disclaimer "as of [fecha/hora]".
   3. **Python**: adaptador de **Amazon PAAPI** (Product Advertising API). Hoy no existe: los productos de Amazon salen de `seeds_products_multi.sql` con precios estáticos. El Operating Agreement exige que el precio provenga de PAAPI y tenga <24h.
   4. **Web**: mostrar el % OFF solo si el dato es fresco (<24h) y el precio de referencia califica; suprimirlo si no.
+  5. **Web**: reponer también "Precio bajó" (`price_trend`) cuando Rails lo calcule contra `price_histories` (hoy es `current < MSRP` — retirado 2026-07-27 junto con el % OFF).
 - **`HardwareNewsSlider.tsx`**: código muerto tras el ticker inline — eliminar o reintegrar (decisión de producto).
 
 ---

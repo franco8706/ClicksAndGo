@@ -42,7 +42,12 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronización única con localStorage (client-only), hydration-safe: SSR y primer render coinciden en []
     refresh();
     window.addEventListener("affinity:updated", refresh);
-    return () => window.removeEventListener("affinity:updated", refresh);
+    // Si el visitante retira el consentimiento, el rail desaparece al instante.
+    window.addEventListener("consent:changed", refresh);
+    return () => {
+      window.removeEventListener("affinity:updated", refresh);
+      window.removeEventListener("consent:changed", refresh);
+    };
   }, [refresh]);
 
   if (picks.length < 2) return null; // sin historial suficiente, no hay rail
