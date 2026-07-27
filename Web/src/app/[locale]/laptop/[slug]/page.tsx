@@ -1,7 +1,7 @@
 import React from "react";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Cpu, Box, HardDrive, ChevronLeft, ShoppingCart, Globe, Zap } from "lucide-react";
 
 import { formatCurrencyString } from "@/lib/currency";
@@ -17,7 +17,8 @@ type PageProps = {
   params: Promise<{ locale: string; slug: string }>;
 };
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=90&auto=format&fit=crop";
+// OG image de respaldo (solo metadatos sociales, no la card del producto).
+const OG_FALLBACK = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=90&auto=format&fit=crop";
 
 async function getLaptopData(slug: string): Promise<Laptop | null> {
   const railsApiUrl = process.env.RAILS_API_URL || 'http://rails_backend:3000';
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: laptop.seo?.title || `${laptop.brand} ${laptop.name} - Clicks & Go`,
       description: laptop.seo?.description || laptop.intelligence?.ai_reasoning || `Análisis experto para ${laptop.name}.`,
-      openGraph: { images: [laptop.urls?.image || FALLBACK_IMAGE] },
+      openGraph: { images: [laptop.urls?.image || OG_FALLBACK] },
     };
   } catch {
     return { title: "Clicks & Go Enterprise" };
@@ -60,7 +61,6 @@ export default async function LaptopDetailPage({ params }: PageProps) {
   const currentPrice = laptop.financials?.current_price || 0;
   const isGranOportunidad = laptop.intelligence?.is_featured_deal || (laptop.intelligence?.deal_score ?? 0) >= 8.5;
   const retailer = laptop.metadata_extra?.retailer || 'generic';
-  const imageUrl = (laptop.urls?.image || FALLBACK_IMAGE).replace(/^http:\/\//, 'https://');
 
   const localPriceString = formatCurrencyString(currentPrice, laptop.currency);
   const monetizedUrl = `/out?url=${encodeURIComponent(laptop.urls?.affiliate_raw || '#')}&country=${laptop.country_code}`;
@@ -100,14 +100,14 @@ export default async function LaptopDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div className="space-y-8">
             <div className={`relative aspect-square rounded-2xl border border-[#e6e8ec] flex items-center justify-center p-12 overflow-hidden shadow-md bg-[#f5f6f8] ${isGranOportunidad ? "neon-glow border-emerald-300" : ""}`}>
-              <Image src={imageUrl} alt={`${laptop.brand} ${laptop.name}`} fill priority quality={95} sizes="(max-width: 768px) 100vw, 50vw" className="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" />
+              <ProductImage src={laptop.urls?.image} alt={`${laptop.brand} ${laptop.name}`} productType={laptop.product_type} quality={95} sizes="(max-width: 768px) 100vw, 50vw" imageClassName="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" iconSize={120} />
             </div>
 
             {laptop.intelligence?.ai_reasoning && (
               <div className="p-8 rounded-[2rem] bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-xl shadow-blue-900/20 border border-blue-500/30">
                 <h3 className="font-black text-xl mb-4 flex items-center gap-2">
                   <Zap size={22} className="text-amber-300 animate-pulse" />
-                  {dict.deals?.verified || "Dictamen de la Inteligencia Artificial"}
+                  {dict.card?.aiVerdict || "Nuestro análisis"}
                 </h3>
                 <p className="text-blue-50 font-medium leading-relaxed text-lg">&ldquo;{laptop.intelligence.ai_reasoning}&rdquo;</p>
               </div>

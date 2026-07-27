@@ -11,15 +11,13 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { ShoppingCart, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { Laptop } from "@/types/laptop";
 import { formatCurrencyString } from "@/lib/currency";
 import type { Dict } from "@/types/dictionary";
 
 const SLIDE_MS = 7000; // firma NVIDIA: 7s por slide, avance linear
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=85&auto=format&fit=crop";
 
 interface AIDealsSectionProps {
   readonly laptops: Laptop[];
@@ -31,12 +29,6 @@ interface AIDealsSectionProps {
 function DealStage({
   laptop, countryCode, dict,
 }: { readonly laptop: Laptop; readonly countryCode: string; readonly dict: Dict }) {
-  // El componente se monta con key={laptop.id} desde el padre, así que
-  // el estado de imagen nace fresco en cada cambio de slide (sin effects).
-  const normalizeImg = (url?: string) =>
-    (url || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
-  const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
-
   /* ⚖️ Sin claim de descuento (% OFF / tachado / "Ahorras"): el
      `original_price` del pipeline es MSRP del retailer, no el mínimo de
      30 días que exige la Directiva Omnibus UE, y Amazon requiere precio
@@ -123,14 +115,14 @@ function DealStage({
 
       {/* Columna de imagen */}
       <div className="order-1 md:order-2 relative aspect-[4/3] rounded bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border border-[#e6e8ec] overflow-hidden">
-        <Image
-          src={imgSrc}
+        <ProductImage
+          src={laptop.urls?.image}
           alt={`${laptop.brand} ${laptop.name}`}
-          fill
+          productType={laptop.product_type}
           quality={90}
           sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-contain p-8 drop-shadow-2xl"
-          onError={() => setImgSrc(FALLBACK_IMAGE)}
+          imageClassName="object-contain p-8 drop-shadow-2xl"
+          iconSize={88}
         />
       </div>
     </div>

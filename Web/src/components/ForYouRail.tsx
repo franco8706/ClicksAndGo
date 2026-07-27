@@ -13,15 +13,12 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Laptop } from "@/types/laptop";
 import type { Dict } from "@/types/dictionary";
 import { rankByAffinity } from "@/lib/affinity";
 import { formatCurrencyString } from "@/lib/currency";
-
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&q=80&auto=format&fit=crop";
 
 interface ForYouRailProps {
   readonly laptops: Laptop[];
@@ -85,7 +82,6 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
       >
         {picks.map((p) => {
           const price = p.financials?.current_price || 0;
-          const img = (p.urls?.image || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
           return (
             <a
               key={p.id}
@@ -105,12 +101,13 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
               className="snap-start shrink-0 w-[210px] bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md card-bloom overflow-hidden group cursor-pointer select-none"
             >
               <div className="relative h-[120px] bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border-b border-[#e6e8ec]">
-                <Image
-                  src={img}
+                <ProductImage
+                  src={p.urls?.image}
                   alt={p.name}
-                  fill
+                  productType={p.product_type}
                   sizes="210px"
-                  className="object-contain p-3 transition-transform duration-300 group-hover:scale-105"
+                  imageClassName="object-contain p-3 transition-transform duration-300 group-hover:scale-105"
+                  iconSize={34}
                 />
               </div>
               <div className="p-4">

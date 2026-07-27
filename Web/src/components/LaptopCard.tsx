@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import Image from "next/image";
+import React, { useTransition } from "react";
+import ProductImage from "@/components/ProductImage";
 import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
 import { recordSignal } from "@/lib/affinity";
@@ -21,9 +21,6 @@ interface LaptopCardProps {
   /** Server action para agregar/quitar de favoritos (redirige a login sin sesión) */
   readonly toggleFavoriteAction?: (laptopId: string) => Promise<void>;
 }
-
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&q=85&auto=format&fit=crop";
 
 /* ── Specs por tipo de producto (multi-producto) ───────────────────────────
    Lee `product.specs` (genérico, llenado por Rails para cualquier tipo) y,
@@ -113,9 +110,6 @@ function priceSignal(product: Laptop, dict: Dict): { text: string; positive: boo
 export default function LaptopCard({
   laptop, dict, isExpanded, onToggle, isFavorite, toggleFavoriteAction,
 }: LaptopCardProps) {
-  const normalizeImg = (url?: string) =>
-    (url || FALLBACK_IMAGE).replace(/^http:\/\//, "https://");
-  const [imgSrc, setImgSrc] = useState(normalizeImg(laptop.urls?.image));
   const [favPending, startFavTransition] = useTransition();
 
   // Señales de afinidad: locales al navegador (ver lib/affinity.ts).
@@ -248,14 +242,14 @@ export default function LaptopCard({
             <Heart size={15} className={isFavorite ? "fill-current" : ""} />
           </button>
         )}
-        <Image
-          src={imgSrc}
+        <ProductImage
+          src={laptop.urls?.image}
           alt={`${laptop.brand} ${laptop.name}`}
-          fill
+          productType={laptop.product_type}
           quality={90}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-          className="object-contain transform group-hover:scale-105 transition-transform duration-700 p-4 drop-shadow-2xl"
-          onError={() => setImgSrc(FALLBACK_IMAGE)}
+          imageClassName="object-contain transform group-hover:scale-105 transition-transform duration-700 p-4 drop-shadow-2xl"
+          iconSize={52}
         />
       </div>
 
