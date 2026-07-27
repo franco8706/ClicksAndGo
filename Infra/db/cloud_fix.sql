@@ -47,7 +47,7 @@ VALUES
    'Intel Core i7-13700H', 16, 1024, 'NVIDIA RTX 4050', 15.6, 8.7,
    'Ultrabook premium de aluminio con pantalla OLED, ideal para creadores.',
    'https://www.bestbuy.com/site/dell-xps-15?tag=clickgo08-20',
-   'https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=800&q=80',
+   NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
    '{"category":"creator","ai_badge":"Creator Pro","ui_accent_color":"blue-500"}'),
 
   ((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
@@ -55,7 +55,7 @@ VALUES
    'AMD Ryzen 7 7840HS', 16, 512, 'NVIDIA RTX 4060', 15.6, 9.1,
    'Relacion precio/rendimiento sobresaliente para gaming 1080p.',
    'https://www.bestbuy.com/site/lenovo-loq-15?tag=clickgo08-20',
-   'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=800&q=80',
+   NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
    '{"category":"gaming","ai_badge":"Gamer Pro","ui_accent_color":"emerald-500"}'),
 
   ((SELECT id FROM retailers WHERE slug='amazon_es' AND country_code='ES'),
@@ -63,7 +63,7 @@ VALUES
    'AMD Ryzen 5 7535U', 16, 512, 'AMD Radeon 660M', 14.0, 8.3,
    'Ultraligero (menos de 1 kg) con gran autonomia para oficina movil.',
    'https://www.amazon.es/dp/hp-pavilion-aero-14?tag=clicksandgo-es-21',
-   'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80',
+   NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
    '{"category":"ultrabook","ai_badge":"Ultraligera","ui_accent_color":"blue-500"}'),
 
   ((SELECT id FROM retailers WHERE slug='mercadolibre_mx' AND country_code='MX'),
@@ -71,7 +71,7 @@ VALUES
    'AMD Ryzen 5 7640HS', 16, 512, 'NVIDIA RTX 4050', 16.0, 8.0,
    'Equipo gamer accesible con pantalla de 165 Hz para e-sports.',
    'https://www.mercadolibre.com.mx/acer-nitro-16?matt_tool=clicksandgo-mx-20',
-   'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=800&q=80',
+   NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
    '{"category":"gaming","ai_badge":"Gamer","ui_accent_color":"emerald-500"}')
 ON CONFLICT (slug) DO NOTHING;
 

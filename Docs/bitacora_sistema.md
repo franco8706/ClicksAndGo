@@ -365,3 +365,30 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Bug de i18n encontrado de paso]`: la página de detalle titulaba el dictamen de IA con `dict.deals.verified`, que tras el renombre legal pasó a valer "Precio de referencia" — el bloque de análisis se titulaba con un texto de precio. Corregido con clave propia `card.aiVerdict` ("Nuestro análisis") ×4 idiomas.
 - `[Solución definitiva — pendiente de pipeline]` (ya en `redesign_plan.md`): adaptador **Amazon PAAPI** (única vía legítima para imágenes y precios de Amazon) + re-hospedar en GCS/CDN las imágenes que llegan por los feeds de Awin/CJ/Impact, en vez de hotlinkear la CDN del fabricante.
 - `[Verificado]`: tsc 0 · ESLint 0 · vitest 5/5 · build ✓ · QA en vivo: 9/9 cards con placeholder de ícono, **0 imágenes rotas** (antes 28/30 mostraban una foto ajena al producto). Paridad i18n 271 claves ×4.
+
+## 2026-07-27 (cont.) · 🚫 Fin del mock data: solo imágenes reales, garantizado en 4 capas
+
+- `[Orden del titular]`: "solo deben mostrarse imágenes reales, no trabajaremos más con mock data".
+- `[Auditoría HTTP de las 63 URLs distintas del catálogo vivo]` (GET real con UA de browser, exigiendo `200` + `Content-Type: image/*`). El resultado corrige y endurece el diagnóstico anterior — **no eran 3 CDNs sanas, eran 4 URLs sanas de 63**:
+  - `images.unsplash.com` **22** → stock decorativo.
+  - `ssl-product-images.www8-hp.com` **7** → 404 · `p2/p3-ofp.static.pub` **12** → 404 · `hybrismediaprod…` **1** → 404.
+  - `i.dell.com` **8** → 403 (Scene7 responde 403, no 404, ante un asset ausente) · `static.acer.com` **2** → 403.
+  - `dlcdnwebimgs.asus.com` **4** → **302 a HTML** (parecía 200 con `curl -o /dev/null`; el `Content-Type` lo delató).
+  - `ar-media.hptstore.com` **1** → el dominio no resuelve.
+  - Reales: `asset.msi.com` **2** + `store.storeimages.cdn-apple.com` **2** (de 4; las otras 2, 404).
+  - **Conclusión**: las URLs de "CDN de fabricante" del seed también eran mock — rutas inventadas sobre hosts legítimos. El catálogo sembrado nunca tuvo fotos reales salvo 4 aciertos.
+- `[Guarda en 4 capas]` — la misma lista de hosts replicada donde el dato nace, se guarda, se sirve y se pinta:
+  1. **Ingesta (Python)** — `clean_image_url` en `data_normalizer.py`: fuerza https, descarta bancos de stock y **verifica por HTTP** que la URL devuelva una imagen (GET con `stream=True`, no HEAD: varias CDN responden 403/405 a HEAD pero sirven con GET). Caché por proceso; apagable con `IMAGE_VERIFY_ENABLED=false` para tests offline.
+  2. **Postgres** — CHECK `chk_laptops_no_stock_image` (`migration_real_images_v6.sql`): `image_url` es NULL o https y de host no-stock. Verificado en prod que **rechaza** unsplash y `http://`, y **acepta** una CDN real.
+  3. **Rails** — `Laptop#real_image_url`: el DTO nunca emite un host de stock. Usado por `notebooks_controller` y `favorites_controller`. `persistence_orchestrator` guarda `NULL` (no `''`) cuando no hay foto.
+  4. **Web** — `src/lib/productImage.ts` (extraído de `ProductImage.tsx` para poder testearlo) + allowlist de `next.config.ts` **sin** unsplash: el optimizador rechaza con 400 cualquier foto decorativa que se colara.
+- `[Purga en producción]`: `migration_real_images_v6.sql` aplicada a `clicks-db2` → **66 URLs mock a NULL, 4 reales conservadas**. Idempotente (2ª corrida: `UPDATE 0`). Snapshot de rollback de las 70 filas tomado antes de tocar nada. IP del codespace autorizada solo durante la operación y **revocada al terminar** (`--clear-authorized-networks`, verificado).
+- `[Mock fuera del catálogo, también eliminado]`:
+  - `HeroSection`: foto de stock de fondo (~200 KB en el LCP) → fondo 100% CSS. `hero-gradient` ahora lleva un halo del azul de acento (#2563eb) donde antes se veía la foto: mismos tokens, mismo look, cero descargas.
+  - `HardwareNewsSlider.tsx`: **borrado** — código muerto (0 referencias) con 6 imágenes de stock.
+  - Detalle de producto: `OG_FALLBACK` de Unsplash eliminado; sin foto real no se emite `openGraph.images` (una preview en redes con la foto de otro artículo es tan engañosa como en la card).
+  - Seeds: **62 URLs fabricadas → NULL** en `seeds_products_multi.sql`, `seeds_catalog.sql` y `cloud_fix.sql`. Verificado por diff que **no se tocó ninguna `url_afiliado`**.
+- `[Contrato DTO]`: `urls.image` pasa a `string | null` en `laptop.ts`. El tipo destapó las 4 superficies consumidoras (card, detalle, ofertas, rail) — todas ya pasaban por `ProductImage`.
+- `[Bug encontrado de paso]`: `next.config.ts` no declaraba los hosts de avatar de OAuth → `next/image` abortaba y la **foto de perfil del panel nunca cargaba**. Agregados `lh3.googleusercontent.com`, `graph.microsoft.com`, `**.fbcdn.net`, `platform-lookaside.fbsbx.com`.
+- `[Consecuencia visible y esperada]`: 66 de 70 productos muestran el ícono neutro de su categoría. **Es el estado honesto**: no hay foto real que mostrar hasta que el pipeline traiga una. Las fotos vuelven cuando haya credenciales de feed — `AWIN_API_KEY`, `CJ_API_KEY`, Impact y Amazon PA-API están **todas sin configurar en prod** (verificado en las env vars de `clicks-python`), y la API pública de MercadoLibre hoy responde **403 en todos sus endpoints** (ya no sirve búsqueda sin OAuth). Ese es el bloqueante real de imágenes, no el frontend.
+- `[Verificado]`: tsc 0 · ESLint 0 · `next build` ✓ · vitest **11/11** (6 tests nuevos que fijan la política) · py_compile ✓ · `ruby -c` ×4 ✓ · migración aplicada, idempotente y con CHECK probado contra datos reales.

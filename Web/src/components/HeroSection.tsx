@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import Image from "next/image";
 import {
   Search, X, Laptop, Monitor, MonitorSmartphone, Keyboard, Mouse,
   Headphones, Webcam, Printer, Droplet, ChevronDown, ChevronRight,
@@ -232,17 +231,15 @@ export default function HeroSection({ dict, news }: HeroSectionProps) {
   return (
     <section className="relative w-full min-h-screen flex flex-col overflow-hidden bg-white">
 
-      {/* ── Imagen de fondo (muy sutil, se funde con el blanco a la izquierda) ── */}
+      {/* ── Fondo 100% CSS ──────────────────────────────────────────────
+          Antes había una foto de stock de Unsplash al 12% de opacidad.
+          Se quitó junto con el resto del mock data: el sitio no carga
+          ninguna imagen que no sea la foto real de un producto. El fondo
+          se compone solo con gradiente + cuadrícula (mismos tokens de
+          color), así que el look no cambia y además se ahorra una
+          descarga de ~200 KB en el LCP. ── */}
       <div className="absolute inset-0 z-0">
-        <Image
-          src="https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
-          alt="Technology Background"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover opacity-[0.12] pointer-events-none select-none"
-        />
-        {/* Gradiente blanco left-to-right (deja respirar la imagen a la derecha) */}
+        {/* Gradiente blanco left-to-right */}
         <div className="hero-gradient absolute inset-0" />
         {/* Cuadrícula tech azul sutil */}
         <div className="hero-grid-overlay absolute inset-0 opacity-70" />

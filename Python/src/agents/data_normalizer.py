@@ -73,6 +73,103 @@ def _get_exchange_rates() -> dict:
         return _fx_state["rates"]
 
 
+# ── 🖼️ Guarda de imágenes REALES ──────────────────────────────────────────────
+# El catálogo solo muestra la foto real del producto. Si el feed no la trae —o
+# trae una foto decorativa de stock, o una URL que no carga— se persiste vacío
+# y el frontend dibuja el ícono neutro de la categoría (ProductImage.tsx).
+#
+# Motivo legal: mostrar la imagen de OTRO artículo como si fuera el listado es
+# una representación engañosa (FTC §5, Directiva 2005/29/CE de prácticas
+# comerciales desleales, Ley 24.240 art. 4 — información veraz). Una foto vacía
+# es honesta; una foto ajena, no.
+#
+# Es la primera de tres capas: acá (ingesta), `Laptop#real_image_url` (Rails,
+# serialización) y el CHECK `chk_laptops_no_stock_image` (Postgres).
+_STOCK_IMAGE_HOSTS = (
+    "images.unsplash.com", "unsplash.com", "placehold.co", "via.placeholder.com",
+    "placekitten.com", "dummyimage.com", "loremflickr.com", "picsum.photos",
+)
+
+# La verificación HTTP se puede apagar (tests offline, entornos sin salida).
+_IMG_VERIFY_ENABLED = os.getenv("IMAGE_VERIFY_ENABLED", "true").strip().lower() != "false"
+_IMG_VERIFY_TIMEOUT = float(os.getenv("IMAGE_VERIFY_TIMEOUT_SECONDS", "6"))
+_IMG_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+_img_cache_lock = threading.Lock()
+_img_cache: dict = {}  # url → bool (dentro del proceso; el ciclo es diario)
+
+
+def _image_responds_ok(url: str) -> bool:
+    """¿La URL devuelve realmente una imagen? (200 + Content-Type image/*).
+
+    Se usa GET con ``stream=True`` en vez de HEAD: varias CDN de fabricante
+    responden 403/405 a HEAD pero sirven la imagen con GET. El cuerpo no se
+    descarga — se cierra la conexión apenas llegan las cabeceras.
+
+    Descarta los tres modos de fallo reales del catálogo sembrado: rutas
+    inexistentes (404), assets ausentes en Scene7 (403) y CDNs que redirigen
+    a una landing HTML cuando el id no existe (302 → text/html).
+    """
+    with _img_cache_lock:
+        cached = _img_cache.get(url)
+    if cached is not None:
+        return cached
+
+    ok = False
+    try:
+        resp = requests.get(
+            url,
+            stream=True,
+            timeout=_IMG_VERIFY_TIMEOUT,
+            allow_redirects=True,
+            headers={"User-Agent": _IMG_BROWSER_UA, "Accept": "image/avif,image/webp,image/*,*/*;q=0.8"},
+        )
+        try:
+            ok = resp.status_code == 200 and resp.headers.get("Content-Type", "").lower().startswith("image/")
+        finally:
+            resp.close()
+    except Exception as exc:
+        logger.debug("Imagen no verificable (%s): %s", url, exc)
+
+    with _img_cache_lock:
+        _img_cache[url] = ok
+    return ok
+
+
+def clean_image_url(raw_url) -> str:
+    """Devuelve la URL de la foto real del producto, o "" si no la hay."""
+    url = str(raw_url or "").strip()
+    if not url:
+        return ""
+
+    # http:// → https://: la web se sirve por TLS y el navegador bloquea el
+    # contenido mixto. La API de MercadoLibre todavía devuelve thumbnails http.
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    if not url.startswith("https://"):
+        return ""
+
+    try:
+        host = requests.utils.urlparse(url).hostname or ""
+    except Exception:
+        return ""
+    host = host.lower()
+    if not host:
+        return ""
+    if any(host == s or host.endswith("." + s) for s in _STOCK_IMAGE_HOSTS):
+        logger.info("Imagen de stock descartada (%s)", host)
+        return ""
+
+    if _IMG_VERIFY_ENABLED and not _image_responds_ok(url):
+        logger.info("Imagen descartada: no devuelve una imagen real (%s)", url)
+        return ""
+
+    return url
+
+
 class DataNormalizerAgent:
     """
     Escudo Zero-Trust de Normalización v4.0.
@@ -220,7 +317,8 @@ class DataNormalizerAgent:
                 "in_stock": True
             },
             "urls": {
-                "image": raw_data.get("urls", {}).get("image", ""),
+                # 🖼️ Solo la foto real del producto (ver clean_image_url arriba).
+                "image": clean_image_url(raw_data.get("urls", {}).get("image", "")),
                 "affiliate_raw": raw_data.get("urls", {}).get("affiliate_raw", "")
             }
         }

@@ -139,15 +139,25 @@
   background-size: 64px 64px;
 }
 
-/* Degradado del hero claro: blanco sólido → transparente hacia la imagen */
+/* Degradado del hero claro: blanco sólido → tinte azul del sistema a la derecha.
+   Antes se desvanecía a transparente para dejar ver una foto de stock de fondo;
+   al eliminar el mock data el peso visual de ese lado lo aporta un halo del
+   mismo azul de acento (#2563eb), sin descargar ninguna imagen. */
 @utility hero-gradient {
-  background: linear-gradient(
-    to right,
-    #ffffff 0%,
-    rgba(255, 255, 255, 0.92) 45%,
-    rgba(255, 255, 255, 0.35) 75%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background:
+    radial-gradient(
+      120% 90% at 88% 40%,
+      rgba(37, 99, 235, 0.10) 0%,
+      rgba(37, 99, 235, 0.04) 45%,
+      rgba(255, 255, 255, 0) 72%
+    ),
+    linear-gradient(
+      to right,
+      #ffffff 0%,
+      rgba(255, 255, 255, 0.92) 45%,
+      rgba(255, 255, 255, 0.35) 75%,
+      rgba(255, 255, 255, 0) 100%
+    );
 }
 
 /* Titular con leve degradado de tinta (sutil, no metálico) */

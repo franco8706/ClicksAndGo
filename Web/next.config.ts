@@ -53,8 +53,13 @@ const nextConfig: NextConfig = {
     qualities: [75, 85, 90, 95],
     // Cacheo agresivo del optimizador para soportar picos de tráfico
     minimumCacheTTL: 2678400, // 31 días
+    // 🖼️ Allowlist de CDNs de producto. Solo se optimizan imágenes de
+    // retailers/fabricantes: los bancos de stock (Unsplash, placehold.co…)
+    // están deliberadamente FUERA, así el optimizador rechaza con 400
+    // cualquier foto decorativa que llegara a colarse en el DTO. Es la
+    // última de las cuatro capas de la guarda de imágenes reales
+    // (ingesta Python → CHECK en Postgres → serializer Rails → esto).
     remotePatterns: [
-      { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.lenovo.com' },
       { protocol: 'https', hostname: '**.hp.com' },
       { protocol: 'https', hostname: '**.dell.com' },
@@ -64,14 +69,21 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**.static.pub' },
       { protocol: 'https', hostname: '**.cdn-apple.com' },
       { protocol: 'https', hostname: '**.hptstore.com' },
-      // Dominios adicionales presentes en el catálogo sembrado (evitan 500 en SSR)
+      // CDNs de fabricante que el pipeline puede devolver por feed de afiliado
       { protocol: 'https', hostname: '**.www8-hp.com' },
       { protocol: 'https', hostname: '**.msi.com' },
       { protocol: 'https', hostname: '**.asus.com' },
       { protocol: 'https', hostname: '**.acer.com' },
       { protocol: 'https', hostname: 'www.apple.com' },
       { protocol: 'https', hostname: '**.razer.com' },
-      { protocol: 'https', hostname: 'hybrismediaprod.blob.core.windows.net' }
+      { protocol: 'https', hostname: 'hybrismediaprod.blob.core.windows.net' },
+      // 👤 Avatares reales del proveedor OAuth (panel de usuario). Faltaban:
+      // next/image aborta ante un host no declarado, así que la foto de perfil
+      // de Google/Microsoft/Facebook no cargaba nunca.
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'graph.microsoft.com' },
+      { protocol: 'https', hostname: '**.fbcdn.net' },
+      { protocol: 'https', hostname: 'platform-lookaside.fbsbx.com' }
     ],
   },
 };

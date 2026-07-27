@@ -97,7 +97,10 @@ export interface Laptop {
   };
 
   readonly urls: {
-    readonly image: string;
+    /** Foto REAL del producto, o `null` si no hay una verificada.
+     *  Rails la emite vía `Laptop#real_image_url`: nunca una foto de stock.
+     *  Con `null`, la UI dibuja el ícono de la categoría (ProductImage.tsx). */
+    readonly image: string | null;
     readonly affiliate_raw: string;
   };
 

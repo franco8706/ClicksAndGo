@@ -161,7 +161,8 @@ module Api
           },
 
           urls: {
-            image: laptop.image_url,
+            # 🖼️ Solo la foto real del producto (nil si no hay) — ver Laptop#real_image_url
+            image: laptop.real_image_url,
             affiliate_raw: laptop.url_afiliado
           },
 

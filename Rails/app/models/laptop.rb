@@ -23,6 +23,39 @@ class Laptop < ApplicationRecord
   # 📦 Multi-producto: filtro por tipo (laptop|monitor|keyboard|...).
   scope :por_tipo, ->(tipo) { where(product_type: tipo.to_s.downcase) }
 
+  # 🖼️ Bancos de imágenes genéricos: una foto de acá NUNCA es el producto.
+  STOCK_IMAGE_HOSTS = %w[
+    images.unsplash.com unsplash.com placehold.co via.placeholder.com
+    placekitten.com dummyimage.com loremflickr.com picsum.photos
+  ].freeze
+
+  # 🖼️ URL de la foto REAL del producto, o nil.
+  #
+  # Única fuente de verdad para "¿esta imagen se puede mostrar?". El API
+  # nunca emite una foto decorativa: si no es la del producto, el frontend
+  # dibuja el ícono neutro de la categoría (ProductImage.tsx). Mostrar la
+  # imagen de otro artículo como si fuera el listado es una representación
+  # engañosa — FTC §5, Directiva 2005/29/CE y Ley 24.240 art. 4.
+  #
+  # Tercera capa de la misma guarda: la ingesta la aplica antes de guardar
+  # (`_clean_image_url` en data_normalizer.py) y Postgres la impone con
+  # `chk_laptops_no_stock_image` (migration_real_images_v6.sql). Acá se
+  # protege además el dato heredado que ya estuviera en la tabla.
+  def real_image_url
+    url = image_url.to_s.strip
+    return nil unless url.start_with?('https://')
+
+    host = begin
+      URI.parse(url).host.to_s.downcase
+    rescue URI::InvalidURIError
+      return nil
+    end
+    return nil if host.blank?
+    return nil if STOCK_IMAGE_HOSTS.any? { |s| host == s || host.end_with?(".#{s}") }
+
+    url
+  end
+
   private
 
   def normalize_data

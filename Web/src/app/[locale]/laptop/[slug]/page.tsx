@@ -17,9 +17,6 @@ type PageProps = {
   params: Promise<{ locale: string; slug: string }>;
 };
 
-// OG image de respaldo (solo metadatos sociales, no la card del producto).
-const OG_FALLBACK = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=90&auto=format&fit=crop";
-
 async function getLaptopData(slug: string): Promise<Laptop | null> {
   const railsApiUrl = process.env.RAILS_API_URL || 'http://rails_backend:3000';
   try {
@@ -44,7 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: laptop.seo?.title || `${laptop.brand} ${laptop.name} - Clicks & Go`,
       description: laptop.seo?.description || laptop.intelligence?.ai_reasoning || `Análisis experto para ${laptop.name}.`,
-      openGraph: { images: [laptop.urls?.image || OG_FALLBACK] },
+      // 🖼️ OG image solo si hay foto REAL del producto. Sin respaldo de stock:
+      // una preview en redes con la foto de otro artículo es tan engañosa como
+      // en la card (ver ProductImage.tsx). Sin `images`, la red social usa el
+      // OG por defecto del sitio.
+      openGraph: laptop.urls?.image ? { images: [laptop.urls.image] } : undefined,
     };
   } catch {
     return { title: "Clicks & Go Enterprise" };

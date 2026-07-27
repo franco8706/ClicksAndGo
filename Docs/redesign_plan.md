@@ -42,7 +42,12 @@
   3. **Python**: adaptador de **Amazon PAAPI** (Product Advertising API). Hoy no existe: los productos de Amazon salen de `seeds_products_multi.sql` con precios estáticos. El Operating Agreement exige que el precio provenga de PAAPI y tenga <24h.
   4. **Web**: mostrar el % OFF solo si el dato es fresco (<24h) y el precio de referencia califica; suprimirlo si no.
   5. **Web**: reponer también "Precio bajó" (`price_trend`) cuando Rails lo calcule contra `price_histories` (hoy es `current < MSRP` — retirado 2026-07-27 junto con el % OFF).
-- **`HardwareNewsSlider.tsx`**: código muerto tras el ticker inline — eliminar o reintegrar (decisión de producto).
+- 🔴 **Fotos reales de producto** (política vigente desde 2026-07-27: **cero mock data**, ver bitácora). Hoy 66 de 70 productos muestran el ícono de su categoría porque no existe una foto real que mostrar. La guarda de 4 capas ya está puesta (ingesta → CHECK en Postgres → serializer Rails → allowlist de `next.config`); lo que falta es **la fuente**:
+  1. **Credenciales de feed** — `AWIN_API_KEY`, `CJ_API_KEY` e Impact están sin configurar en `clicks-python`. Los tres adaptadores ya leen `merchant_image_url` / `image-url`: al cargar las keys, las fotos entran solas y verificadas.
+  2. **Adaptador Amazon PA-API** — única vía legítima para imagen *y* precio de Amazon (mismo ítem que el punto 3 del "% OFF": una sola implementación destraba ambos).
+  3. **MercadoLibre ya no sirve**: `api.mercadolibre.com` responde **403 en todos sus endpoints** sin OAuth (verificado 2026-07-27). Para reactivar LATAM hay que registrar una app y hacer el flujo de token — el adaptador `MercadoLibreAPI` funciona, lo que falta es la autenticación.
+  4. **Re-hospedar en GCS/CDN** las fotos que lleguen por feed, en vez de hotlinkear la CDN del fabricante (protege contra el hotlink-blocking que ya rompió Dell/Acer/HP/Lenovo).
+- ✅ **`HardwareNewsSlider.tsx`**: eliminado (2026-07-27) — era código muerto con 6 imágenes de stock.
 
 ---
 

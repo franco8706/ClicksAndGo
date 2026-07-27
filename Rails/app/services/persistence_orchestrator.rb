@@ -69,7 +69,10 @@ class PersistenceOrchestrator
       raw_score = (raw_score / 10.0).round(1) if raw_score > 10.0
       laptop.deal_score = raw_score.clamp(1.0, 10.0) if raw_score.positive?
       laptop.ai_reasoning = intelligence[:ai_reasoning]
-      laptop.image_url = urls[:image]
+      # 🖼️ Sin foto real → NULL (no cadena vacía): el CHECK
+      # `chk_laptops_no_stock_image` exige https o NULL, y el frontend
+      # distingue "no hay imagen" para dibujar el ícono de la categoría.
+      laptop.image_url = urls[:image].to_s.strip.presence
       laptop.url_afiliado = urls[:affiliate_raw]
 
       # Metadatos extra y SEO (JSONB)

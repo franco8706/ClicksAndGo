@@ -7,6 +7,13 @@
 -- Ejecutar DESPUÉS de seeds_catalog.sql:
 --   psql $DATABASE_URL -f Infra/db/seeds_products_multi.sql
 -- Idempotente: ON CONFLICT DO NOTHING / DO UPDATE — seguro re-ejecutar.
+--
+-- 🖼️ IMÁGENES: `image_url` va NULL a propósito. Los seeds NO inventan fotos.
+-- La auditoría HTTP de 2026-07-27 mostró que las URLs sembradas eran o stock
+-- decorativo o rutas de CDN inexistentes (404/403). La foto real entra solo
+-- por el pipeline (feeds de afiliados / Amazon PA-API), que la verifica antes
+-- de persistirla; sin foto real el frontend dibuja el ícono de la categoría.
+-- Ver migration_real_images_v6.sql.
 -- ==============================================================================
 
 -- ── RETAILERS (marketplaces + marcas de periféricos/impresión) ────────────────
@@ -33,7 +40,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.7, 'Monitor gaming QHD de 165Hz con panel IPS Nano y 1ms — colores precisos y fluidez para juego competitivo.',
  'https://www.amazon.com/dp/B08T6DHVFH?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"monitor","ai_badge":"165Hz","ui_accent_color":"#2563eb","seo_title":"LG UltraGear 27GP850 QHD 165Hz","seo_description":"Monitor gaming QHD 165Hz IPS Nano al mejor precio verificado."}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
@@ -42,7 +49,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.4, 'Panel curvo 1000R de 240Hz — inmersión total y respuesta ultrarrápida para shooters.',
  'https://www.bestbuy.com/site/samsung-odyssey-g7/6435300.p?tag=clicks_bestbuy_us',
- 'https://images.unsplash.com/photo-1616711906333-23cf8a5f6a4a?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"monitor","ai_badge":"240Hz","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -51,7 +58,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.1, '4K IPS Black con hub USB-C 90W — la referencia para trabajo profesional y color.',
  'https://www.amazon.com/dp/B09WMS9YM4?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"monitor","ai_badge":"4K USB-C","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_es' AND country_code='ES'),
@@ -60,7 +67,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.5, 'Monitor gaming QHD 165Hz IPS Nano — el favorito de la gama media para juego y trabajo.',
  'https://www.amazon.es/dp/B08T6DHVFH?tag=clicksandgo-es-21',
- 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"monitor","ai_badge":"165Hz","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── TECLADOS ───────────
@@ -70,7 +77,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.2, 'Mecánico TKL hot-swap con QMK/VIA e inalámbrico — escritura precisa para trabajo y código.',
  'https://www.amazon.com/dp/B09NNGL3VV?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"keyboard","ai_badge":"Mecánico","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -79,7 +86,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.0, 'Teclado de perfil bajo, silencioso y multi-dispositivo — el estándar de productividad.',
  'https://www.amazon.com/dp/B0B47QChoC?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"keyboard","ai_badge":"Productividad","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
@@ -88,7 +95,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.6, 'Mecánico clicky con Chroma RGB y teclas de macro — pensado para gaming.',
  'https://www.bestbuy.com/site/razer-blackwidow-v4/6535075.p?tag=clicks_bestbuy_us',
- 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"keyboard","ai_badge":"Gaming RGB","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── MOUSE ───────────
@@ -98,7 +105,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.9, 'Ergonómico de 8000 DPI con scroll MagSpeed y clicks silenciosos — rey de la productividad.',
  'https://www.amazon.com/dp/B09HM94VDS?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"mouse","ai_badge":"Productividad","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -107,7 +114,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.3, 'Ultraligero (63g) con sensor Focus Pro 30K — precisión de esports inalámbrica.',
  'https://www.amazon.com/dp/B0B8SRXNPB?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"mouse","ai_badge":"Esports","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_es' AND country_code='ES'),
@@ -116,7 +123,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.7, 'Ergonómico de 8000 DPI con scroll MagSpeed — precisión y confort para largas jornadas.',
  'https://www.amazon.es/dp/B09HM94VDS?tag=clicksandgo-es-21',
- 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"mouse","ai_badge":"Productividad","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── AURICULARES ───────────
@@ -126,7 +133,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  9.1, 'La referencia en cancelación de ruido — audio limpio y 30h de batería para viajes y oficina.',
  'https://www.amazon.com/dp/B09XS7JWHH?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"headphones","ai_badge":"ANC Premium","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='best_buy_us' AND country_code='US'),
@@ -135,7 +142,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.5, 'Audio espacial inmersivo y ANC de referencia — comodidad premium para largas sesiones.',
  'https://www.bestbuy.com/site/bose-quietcomfort-ultra/6551024.p?tag=clicks_bestbuy_us',
- 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"headphones","ai_badge":"Audio espacial","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='mercadolibre_mx' AND country_code='MX'),
@@ -144,7 +151,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.8, 'Cancelación de ruido líder y gran autonomía — ideal para home office y traslados.',
  'https://www.mercadolibre.com.mx/sony-wh-1000xm5/p/MLM123456?tag=clicks_ml_mx',
- 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"headphones","ai_badge":"ANC Premium","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── WEBCAMS ───────────
@@ -154,7 +161,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.9, 'Webcam 4K con HDR y corrección de luz — imagen nítida para videollamadas y streaming.',
  'https://www.amazon.com/dp/B01N5UOYC4?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1596742578443-7682ef5251cd?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"webcam","ai_badge":"4K HDR","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -163,7 +170,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.5, '1080p a 60fps con sensor adaptable a poca luz — pensada para streaming fluido.',
  'https://www.amazon.com/dp/B08T1MWX6J?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"webcam","ai_badge":"1080p60","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── IMPRESORAS ───────────
@@ -173,7 +180,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.0, 'Láser monocromática compacta con WiFi y 6 meses de tóner incluido — confiable para casa/oficina.',
  'https://www.hp.com/us-en/shop/pdp/hp-laserjet-m234dwe?aff=clicks_hp_us',
- 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"printer","ai_badge":"Oficina","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -182,7 +189,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  8.2, 'Sin cartuchos: tanques recargables con años de tinta — el costo por página más bajo.',
  'https://www.amazon.com/dp/B08XLWSFF1?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1571498664957-fde285d79857?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"printer","ai_badge":"EcoTank","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -191,7 +198,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.8, 'Láser mono rápida (32ppm) con dúplex automático y WiFi — trabajadora incansable.',
  'https://www.amazon.com/dp/B078Z2WBGV?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1625961332771-3f40b0e2bdcf?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"printer","ai_badge":"Dúplex","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── DESKTOPS ───────────
@@ -201,7 +208,7 @@ VALUES
  'AMD Ryzen 5 8600G', 16, 1024, 'NVIDIA RTX 4060', NULL,
  8.3, 'Torre gaming accesible con RTX 4060 — 1080p ultra y creación de contenido sin problemas.',
  'https://www.hp.com/us-en/shop/pdp/victus-15l-desktop?aff=clicks_hp_us',
- 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"gaming","ai_badge":"Gaming Desktop","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='lenovo_us' AND country_code='US'),
@@ -210,7 +217,7 @@ VALUES
  'AMD Ryzen 7 7700', 16, 1024, 'NVIDIA RTX 4070', NULL,
  8.6, 'Potencia de sobra con RTX 4070 y refrigeración optimizada — 1440p de alto refresco.',
  'https://www.lenovo.com/us/en/p/legion-tower-5?aff=clicks_lenovo_us',
- 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"gaming","ai_badge":"RTX 4070","ui_accent_color":"#2563eb"}'::jsonb),
 
 -- ─────────── INSUMOS ───────────
@@ -220,7 +227,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.4, 'Cartucho tricolor original HP — colores fieles y compatibilidad garantizada con tu DeskJet.',
  'https://www.hp.com/us-en/shop/pdp/hp-667-tri-color?aff=clicks_hp_us',
- 'https://images.unsplash.com/photo-1601524909162-ae8725290836?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"supplies","ai_badge":"Original","ui_accent_color":"#2563eb"}'::jsonb),
 
 ((SELECT id FROM retailers WHERE slug='amazon_us' AND country_code='US'),
@@ -229,7 +236,7 @@ VALUES
  NULL, NULL, NULL, NULL, NULL,
  7.7, 'Botella de tinta EcoTank de alto rendimiento — hasta 7.500 páginas por un precio mínimo.',
  'https://www.amazon.com/dp/B07TWFVDND?tag=clicksandgo-20',
- 'https://images.unsplash.com/photo-1563890009599-0a0f6d0e1b3f?w=640&q=70',
+ NULL,  -- sin foto real verificada (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"supplies","ai_badge":"Alto rendimiento","ui_accent_color":"#2563eb"}'::jsonb)
 
 ON CONFLICT (slug) DO UPDATE SET

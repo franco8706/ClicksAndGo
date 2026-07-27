@@ -11,14 +11,17 @@
  * **placeholder neutro con el ícono de su categoría**, que no simula
  * ser el producto.
  *
- * Casos que se tratan como "sin imagen real":
- *  - URL vacía o inválida.
- *  - Foto de stock de Unsplash (las 22 sembradas en `seeds_products_multi`
- *    son decorativas, no del producto).
- *  - La CDN del fabricante falla (404/403 por hotlink protection) → onError.
+ * Última de las cuatro capas de la guarda de imágenes reales:
+ *   1. Ingesta — `clean_image_url` (data_normalizer.py) verifica por HTTP
+ *      que la URL devuelva 200 + Content-Type image/* antes de persistir.
+ *   2. Postgres — CHECK `chk_laptops_no_stock_image` (migration_real_images_v6).
+ *   3. Rails — `Laptop#real_image_url`: el DTO nunca emite un host de stock.
+ *   4. Acá — se renderiza el ícono si la URL igual no es real, y `onError`
+ *      cubre el caso vivo de una CDN que empieza a fallar (403/404 por
+ *      hotlink protection) después de haber sido verificada.
  *
- * La solución definitiva es el pipeline: adaptador Amazon PAAPI + re-hospedar
- * las imágenes de los feeds de afiliados (ver Docs/redesign_plan.md).
+ * Las imágenes reales entran por el pipeline, nunca por seeds: feeds de
+ * afiliados (Awin/CJ/Impact) y Amazon PA-API (ver Docs/redesign_plan.md).
  */
 
 import React, { useState } from "react";
@@ -28,6 +31,7 @@ import {
   Headphones, Webcam, Printer, Droplet, ImageOff,
 } from "lucide-react";
 import type { ProductType } from "@/types/product";
+import { isRealProductImage } from "@/lib/productImage";
 
 const TYPE_ICON: Record<ProductType, React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>> = {
   laptop: Laptop,
@@ -41,21 +45,9 @@ const TYPE_ICON: Record<ProductType, React.ComponentType<{ size?: number; classN
   supplies: Droplet,
 };
 
-/** Hosts de fotos decorativas: nunca son la imagen real del producto. */
-const STOCK_HOSTS = ["images.unsplash.com", "unsplash.com", "placehold.co", "via.placeholder.com"];
-
-export function isRealProductImage(url?: string): boolean {
-  if (!url || !url.startsWith("http")) return false;
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    return !STOCK_HOSTS.some((s) => host === s || host.endsWith(`.${s}`));
-  } catch {
-    return false;
-  }
-}
-
 interface ProductImageProps {
-  readonly src?: string;
+  /** `null` cuando Rails no tiene foto real del producto (el caso normal). */
+  readonly src?: string | null;
   readonly alt: string;
   readonly productType?: string;
   /** `sizes` de next/image (responsive). */

@@ -66,7 +66,7 @@ module Api
           slug: laptop.slug,
           marca: laptop.marca,
           modelo: laptop.modelo,
-          image_url: laptop.image_url,
+          image_url: laptop.real_image_url,
           country_code: laptop.country_code,
           deal_score: laptop.deal_score,
           added_at: fav.added_at,
