@@ -147,7 +147,7 @@ VALUES
  'Intel Core i7-12650H', 16, 512, 'NVIDIA RTX 4060 8GB', 15.6,
  7.5, 'La entrada al gaming de alto rendimiento con RTX 4060 y pantalla de 144 Hz a precio competitivo.',
  'https://la.msi.com/Laptop/Katana-15-B12VX/Specifications?aff=clicks_msi_ar',
- 'https://asset.msi.com/resize/image/global/product/product_17_20230331110337_6423d1698de82.png62405b38c58fe0319279a9b6d7b3b08b/600.png',
+ NULL,  -- placeholder de marca, no el producto (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"gaming","seo_title":"MSI Katana 15 — Gaming RTX 4060 con pantalla 144Hz","seo_description":"Laptop gaming MSI con Intel Core i7, RTX 4060 y pantalla Full HD de alta frecuencia.","ai_badge":"MEJOR OFERTA","ui_accent_color":"#DC2626"}'::jsonb)
 
 ON CONFLICT (slug) DO UPDATE SET
@@ -211,7 +211,7 @@ VALUES
  'Intel Core i9-13980HX', 32, 2048, 'NVIDIA RTX 4090 16GB', 17.3,
  10.0, 'The absolute peak of mobile gaming performance. Desktop-grade CPU, RTX 4090 and 240Hz display.',
  'https://us.msi.com/Laptop/Raider-GE78-HX-13V?aff=clicks_msi_us',
- 'https://asset.msi.com/resize/image/global/product/product_17_20230623155521_6496571988e32.png62405b38c58fe0319279a9b6d7b3b08b/600.png',
+ NULL,  -- placeholder de marca, no el producto (ver migration_real_images_v6.sql)
  '{"condition":"new","category":"gaming","seo_title":"MSI Raider GE78 HX — The Ultimate Gaming Laptop","seo_description":"RTX 4090, 32GB RAM and 240Hz display. No compromises — the fastest gaming laptop money can buy.","ai_badge":"BEST IN CLASS","ui_accent_color":"#DC2626"}'::jsonb),
 
 -- 16. Razer Blade 15 2023 ── PREMIUM GAMING (score 8.5)

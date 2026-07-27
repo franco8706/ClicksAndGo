@@ -392,3 +392,14 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 - `[Bug encontrado de paso]`: `next.config.ts` no declaraba los hosts de avatar de OAuth → `next/image` abortaba y la **foto de perfil del panel nunca cargaba**. Agregados `lh3.googleusercontent.com`, `graph.microsoft.com`, `**.fbcdn.net`, `platform-lookaside.fbsbx.com`.
 - `[Consecuencia visible y esperada]`: 66 de 70 productos muestran el ícono neutro de su categoría. **Es el estado honesto**: no hay foto real que mostrar hasta que el pipeline traiga una. Las fotos vuelven cuando haya credenciales de feed — `AWIN_API_KEY`, `CJ_API_KEY`, Impact y Amazon PA-API están **todas sin configurar en prod** (verificado en las env vars de `clicks-python`), y la API pública de MercadoLibre hoy responde **403 en todos sus endpoints** (ya no sirve búsqueda sin OAuth). Ese es el bloqueante real de imágenes, no el frontend.
 - `[Verificado]`: tsc 0 · ESLint 0 · `next build` ✓ · vitest **11/11** (6 tests nuevos que fijan la política) · py_compile ✓ · `ruby -c` ×4 ✓ · migración aplicada, idempotente y con CHECK probado contra datos reales.
+
+### 2026-07-27 · addendum — un `200 image/*` no basta: el caso MSI
+
+- `[Hallazgo en la QA visual post-deploy]`: la card del **MSI Raider GE78 mostraba el logo del dragón de MSI**, no la laptop. La URL pasaba los tres controles (https, host no-stock, `200` + `Content-Type: image/png`) y aun así no era el producto.
+- `[Comprobación]`: las 2 URLs de `asset.msi.com` del catálogo **y un id inventado** devuelven el **mismo archivo byte a byte** (md5 `b40b0e9f492cd26f41701c923b11ca98`, 13.854 bytes). La CDN de MSI sirve su placeholder de marca ante cualquier asset ausente, en vez de un 404. Es decir: también eran mock, disfrazadas de respuesta válida.
+- `[Contraste — Apple es honesta]`: un id inventado sobre `store.storeimages.cdn-apple.com` da **404**, y las 2 URLs válidas devuelven imágenes **distintas entre sí** (15 KB y 34 KB, hashes distintos). Esas 2 son las únicas fotos reales de producto que quedan en el catálogo.
+- `[Corregido]`:
+  - `clean_image_url` suma un **blocklist por hash de contenido** (`_KNOWN_PLACEHOLDER_MD5`): hashea el cuerpo cuando pesa ≤256 KB (un placeholder de marca es chico; una foto real suele pasarse del techo y se acepta sin pagar el ancho de banda). Extensible: descargar la sospechosa, `md5sum`, agregar la entrada.
+  - `migration_real_images_v6.sql` paso **3b**: purga `asset.msi.com`. Re-aplicada en prod → **68 sin foto, 2 reales**. Los seeds pierden también esas 2 URLs.
+- `[Verificado contra las CDNs en vivo]` (6/6): MSI placeholder → descarta · Apple real → acepta · Unsplash → descarta · Dell 403 → descarta · ASUS 302-a-HTML → descarta · vacío → descarta.
+- `[Lección]`: la verificación por status + content-type es necesaria pero **no suficiente**. El control que lo destapó fue mirar la página renderizada, no el HTTP.

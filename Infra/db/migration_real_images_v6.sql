@@ -22,11 +22,11 @@
 --   hybrismediaprod.blob.core.windows.net  1   404
 --   ar-media.hptstore.com ................ 1   dominio que no resuelve
 --   store.storeimages.cdn-apple.com ...... 2 OK / 2 404
---   asset.msi.com ........................ 2 OK
+--   asset.msi.com ........................ 2 "OK" → placeholder de marca (ver 3b)
 --
--- Es decir: de 63 URLs sembradas solo 4 devuelven una imagen real. El
--- resto son mock — o stock decorativo, o rutas de CDN inventadas que
--- jamás cargaron. Se purgan todas; sobreviven únicamente las verificadas.
+-- Es decir: de 63 URLs sembradas solo **2** son la foto real del producto
+-- (las dos de Apple). El resto son mock — stock decorativo, rutas de CDN
+-- inventadas que jamás cargaron, o un placeholder de marca servido con 200.
 --
 -- Las imágenes reales vuelven por el pipeline, no por seeds: los feeds de
 -- afiliados (Awin `merchant_image_url`, CJ `image-url`, Impact) y Amazon
@@ -67,11 +67,27 @@ WHERE image_url IS NOT NULL
 
 -- 3. ── Host mixto (Apple): se purgan solo las rutas muertas ───────────────────
 --    2 de las 4 URLs de este CDN sí devuelven la foto oficial; esas quedan.
+--    Comprobado que la CDN de Apple es honesta: un id inventado da 404, y las
+--    2 URLs válidas devuelven imágenes distintas entre sí (15 KB y 34 KB).
 UPDATE laptops SET image_url = NULL
 WHERE image_url IN (
   'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/macbook-air-midnight-select-202402',
   'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/mbp14-spaceblack-select-202310'
 );
+
+-- 3b. ── MSI: 200 + image/png, pero NO es el producto ──────────────────────────
+--    Detectado en la QA visual: la card del Raider GE78 mostraba el **logo del
+--    dragón de MSI**, no la laptop. `asset.msi.com` responde 200 con su
+--    placeholder de marca ante CUALQUIER id inexistente: las 2 URLs sembradas
+--    y un id inventado devuelven el mismo archivo byte a byte
+--    (md5 b40b0e9f492cd26f…, 13.854 bytes). Es decir: también eran mock, solo
+--    que disfrazado de respuesta válida.
+--
+--    Lección: `200 + Content-Type: image/*` NO alcanza para dar por real una
+--    imagen. Por eso `clean_image_url` (Python) suma un blocklist por hash de
+--    contenido — ver `_KNOWN_PLACEHOLDER_MD5` en data_normalizer.py.
+UPDATE laptops SET image_url = NULL
+WHERE image_url ILIKE '%//asset.msi.com/%';
 
 -- 4. ── Guarda de esquema: ninguna foto de stock puede volver a entrar ─────────
 --    Defensa en profundidad junto a `_clean_image_url` (Python, ingesta) y

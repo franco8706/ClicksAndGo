@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import hashlib
 import logging
 import threading
 
@@ -98,20 +99,40 @@ _IMG_BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
+# ⚠️ Placeholders de marca servidos con 200 + Content-Type image/*.
+# Un `200` NO alcanza para dar por real una imagen: varias CDN devuelven su
+# logo genérico ante cualquier id inexistente en vez de un 404. Detectado en
+# la QA visual del 2026-07-27 — la card del MSI Raider GE78 mostraba el **logo
+# del dragón de MSI**, y un id inventado sobre `asset.msi.com` devolvía el
+# mismo archivo byte a byte. Se bloquean por hash del contenido.
+# Para sumar uno nuevo: descargar la imagen sospechosa, `md5sum`, agregarlo acá.
+_KNOWN_PLACEHOLDER_MD5 = {
+    "b40b0e9f492cd26f41701c923b11ca98": "asset.msi.com — logo del dragón (asset ausente)",
+}
+
+# Techo de descarga para hashear. Un placeholder de marca pesa poco (el de MSI,
+# 13 KB); una foto de producto real suele superarlo, así que si el cuerpo pasa
+# este límite se acepta sin hashear y no se paga el ancho de banda.
+_IMG_HASH_MAX_BYTES = 262_144  # 256 KB
+
 _img_cache_lock = threading.Lock()
 _img_cache: dict = {}  # url → bool (dentro del proceso; el ciclo es diario)
 
 
 def _image_responds_ok(url: str) -> bool:
-    """¿La URL devuelve realmente una imagen? (200 + Content-Type image/*).
+    """¿La URL devuelve realmente la foto del producto?
+
+    Tres controles, en orden de costo:
+      1. ``200`` + ``Content-Type: image/*`` — descarta los modos de fallo del
+         catálogo sembrado: rutas inexistentes (404), assets ausentes en
+         Scene7 (403) y CDNs que redirigen a una landing HTML cuando el id no
+         existe (302 → text/html).
+      2. El cuerpo no es un **placeholder de marca conocido**
+         (``_KNOWN_PLACEHOLDER_MD5``) — el caso MSI: 200, image/png, y aun así
+         no es el producto.
 
     Se usa GET con ``stream=True`` en vez de HEAD: varias CDN de fabricante
-    responden 403/405 a HEAD pero sirven la imagen con GET. El cuerpo no se
-    descarga — se cierra la conexión apenas llegan las cabeceras.
-
-    Descarta los tres modos de fallo reales del catálogo sembrado: rutas
-    inexistentes (404), assets ausentes en Scene7 (403) y CDNs que redirigen
-    a una landing HTML cuando el id no existe (302 → text/html).
+    responden 403/405 a HEAD pero sirven la imagen con GET.
     """
     with _img_cache_lock:
         cached = _img_cache.get(url)
@@ -129,6 +150,16 @@ def _image_responds_ok(url: str) -> bool:
         )
         try:
             ok = resp.status_code == 200 and resp.headers.get("Content-Type", "").lower().startswith("image/")
+            if ok:
+                body = resp.raw.read(_IMG_HASH_MAX_BYTES + 1, decode_content=True)
+                # Solo se hashea si el archivo entero entró en el techo: un
+                # hash parcial no se puede comparar con el de un placeholder.
+                if len(body) <= _IMG_HASH_MAX_BYTES:
+                    digest = hashlib.md5(body).hexdigest()
+                    known = _KNOWN_PLACEHOLDER_MD5.get(digest)
+                    if known:
+                        logger.info("Imagen descartada: placeholder de marca [%s] en %s", known, url)
+                        ok = False
         finally:
             resp.close()
     except Exception as exc:
