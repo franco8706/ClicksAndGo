@@ -41,13 +41,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: laptop.seo?.title || `${laptop.brand} ${laptop.name} - Clicks & Go`,
       description: laptop.seo?.description || laptop.intelligence?.ai_reasoning || `Análisis experto para ${laptop.name}.`,
-      // 🔍 Canonical auto-referenciado — sin hreflang acá: el slug lleva el país
-      // embebido (ver seeds, ej. "...-us") y no hay garantía de que exista el
-      // mismo producto en los otros 3 idiomas, así que no se declara una
-      // equivalencia que no se puede sostener. `metadataBase` viene heredado
-      // del layout. Ver la nota extensa en layout.tsx sobre por qué hacía
-      // falta (Search Console: "Duplicada... ninguna versión canónica").
-      alternates: { canonical: `/${locale}/laptop/${slug}` },
+      // 🔍 Canonical auto-referenciado + hreflang. `metadataBase` viene heredado
+      // del layout — ver ahí la nota de por qué hacía falta (Search Console:
+      // "Duplicada... ninguna versión canónica").
+      //
+      // Corrección 2026-07-28: en el commit anterior se omitió el hreflang
+      // asumiendo que el país embebido en el slug ("...-us") impedía que el
+      // producto existiera en los otros idiomas. **Es falso**: la página
+      // resuelve por slug y traduce con el diccionario del locale — se verificó
+      // en producción que los 4 idiomas devuelven 200. El slug marca el
+      // MERCADO/retailer, no el idioma. Debe declararse igual que en sitemap.ts,
+      // o Google recibe señales contradictorias entre el sitemap y la página.
+      alternates: {
+        canonical: `/${locale}/laptop/${slug}`,
+        languages: {
+          es: `/es/laptop/${slug}`,
+          en: `/en/laptop/${slug}`,
+          pt: `/pt/laptop/${slug}`,
+          it: `/it/laptop/${slug}`,
+          "x-default": `/en/laptop/${slug}`,
+        },
+      },
       // 🖼️ OG image solo si hay foto REAL del producto. Sin respaldo de stock:
       // una preview en redes con la foto de otro artículo es tan engañosa como
       // en la card (ver ProductImage.tsx). Sin `images`, la red social usa el

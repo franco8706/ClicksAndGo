@@ -37,6 +37,56 @@ module Api
       end
 
       # =========================================================
+      # 🗺️ ENDPOINT: GET /api/v1/notebooks/sitemap
+      #
+      # Índice mínimo del catálogo para `Web/src/app/sitemap.ts`. Devuelve
+      # SOLO `{slug, updated_at}` — no el DTO completo — porque el sitemap no
+      # necesita precios ni specs y el payload liviano permite traer todo el
+      # catálogo de una sin paginar.
+      #
+      # Por qué un endpoint propio y no reusar `index`:
+      #   · `index` filtra por país (`country_code`) y el sitemap necesita el
+      #     catálogo COMPLETO — un producto solo de AR debe indexarse igual.
+      #   · `index` clampea `limit` a 100: con >100 productos por país el
+      #     sitemap perdería filas EN SILENCIO, que es exactamente el modo de
+      #     fallo inaceptable para SEO.
+      #   · `updated_at` no está en el DTO público; acá se expone porque el
+      #     `<lastmod>` tiene que ser real (mentirle a Google la fecha de
+      #     modificación degrada el rate de rastreo).
+      #
+      # `pluck` va directo a SQL: sin instanciar ActiveRecord ni serializar.
+      # =========================================================
+
+      # Tope de seguridad. El protocolo sitemap permite 50.000 URLs por archivo
+      # y cada producto emite 4 (uno por idioma) → 12.500 productos sería el
+      # límite duro. Se corta antes, en 10.000, para dejar aire a las rutas
+      # estáticas y al crecimiento. Si alguna vez se alcanza, la solución no es
+      # subir este número sino partir en sitemap index (varios archivos) —
+      # `generateSitemaps()` de Next lo soporta nativo.
+      SITEMAP_MAX_PRODUCTS = 10_000
+
+      def sitemap
+        result = Rails.cache.fetch('products/sitemap', expires_in: 1.hour) do
+          Laptop.order(updated_at: :desc)
+                .limit(SITEMAP_MAX_PRODUCTS)
+                .pluck(:slug, :updated_at)
+                .filter_map do |slug, updated_at|
+                  next if slug.blank?
+                  { slug: slug, updated_at: updated_at&.utc&.iso8601 }
+                end
+        end
+
+        render json: result, status: :ok
+      rescue StandardError => e
+        # Igual que hardware_news: nunca 500 al consumidor. Un sitemap sin
+        # productos es recuperable (Next cae a sus rutas estáticas); un 500
+        # deja a Next sin respuesta y arriesga un sitemap.xml roto servido
+        # a Google.
+        Rails.logger.error("🚨 [Sitemap API] Fallo al listar el catálogo: #{e.message}")
+        render json: [], status: :ok
+      end
+
+      # =========================================================
       # 📡 ENDPOINT: GET /api/v1/notebooks/hardware_news
       # =========================================================
       def hardware_news

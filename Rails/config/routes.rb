@@ -26,6 +26,11 @@ Rails.application.routes.draw do
 
           # 📥 Ruta POST: Consumida por el Cerebro (Python / NewsRadarAgent) para inyectar noticias
           post :hardware_news, action: :create_news
+
+          # 🗺️ Ruta GET: índice liviano {slug, updated_at} de TODO el catálogo,
+          #    consumido por Web/src/app/sitemap.ts. Sin filtro de país y sin
+          #    el clamp de 100 de `index` — ver comentario en el controller.
+          get :sitemap
         end
       end
 
