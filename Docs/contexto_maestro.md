@@ -56,6 +56,7 @@ Esta es la única fuente de verdad arquitectónica del ecosistema. Todo agente o
 * **APIs REST — Catálogo (consumidas por Next.js y Python):**
   * `GET /api/v1/products` — catálogo multi-producto por país; filtro opcional `?type=<product_type>` (laptop|desktop|monitor|keyboard|mouse|headphones|webcam|printer|supplies). `?slug=` — detalle. `notebooks` queda como alias histórico (mismo controller/serializer).
   * `GET /api/v1/notebooks/hardware_news` — noticias por país.
+  * `GET /api/v1/notebooks/sitemap` — índice liviano `{slug, updated_at}` de **todo** el catálogo (sin filtro de país y sin el clamp de 100 de `index`, que perdería filas en silencio). Lo consume `Web/src/app/sitemap.ts`. Cachea 1 h y ante cualquier error devuelve `[]` con 200 — nunca 500, para que el sitemap del sitio nunca quede roto.
   * `POST /api/v1/products` (o `.../notebooks`) y `POST .../hardware_news` — Python inserta datos ya procesados (incluye `product_type` + `specs`).
   * `GET /api/v1/geo` — resolución de país compartida (Web + Mobile) por IP, cabeceras de plataforma u override manual.
 * **APIs REST — Cuenta de usuario (consumidas solo por Next.js, protegidas por `INTERNAL_API_KEY`):**
