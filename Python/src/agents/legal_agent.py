@@ -83,9 +83,28 @@ MONITORED_SOURCES = [
     {
         "source":   "amazon_associates_operating_agreement",
         "url":      "https://affiliate-program.amazon.com/help/operating/agreement",
-        "network":  "AMAZON_PAAPI",
+        "network":  "AMAZON",
         "region":   "US",
         "priority": "HIGH",
+    },
+    # 2026-07-28: PA-API 5.0 quedó DEPRECADA y cerrada a nuevos clientes — su
+    # documentación hace 302 a la página de deprecación. La reemplaza la
+    # Creators API, con su propia IP License. Se vigilan ambas: la licencia
+    # (obligaciones de uso de datos e imágenes) y la página de deprecación
+    # (fechas de corte y cambios de migración).
+    {
+        "source":   "amazon_creators_api_license",
+        "url":      "https://affiliate-program.amazon.com/creatorsapi/docs/en-us/license-agreement",
+        "network":  "AMAZON_CREATORS",
+        "region":   "US",
+        "priority": "HIGH",
+    },
+    {
+        "source":   "amazon_paapi5_deprecation",
+        "url":      "https://affiliate-program.amazon.com/creatorsapi/docs/en-us/paapiv5-deprecation",
+        "network":  "AMAZON_CREATORS",
+        "region":   "US",
+        "priority": "MEDIUM",
     },
     {
         "source":   "mercadolibre_api_terms",

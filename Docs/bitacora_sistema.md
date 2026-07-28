@@ -403,3 +403,21 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
   - `migration_real_images_v6.sql` paso **3b**: purga `asset.msi.com`. Re-aplicada en prod → **68 sin foto, 2 reales**. Los seeds pierden también esas 2 URLs.
 - `[Verificado contra las CDNs en vivo]` (6/6): MSI placeholder → descarta · Apple real → acepta · Unsplash → descarta · Dell 403 → descarta · ASUS 302-a-HTML → descarta · vacío → descarta.
 - `[Lección]`: la verificación por status + content-type es necesaria pero **no suficiente**. El control que lo destapó fue mirar la página renderizada, no el HTTP.
+
+## 2026-07-28 · 🔎 Investigación: por qué "la API de Amazon no funciona"
+
+- `[Pregunta del titular]`: "necesito investigar por qué la API de Amazon no funciona".
+- `[Respuesta corta]`: **no está fallando — no existe.** No hay una sola línea de código que llame a ninguna API de Amazon. Y aunque se escribiera hoy, no se podría usar: la API que el roadmap daba por destino **quedó deprecada**, y su reemplazo exige ventas previas que el sitio todavía no tiene.
+- `[Capa 1 — no hay adaptador]`: `market_hunter.py` tiene exactamente tres: `MercadoLibreAPI`, `AwinNetworkAPI`, `CJAffiliateAPI`. Cero Amazon. Las únicas menciones a "PAAPI" en el repo son **comentarios** (`legal_agent`, `price_alert_agent`, `LaptopCard`, `AIDealsSection`) que documentan la obligación legal, no código que la ejecute. `requirements.txt` no tiene ninguna librería de Amazon. Lo único real de Amazon en producción es la **inyección de tag en `/out`** (middleware), que no usa API.
+- `[Capa 2 — no hay credenciales]`: ningún secreto de Amazon en Secret Manager (`gcloud secrets list` → nada), ninguna env var de Amazon/Awin/CJ en `clicks-python`. Solo existen placeholders vacíos en `.env.example`.
+- `[Capa 3 — LA CAUSA REAL: Amazon cambió de API]`. Verificado el 2026-07-28:
+  - `https://webservices.amazon.com/paapi5/documentation/` → **302** a `.../creatorsapi/docs/en-us/paapiv5-deprecation`. Los endpoints `.es`/`.it` dan **403**. La doc de PA-API 5.0 **ya no existe**: redirige a su propio aviso de muerte.
+  - Texto oficial: *"The Amazon Product Advertising API 5.0 (PA-API 5) has been deprecated and is being replaced by the Creators API."* PA-API además **dejó de aceptar clientes nuevos**.
+  - **Creators API** (sucesora): REST, **OAuth2 Bearer** en vez de AWS SigV4 — el esquema de firma cambia por completo. Credenciales = `Credential ID` + `Secret` + `Version`, generadas en Associates Central → Tools → Creators API. **Una por marketplace**: US, ES e IT necesitan tres juegos. Máx. 2 apps por store, 2 credenciales por app. El secreto se muestra **una sola vez**.
+  - **Elegibilidad**: solo para cuentas de Associates aprobadas **con ventas calificadas referidas**. Umbral reportado: **10 ventas calificadas en los últimos 30 días**; sin ventas durante 30 días consecutivos, Amazon **revoca** el acceso.
+- `[Consecuencia estratégica]`: es un **huevo-y-gallina** — hace falta vender por Amazon para que te den la API, y la API es lo que ayudaría a vender. Por eso el adaptador de Amazon pasa a ser **lo último** en desbloquearse, no lo primero. El camino práctico: monetizar Amazon con los links `/out` (que ya inyectan el tag y **no** requieren API) mientras el catálogo se llena por **Awin/CJ/Impact**, que no exigen ventas previas.
+- `[Aplicado]`:
+  - `redesign_plan.md`: corregido el ítem obsoleto "adaptador Amazon PAAPI" en sus 3 apariciones — ahora dice Creators API, con el bloqueante de elegibilidad explícito y el orden de prioridad corregido.
+  - `.env.example`: `AMAZON_PAAPI_KEY/SECRET` → `AMAZON_CREATORS_CREDENTIAL_ID/SECRET/VERSION`, con la nota de elegibilidad y del requisito por-marketplace.
+  - `legal_agent.py`: la etiqueta `AMAZON_PAAPI` pasa a `AMAZON`, y se suman a la vigilancia la **IP License de Creators API** (HIGH) y la **página de deprecación** (MEDIUM) — así el agente avisa si Amazon mueve fechas de corte o cambia obligaciones de uso de datos e imágenes. Las 4 URLs verificadas 200.
+- `[Nota]`: no se pudo validar el tag `clicksandgo-20` contra amazon.com — la IP del codespace recibe **captcha** (anti-bot), no un error del tag. Se valida entrando a Associates Central.
