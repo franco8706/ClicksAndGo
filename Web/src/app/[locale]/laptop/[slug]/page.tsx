@@ -34,13 +34,20 @@ async function getLaptopData(slug: string): Promise<Laptop | null> {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   try {
     const laptop = await getLaptopData(slug);
     if (!laptop) return { title: "Laptop | Clicks & Go" };
     return {
       title: laptop.seo?.title || `${laptop.brand} ${laptop.name} - Clicks & Go`,
       description: laptop.seo?.description || laptop.intelligence?.ai_reasoning || `Análisis experto para ${laptop.name}.`,
+      // 🔍 Canonical auto-referenciado — sin hreflang acá: el slug lleva el país
+      // embebido (ver seeds, ej. "...-us") y no hay garantía de que exista el
+      // mismo producto en los otros 3 idiomas, así que no se declara una
+      // equivalencia que no se puede sostener. `metadataBase` viene heredado
+      // del layout. Ver la nota extensa en layout.tsx sobre por qué hacía
+      // falta (Search Console: "Duplicada... ninguna versión canónica").
+      alternates: { canonical: `/${locale}/laptop/${slug}` },
       // 🖼️ OG image solo si hay foto REAL del producto. Sin respaldo de stock:
       // una preview en redes con la foto de otro artículo es tan engañosa como
       // en la card (ver ProductImage.tsx). Sin `images`, la red social usa el

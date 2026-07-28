@@ -33,6 +33,13 @@ interface LayoutProps {
   params: Promise<{ locale: string }>;
 }
 
+// Misma resolución que sitemap.ts — una sola fuente de verdad para el dominio público.
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.AUTH_URL ||
+  "https://clicks-web-2myrvivvhq-uc.a.run.app"
+).replace(/\/$/, "");
+
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
   const { locale } = await params;
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
@@ -40,13 +47,26 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   return {
     title: `Clicks & Go | ${dict.hero?.title1 || "Encuentra tu Laptop Ideal"}`,
     description: dict.footer?.description || "Innovación en hardware y auditoría agéntica distribuida.",
-    // 🚀 FIX SEO MUNDIAL: Etiquetas hreflang para que Google indexe correctamente cada idioma
+    // 🔍 Sin metadataBase, Next no puede resolver URLs relativas en `alternates`
+    // — el hreflang de abajo se calculaba pero NUNCA se renderizaba en el HTML
+    // servido (verificado 2026-07-28: 0 <link hreflang> en producción pese a
+    // que este bloque "ya estaba arreglado" desde antes). Confirmado en vivo
+    // por Search Console: "Duplicada: el usuario no ha indicado ninguna
+    // versión canónica" — sin canonical ni hreflang, Google no podía distinguir
+    // /es de /en de /pt de /it como versiones del mismo contenido.
+    metadataBase: new URL(SITE_URL),
     alternates: {
+      // Canonical AUTO-referenciado: cada idioma es dueño de su propia URL,
+      // ninguno canoniza a otro (patrón correcto para sitios con hreflang).
+      canonical: `${SITE_URL}/${locale}`,
       languages: {
-        'es': '/es',
-        'en': '/en',
-        'pt': '/pt',
-        'it': '/it',
+        'es': `${SITE_URL}/es`,
+        'en': `${SITE_URL}/en`,
+        'pt': `${SITE_URL}/pt`,
+        'it': `${SITE_URL}/it`,
+        // x-default: qué versión servir a un idioma no listado — mismo destino
+        // que ya usa el middleware para países sin locale mapeado (getLocale → en).
+        'x-default': `${SITE_URL}/en`,
       },
     },
     openGraph: {
