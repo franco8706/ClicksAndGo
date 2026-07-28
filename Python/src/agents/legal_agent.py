@@ -62,9 +62,28 @@ MONITORED_SOURCES = [
     },
     {
         "source":   "awin_publisher_code_of_conduct",
-        "url":      "https://www.awin.com/gb/legal/publisher-code-of-conduct",
+        # 2026-07-28: la URL vieja (/gb/legal/publisher-code-of-conduct) da
+        # 404 real — Awin reorganizó su legal hub. El Code of Conduct y las 4
+        # variantes de Publisher Terms (AG/LTD/Brasil/México, según residencia
+        # fiscal) están linkeados desde este hub, pero como PDFs — no se pueden
+        # leer por fetch directo. Vigilar el HASH del hub sirve como alerta
+        # temprana de que algo cambió; el texto real hay que revisarlo a mano.
+        "url":      "https://www.awin.com/us/publisher-terms",
         "network":  "AWIN",
         "region":   "ES/EU/GB",
+        "priority": "HIGH",
+    },
+    # 2026-07-28: verificado como restricción REAL — Razer exige usar
+    # exclusivamente material de marketing/imágenes aprobados por Razer
+    # ("Affiliates may only use the approved marketing materials produced by
+    # Razer that includes... product images"), con no-pago de comisión como
+    # sanción explícita. Es la única red/retailer del catálogo con esta
+    # restricción confirmada — por eso HIGH y no NORMAL.
+    {
+        "source":   "razer_affiliate_program",
+        "url":      "https://www.razer.com/affiliate",
+        "network":  "RAZER",
+        "region":   "US",
         "priority": "HIGH",
     },
     # ⚠️ El Publisher Service Agreement de CJ dejó de ser público (verificado
@@ -73,6 +92,11 @@ MONITORED_SOURCES = [
     # alta la cuenta CJ: revisar el PSA manualmente al aceptar y en cada aviso
     # de cambio que CJ notifica por email al publisher. Mientras tanto, las dos
     # páginas legales públicas de CJ (abajo) siguen monitoreadas.
+    #
+    # Mismo patrón confirmado en Impact.com (red de MSI — solicitud de alta
+    # documentada en bitácora): cada marca define sus propios "Template
+    # Terms" dentro de la plataforma, no publicados fuera de la cuenta. Sin
+    # URL pública que monitorear hasta dar de alta la cuenta.
     {
         "source":   "cj_terms_of_use",
         "url":      "https://www.cj.com/legal/terms",
@@ -111,6 +135,19 @@ MONITORED_SOURCES = [
         # 2026-07-19: el dominio developers.mercadolibre.com.ar murió (404);
         # la doc vive ahora en developers.mercadolibre.com (sin .ar).
         "url":      "https://developers.mercadolibre.com/es_ar/terminos-condiciones",
+        "network":  "MERCADOLIBRE",
+        "region":   "AR/MX/BR/CO/CL",
+        "priority": "HIGH",
+    },
+    # 2026-07-28: son dos documentos DISTINTOS — el de arriba rige el uso de
+    # la API pública; este rige específicamente el Programa de Afiliados (el
+    # que sí aplica a nuestro caso de uso). Fetch directo bloqueado (403,
+    # anti-bot) al intentar leer el contenido — se deja igual en vigilancia
+    # por hash como alerta temprana; el texto hay que confirmarlo a mano
+    # dentro de la cuenta de afiliado.
+    {
+        "source":   "mercadolibre_affiliate_program_terms",
+        "url":      "https://www.mercadolibre.com.mx/ayuda/30228",
         "network":  "MERCADOLIBRE",
         "region":   "AR/MX/BR/CO/CL",
         "priority": "HIGH",
