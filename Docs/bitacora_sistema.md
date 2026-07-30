@@ -501,3 +501,68 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
   - `robots.txt` ya apuntaba al sitemap ✅. 3 URLs de producto tomadas al azar del sitemap → **200** las tres.
   - Página de producto: canonical auto-referenciado + los 5 `<link rel="alternate">`.
 - `[Verificación automatizada]`: **12 tests nuevos** (`src/app/__tests__/sitemap.test.ts`) que fijan el contrato de fallo contra cada modo real: red caída, HTTP 500, JSON inválido, payload no-array, timeout, filas corruptas (incluido `../../etc/passwd`), dedupe, `updated_at` ausente/basura y el tope de 50k. Suite total **23/23**.
+
+## 2026-07-30 · 🔬 AUDITORÍA PROFUNDA — 2 fallos críticos en producción, encontrados y cerrados
+
+- `[Orden del titular]`: *"haz un análisis completo y profundo para inspeccionar y buscar posibles errores que deriven en problemas y posibles caminos para lograr una web más robusta"*.
+- `[Método]`: inspección real con herramientas (no revisión de memoria) — sondas HTTP contra producción, consultas de integridad a Cloud SQL, lectura de configuración de Cloud Run/Scheduler/Monitoring, y **disparo de los pipelines reales** para observar su comportamiento en vivo. Los dos hallazgos críticos aparecieron justamente al *ejecutar*, no al leer.
+
+### 🔴 CRÍTICO 1 — Inyección remota no autenticada (cerrado)
+
+- `NotebooksController` **no incluía `InternalApiAuth`** y Rails corre con `ingress: all`. Verificado explotable contra producción:
+  - `POST /api/v1/notebooks` → **422** (pasó auth, solo falló la validación). Con payload válido, cualquiera en internet podía **inyectar productos con SUS propios links de afiliado** (desviando comisiones) o links de phishing con la marca del sitio.
+  - `POST /api/v1/notebooks/hardware_news` → **201 SUCCESS**. Inyección directa al ticker del home, con `source_url` como enlace clickeable para todos los visitantes.
+  - Control: `/users/:id/favorites` → 401 (esa sí estaba protegida — el concern existía, este controller simplemente no lo usaba).
+- `[Forense]`: auditados los 230 registros de `hardware_news` — los 10 dominios de origen son todos feeds legítimos. **Sin evidencia de explotación.**
+- `[Fix en dos lados]` (ninguno de los 2 escritores de Python mandaba la cabecera; protegiendo solo Rails se rompía el pipeline): `X-Internal-Key` en `master_orchestrator` y `news_radar`; en Rails `include InternalApiAuth` + `skip` solo en las lecturas (`index`, `hardware_news`, `sitemap`) que consume el SSR. Se hace por `skip` y no por `only:` para que **una acción nueva nazca protegida** (fail-safe).
+- `[Deploy ordenado]` Python → Rails, para no dejar ventana con el pipeline caído.
+- `[Verificado]`: escrituras sin clave → **401** ambas · lecturas públicas → **200** las cuatro · sitio 200 en los 4 idiomas · catálogo renderiza 30 productos.
+
+### 🔴 CRÍTICO 2 — 3 agentes POSTeaban a un 404: noticias 51 días congeladas (cerrado)
+
+- `[Cómo apareció]`: al **probar** el fix anterior disparé el `news-radar` y Rails respondió **404**, no 201. El log lo reportaba como `[SUCCESS]`.
+- `[Causa raíz]`: `RAILS_API_URL` en Cloud Run vale `.../api/v1/notebooks` (con path, porque el `MasterOrchestrator` lo usa así para POSTear productos). Tres agentes le concatenaban encima su propio path → `.../api/v1/notebooks/api/v1/notebooks/hardware_news` = **404**.
+- `[Impacto medido]`:
+  - **Noticias del sitio congeladas desde el 2026-06-09 → 51 días de atraso**, con el radar corriendo cada 6 h y logueando éxito.
+  - **`LegalAgent`: TODAS las alertas de cambio en ToS murieron en ese 404.** El producto final del agente legal —lo que justifica todo el vigilante— nunca llegó al sitio.
+  - `MarketIntelligence`: su GET de noticias devolvía `[]` siempre → el calendario promocional se generaba **sin contexto de noticias**.
+  - `MasterOrchestrator` y `PriceAlertAgent` **no** estaban afectados (URL directa y `split` correcto).
+- `[Fix estructural]` — nuevo `Python/src/rails_client.py` como única vía a Rails: `rails_base()` recorta en `/api/` y tolera las dos formas de la env var (es el mismo criterio que `legal_agent` ya aplicaba a Rust pero que nunca se aplicó a Rails); `NEWS_PATH`/`PRODUCTS_PATH` declarados una sola vez; `post_json()` autentica, **verifica el status** y loguea el modo de fallo distinguiendo 401 / 404 / otro.
+- `[Verificado en vivo]`: disparado el radar tras el deploy → **"54 artículos guardados en Rails"**. Antigüedad de las noticias: **51 días → 0 días**. Titulares de hoy servidos por la API.
+- `[Lección, más importante que el bug]`: **un status code impreso no es un status code verificado.** El código hacía `f"Rails respondió {resp.status_code}"` dentro de un mensaje `[SUCCESS]`. Durante 51 días los logs dijeron éxito.
+
+### 🟠 Robustez de la capa web (cerrado)
+
+- `[Bug de disponibilidad]`: el fallback al catálogo US era un `await fetch` **desnudo, sin try/catch** — los dos fetch principales del home usan `Promise.allSettled`, pero ese no. Con Rails caído el home hacía **500 para todo visitante no-US** (es la rama que solo corren ellos). Ahora en try/catch: catálogo vacío es degradación, un 500 no.
+- `[Timeouts]`: **ningún** fetch de Web→Rails tenía timeout (solo el sitemap, agregado el 2026-07-28). Un Rails colgado bloqueaba el render hasta el límite de request de Cloud Run — minutos de pestaña en blanco. Agregado `AbortSignal.timeout(8s)` en home, detalle y el helper `railsApi` (cubre perfil, favoritos y alertas).
+- `[Error boundaries]`: **no existía ningún `error.tsx` ni `not-found.tsx`.** Una excepción no atrapada mostraba la pantalla por defecto de Next —en inglés, sin marca y sin salida— a un visitante que puede estar en cualquiera de los 4 idiomas. Creados ambos: `error.tsx` con copy ×4 resuelto por el locale de la URL (sin importar diccionarios a propósito: si el fallo viene de leer un diccionario, importarlo ahí tumbaría también al boundary) y `not-found.tsx` que devuelve al catálogo — con 292 URLs en el sitemap los 404 por producto retirado son inevitables. Verificado en vivo: `/es/laptop/producto-que-no-existe` → 404 con la página propia.
+- `[Menor]` `encodeURIComponent` en el slug de la página de detalle (iba crudo a la query string).
+
+### 🔴 CRÍTICO 3 — Cloud SQL sin backups (cerrado)
+
+- `settings.backupConfiguration.enabled = **False**` y `gcloud sql backups list` devolvía **vacío**: **cero backups existían**. Presumiblemente se perdió en la migración de costos del 2026-07-17 (`clicks-db`→`clicks-db2` se creó por import y la config de backup no se rehabilitó). La migración de imágenes que corrí el 2026-07-27 fue sobre una base **sin red de recuperación**.
+- `[Corregido]`: backups automáticos activados (06:00 UTC, retención 7) + **backup on-demand tomado ya** (`1785389908167`, SUCCESSFUL) para no depender de esperar la ventana. Costo despreciable: la base pesa 9.2 MB. `deletion-protection` ya estaba ON ✅.
+
+### 🟠 Observabilidad: la alerta existía pero no podía disparar
+
+- Había 1 política de alerta con canal de email al titular, filtro `textPayload:"- [CRITICAL]"`. **Los fallos reales nunca alcanzan esa severidad**: el de las noticias logueaba `[SUCCESS]`, y aun con el fix de hoy loguea `[ERROR]`. La alerta estaba afinada a un nivel que los modos de fallo reales no tocan — ésa es la razón de fondo de los 51 días.
+- `[Corregido]`: nueva política **"Pipeline desconectado — Rails rechaza escrituras de los agentes"**, con filtro dirigido a las firmas específicas (`RECHAZÓ el lote`, `NO PUBLICADA`, `INTERNAL_API_KEY ausente`, `path duplicado`) en vez de a todo `ERROR` — así no se ahoga en el ruido rutinario de feeds RSS que fallan (SSL de CNET, timeout de Wired son normales). Rate limit 1 h. Mismo canal de email.
+
+### ✅ Lo que se auditó y está bien
+
+- **Headers de seguridad**: CSP completa, HSTS con `preload`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. (Única observación: el CSP necesita `unsafe-inline`/`unsafe-eval` en `script-src`, limitación habitual de Next.)
+- **Integridad de datos en producción**: 0 productos sin precio, 0 sin retailer, 0 `url_afiliado` vacía, 0 `deal_score` fuera de rango, 0 slugs duplicados.
+- **`InternalApiAuth`** usa `secure_compare` y rechaza clave vacía — implementación correcta.
+- **SQL**: un solo `execute` crudo (`hardware_news`), con `connection.quote` sobre un valor ya saneado a 2 caracteres. Sin riesgo de inyección.
+- **`geo_controller`**: solo lectura, con guardas SSRF explícitas sobre `X-Forwarded-For` y validación `IPAddr`.
+- **Timeouts en Python**: los 6 puntos de red tienen timeout.
+- **Sin secretos hardcodeados** en ningún servicio.
+- **`deletion-protection`** activa en Cloud SQL.
+
+### 🔴 Deuda que queda (no resuelta — requiere decisión)
+
+1. **Rails, Python y Rust tienen CERO tests** (~7.000 líneas). Solo Web tiene 23. Los dos fallos críticos de hoy los habría atrapado un test de integración trivial. **Es la deuda #1**: sin framework de test en esos 3 servicios, cada deploy es fe. Propuesta: `pytest` para Python (empezando por `rails_client`, que es exactamente la clase de bug que apareció) y `minitest`/`rspec` para Rails (empezando por un test de que las escrituras exigen la clave).
+2. **CSP con `unsafe-inline`/`unsafe-eval`** — mitigable con nonces, requiere trabajo en el layout.
+3. **PITR (point-in-time recovery)** sigue apagado — los backups diarios cubren el caso grave, PITR cubriría "deshacer las últimas 2 horas". Cuesta algo más de storage por los binlogs.
+4. **`clicks-rust` se despliega con tag `latest`** (los otros 3 usan el SHA del commit). Con `latest` no hay forma de saber qué código corre ni de hacer rollback preciso.
+5. **Sin healthcheck externo del dominio**: si `clicks-and-go.com` cae, nadie se enteraría hasta que un humano lo abra. Un uptime check de GCP cuesta centavos.
