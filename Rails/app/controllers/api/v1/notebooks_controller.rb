@@ -4,6 +4,30 @@ module Api
       # 🛡️ Zero-Trust: Permite a los microservicios internos hacer POST sin token de formulario
       # skip_before_action :verify_authenticity_token, only: [:create, :create_news]
 
+      # =====================================================================
+      # 🔐 ESCRITURAS AUTENTICADAS (fix de vulnerabilidad, 2026-07-28)
+      #
+      # Rails corre con `ingress: all` en Cloud Run. Hasta este cambio, este
+      # controller NO incluía InternalApiAuth y sus dos endpoints de escritura
+      # quedaban abiertos a internet. Verificado explotable en producción:
+      #   · POST /api/v1/notebooks           → 422 (pasó auth, solo falló la
+      #     validación) ⇒ con un payload válido, cualquiera podía inyectar
+      #     productos en el catálogo — incluidos SUS propios links de afiliado,
+      #     desviando comisiones, o links de phishing con la marca del sitio.
+      #   · POST /api/v1/notebooks/hardware_news → 201 SUCCESS ⇒ inyección
+      #     directa de contenido al ticker del home, con `source_url` como
+      #     enlace clickeable para todos los visitantes.
+      #
+      # Se protege SOLO la escritura: las lecturas (`index`, `hardware_news`,
+      # `sitemap`) las consume el SSR de Next.js y el sitemap público, y deben
+      # seguir siendo anónimas. El `include` aplica el before_action a TODAS
+      # las acciones y después se exceptúan las de lectura — así una acción
+      # nueva nace protegida por defecto (fail-safe), no expuesta.
+      # =====================================================================
+      include InternalApiAuth
+      skip_before_action :authenticate_internal_service!,
+                         only: %i[index hardware_news sitemap]
+
       # =========================================================
       # 💻 ENDPOINT: GET /api/v1/notebooks
       # =========================================================

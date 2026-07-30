@@ -177,8 +177,25 @@ class NewsRadarAgent:
             resp = requests.post(
                 self.rails_api_url,
                 json={"news": news_batch},
+                # 🔐 Rails corre con `ingress: all`: sin esta cabecera el
+                # endpoint queda abierto y cualquiera puede inyectar noticias
+                # que se renderizan en el ticker del home (con su `source_url`
+                # como link clickeable). Ver InternalApiAuth.
+                headers={
+                    "X-Internal-Key": os.getenv("INTERNAL_API_KEY", ""),
+                    "Content-Type": "application/json",
+                },
                 timeout=15,
             )
+            if resp.status_code == 401:
+                # No silenciar: sin esto el radar reportaría "enviado" mientras
+                # Rails descarta todo, y las noticias quedarían congeladas.
+                self.orchestrator.log_action(
+                    "NewsRadar",
+                    "Rails devolvió 401: INTERNAL_API_KEY ausente o incorrecta. Noticias NO guardadas.",
+                    "ERROR",
+                )
+                return
             self.orchestrator.log_action(
                 "NewsRadar",
                 f"Rails respondió {resp.status_code}. {len(news_batch)} artículos enviados.",

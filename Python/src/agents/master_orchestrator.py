@@ -28,7 +28,13 @@ class MasterOrchestratorAgent:
         self.rust_batch_url = os.getenv("RUST_API_URL", "http://rust_engine:8080/api/v1/score/batch")
         self.rust_benchmark_url = os.getenv("RUST_BENCHMARK_URL", "http://rust_engine:8080/api/v1/benchmarks/run")
         self.rails_api_url = os.getenv("RAILS_API_URL", "http://rails_backend:3000/api/v1/notebooks")
-        
+
+        # 🔐 Clave compartida para ESCRIBIR en Rails. Rails corre con
+        # `ingress: all` en Cloud Run: sin esta cabecera, `POST /notebooks`
+        # queda abierto a internet y cualquiera puede inyectar productos (con
+        # SUS links de afiliado) en el catálogo. Ver InternalApiAuth.
+        self.internal_key = os.getenv("INTERNAL_API_KEY", "")
+
         # 🗄️ ZERO-TRUST: Estado migrado a MongoDB (Stateless Container)
         # Acepta MONGODB_URI (Atlas, prod) o MONGO_URI (local docker).
         mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://mongodb_lake:27017")
@@ -205,13 +211,34 @@ class MasterOrchestratorAgent:
 
         # 8. 🗄️ Persistencia Transaccional (Ataque Paralelo a Rails)
         success_count = 0
+        rejected_auth = 0
+        headers = {"X-Internal-Key": self.internal_key, "Content-Type": "application/json"}
         # Disparamos 5 hilos simultáneos apuntando al Puma Server de Rails
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(requests.post, self.rails_api_url, json=deal, timeout=5) for deal in enriched_deals]
+            futures = [
+                executor.submit(requests.post, self.rails_api_url, json=deal, headers=headers, timeout=5)
+                for deal in enriched_deals
+            ]
             for future in as_completed(futures):
                 try:
-                    if future.result().status_code == 201: success_count += 1
-                except Exception: pass
+                    status = future.result().status_code
+                    if status == 201:
+                        success_count += 1
+                    elif status == 401:
+                        rejected_auth += 1
+                except Exception:
+                    pass
+
+        # Un 401 significa que INTERNAL_API_KEY falta o no coincide con la de
+        # Rails. Silenciarlo dejaría el catálogo congelado sin que nada avise:
+        # el ciclo diario reportaría "0 ofertas guardadas" como si no hubiera
+        # ofertas, cuando en realidad el pipeline está desconectado.
+        if rejected_auth:
+            self.log_action(
+                "MasterOrchestrator",
+                f"Rails rechazó {rejected_auth} ofertas con 401: INTERNAL_API_KEY ausente o incorrecta.",
+                "ERROR",
+            )
 
         self.log_action("MasterOrchestrator", f"Misión completada. {success_count}/{len(enriched_deals)} ofertas guardadas en PostgreSQL.")
 
