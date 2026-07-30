@@ -40,11 +40,6 @@ function utilidades(): Array<{ nombre: string; cuerpo: string }> {
   return out;
 }
 
-/** ¿El bloque pone algo en movimiento? */
-function anima(cuerpo: string): boolean {
-  return /animation:|transition:|transform:/.test(cuerpo);
-}
-
 const TODAS = utilidades();
 
 describe("sistema de motion — accesibilidad", () => {
@@ -104,6 +99,19 @@ describe("sistema de motion — accesibilidad", () => {
     for (const kf of ["floatSoft", "orbDrift", "popIn", "sheenSweep"]) {
       expect(CSS).toContain(`@keyframes ${kf}`);
     }
+  });
+
+  it("la legibilidad del navbar no depende de backdrop-filter", () => {
+    // Regresión verificada en producción: `backdropFilter` computaba "none" y
+    // el fondo al 72% dejaba leer el catálogo por detrás del logo. El
+    // desenfoque es mejora progresiva —falla en navegadores viejos y en
+    // algunas GPU—, así que el fondo tiene que ser opaco por sí solo.
+    const bloque = CSS.match(/@utility\s+glass-effect\s*\{([\s\S]*?)\}/);
+    expect(bloque, "falta la utilidad glass-effect").not.toBeNull();
+
+    const alpha = bloque![1].match(/background-color:\s*rgba\([^)]*?,\s*([\d.]+)\s*\)/);
+    expect(alpha, "glass-effect debe declarar un rgba explícito").not.toBeNull();
+    expect(Number(alpha![1])).toBeGreaterThanOrEqual(0.9);
   });
 
   it("no se rompió la paleta: el azul de acento sigue siendo #2563eb", () => {

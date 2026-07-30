@@ -573,10 +573,21 @@
 }
 
 /* Glass claro (sutil, sobre blanco) */
+/* Barra translúcida del navbar al hacer scroll.
+ *
+ * ⚠️ La opacidad NO puede depender del desenfoque. Verificado en producción
+ * (2026-07-30): `getComputedStyle(nav).backdropFilter` devolvía **"none"**, así
+ * que el fondo quedaba al 72% SIN frost y el catálogo se leía nítido por
+ * detrás del logo. `backdrop-filter` además falla en navegadores viejos y en
+ * algunas configuraciones de GPU — apoyarse en él para la legibilidad es
+ * frágil en un sitio que opera a nivel mundial.
+ *
+ * Por eso el fondo es opaco por sí solo (0.94) y el desenfoque queda como
+ * mejora progresiva: si aplica, refina; si no, el navbar se lee igual. */
 @utility glass-effect {
-  background-color: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background-color: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--color-line);
 }
 

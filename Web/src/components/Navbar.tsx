@@ -45,7 +45,7 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
       className={`fixed left-0 right-0 top-0 z-50 transition-all duration-200 ease-out border-b ${
         scrolled
           ? "glass-effect border-[#e6e8ec] py-3 shadow-sm"
-          : "bg-white/80 backdrop-blur-sm border-transparent py-5"
+          : "bg-white/90 backdrop-blur-sm border-transparent py-5"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
