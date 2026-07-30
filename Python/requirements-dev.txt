@@ -1,0 +1,13 @@
+# ==============================================================
+# 🧪 DEPENDENCIAS DE TEST — NO van a la imagen de producción
+#
+# Deliberadamente separadas de requirements.txt: el Dockerfile solo
+# instala requirements.txt, así el contenedor de producción no carga
+# pytest ni sus transitivas (imagen más chica, menos superficie).
+#
+# Uso local / CI:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest
+# ==============================================================
+pytest>=8.0.0
+pytest-cov>=5.0.0
