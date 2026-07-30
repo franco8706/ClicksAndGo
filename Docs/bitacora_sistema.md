@@ -616,3 +616,49 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 
 - `Gemfile.lock` **no se commitea**: el Docker usa **Ruby 3.2** y este entorno **3.4.7**; un lock resuelto acá puede romper el build de producción. Alinear versiones queda como mejora aparte.
 - `[Verificado en vivo]` tras desplegar los 4 servicios con digests confirmados (`clicks-rails-00014-29q`, `clicks-web-00028-bdd`, `clicks-python-00023-t7t`): sitio 200 ×4 idiomas · escrituras 401 ×2 · sitemap 292 URLs · 20 noticias con `sourceUrl` · catálogo US 30 productos.
+
+## 2026-07-30 (cont.) · 🎨 Escalada visual — sistema de motion y rediseño del placeholder
+
+- `[Orden del titular]`: *"que el sitio escale a nivel visual con más animaciones e interacciones, más reactivo, y lograr una robustez visual que impacte"*.
+- `[Restricción sostenida]`: colores (#2563eb) y tipografía (Barlow) **no se tocan** — es la misma condición del primer rediseño. Todo el trabajo se construye SOBRE el design system, no encima de él.
+
+### 🐛 2 bugs visuales encontrados al auditar
+
+1. **Navbar translúcido con contenido detrás**. El `useEffect` solo registraba el *listener* de scroll y nunca leía la posición **inicial**. Al entrar por un ancla (`/es#productos`) o al recargar con scroll restaurado, el navbar quedaba en su estado de reposo con el catálogo pasando por detrás y el logo ilegible. Fix: llamar `handleScroll()` una vez al montar.
+2. **`backdrop-filter` no se aplicaba**. Verificado en producción tras el primer deploy: `getComputedStyle(nav).backdropFilter` devolvía **`"none"`**, así que el fondo quedaba al 72% **sin frost** y el catálogo se leía nítido detrás del logo — exactamente el ruido que el rediseño buscaba eliminar. `backdrop-filter` además falla en navegadores viejos y en algunas GPU: **apoyar la legibilidad en él es frágil para un sitio global**. Fix: fondo opaco por sí solo (0.94; 0.90 sin scroll) y el desenfoque como mejora progresiva. Test que falla si alguien baja la opacidad de `glass-effect` por debajo de 0.9.
+
+### 🔴 Hallazgo de accesibilidad: 10 utilidades sin guard
+
+El test nuevo destapó que `nvidia-ticker-track`, `search-nvidia`, `nav-link`, `btn-nvidia`, `scroll-indicator`, `card-hover`, `card-bloom`, `carousel-arrow`, `reveal-in` y `skeleton-shimmer` animaban **sin excepción para `prefers-reduced-motion`** (WCAG 2.1 — 2.3.3). Para parte de las personas el movimiento en pantalla provoca mareo o migraña.
+
+En vez de parchear diez utilidades una por una, se agregó una **red de seguridad global** en `@layer base` que neutraliza todo el movimiento — incluido el CSS de terceros y cualquier animación futura. Detalle que importa: se usa `animation-duration: 0.01ms` y **no `animation: none`**; esto último congelaría en su frame 0 a cualquier animación `forwards` que arranque en `opacity: 0`, dejando elementos invisibles para siempre.
+
+### El cambio de mayor impacto: el placeholder de producto
+
+Era una caja gris con un ícono de 44px. Es el estado del **97% del catálogo** (68 de 70 productos sin foto real verificada), o sea *la* superficie visual del sitio. Rediseñado en tres capas: malla de gradientes en el azul del sistema (`product-canvas`), aros concéntricos que dan escala y profundidad, e ícono 1.55× flotando que vira a azul y escala con el hover de la card. **Nada de esto insinúa ser el producto** — la línea legal de la política de imágenes reales sigue intacta.
+
+### Sistema de motion (`globals.css`)
+
+Easings `--ease-spring` y `--ease-in-out-soft`; keyframes `floatSoft`, `orbDrift`, `popIn`, `sheenSweep`. Utilidades, **cada una con su propio guard** además de la red global: `lift-card` (elevación 6px + sombra + borde azul, reemplaza a `card-bloom`), `sheen` (barrido de luz diagonal), `pressable`, `float-soft`, `orb-drift`, `pop-in`, `underline-grow`, `product-canvas`. `btn-primary` ahora barre luz y se hunde al click.
+
+### Componentes reactivos nuevos
+
+- **`ScrollProgress`** — barra de progreso de lectura. El home es largo (hero → confianza → categorías → 30 cards → banners → ofertas) y sin señal de avance el visitante no sabe cuánto falta. Usa `transform: scaleX` (corre en el compositor) y `requestAnimationFrame`, **no `width`**, que recalcularía layout en cada frame de scroll.
+- **`CountUp`** — contador que sube al entrar en pantalla con `easeOutExpo`. Reserva el ancho del valor final desde el primer render → **CLS 0**. El número ya viene calculado del servidor: esto es solo presentación (la Constitución prohíbe matemática de negocio en el frontend).
+
+### Verificado en vivo (`clicks-web-00030-d4w`, digest confirmado)
+
+| Métrica | Resultado |
+|---|---|
+| `navbar_bg` | `rgba(255,255,255,0.94)` ✅ |
+| Placeholders nuevos | **30** |
+| Cards con `lift-card` | **41** |
+| Superficies con `sheen` | **32** |
+| Barra de progreso | presente |
+| **CLS** | **0.0000** |
+| Imágenes rotas | **0** |
+| Bloques `prefers-reduced-motion` en el CSS servido | **10** + `scroll-behavior:auto` |
+
+- `[Nota de método]`: la verificación por `document.styleSheets` dio un falso negativo en la red de reduced-motion — el bucle no atraviesa `@layer`. Se confirmó descargando el CSS servido y buscando la regla en el texto. Vale como recordatorio: cuando un chequeo en el navegador dice "no está", verificar el artefacto real antes de concluir.
+- `[Verificación local]`: `next start` **no funciona con `output: standalone`** (el proyecto lo usa para Docker). Para previsualizar hay que correr `node .next/standalone/server.js`. Se dejó anotado porque costó varios intentos.
+- `[Verificado]`: tsc 0 · ESLint 0 · vitest **54/54** · build ✓.
