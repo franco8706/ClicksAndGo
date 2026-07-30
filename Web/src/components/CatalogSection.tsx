@@ -96,7 +96,7 @@ export default function CatalogSection({
             {/* `key` por filtro: el contador vuelve a contar en cada cambio de
                 categoría, así el número acompaña al re-render del grid en vez
                 de saltar de golpe. */}
-            <CountUp key={activeFilter} value={filtered.length} className="relative" />{" "}
+            <CountUp key={activeFilter} value={filtered.length} />{" "}
             {countNoun(filtered.length)}
           </p>
           {activeFilter !== ALL && (
@@ -120,17 +120,27 @@ export default function CatalogSection({
           key={activeFilter}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start stagger-children"
         >
+          {/* ⚠️ El wrapper NO es decorativo. `stagger-children` aplica
+              `animation: fadeInUp … forwards` a sus hijos directos, y una
+              animación con `forwards` GANA sobre las declaraciones normales
+              en la cascada: mientras la card fuera hija directa del grid, el
+              `transform` de su hover (`lift-card`) quedaba pisado por el
+              fill de la animación y la card no se elevaba. Verificado en
+              producción: el transform no cambiaba entre reposo y hover.
+              Separando responsabilidades —el div se anima al entrar, la card
+              se eleva al hover— las dos conviven sin pelearse. */}
           {filtered.map((laptop) => (
-            <LaptopCard
-              key={laptop.id}
-              laptop={laptop}
-              dict={dict}
-              locale={locale}
-              isExpanded={expandedId === String(laptop.id)}
-              onToggle={() => handleToggle(String(laptop.id))}
-              isFavorite={favoriteSet.has(String(laptop.id))}
-              toggleFavoriteAction={toggleFavoriteAction}
-            />
+            <div key={laptop.id}>
+              <LaptopCard
+                laptop={laptop}
+                dict={dict}
+                locale={locale}
+                isExpanded={expandedId === String(laptop.id)}
+                onToggle={() => handleToggle(String(laptop.id))}
+                isFavorite={favoriteSet.has(String(laptop.id))}
+                toggleFavoriteAction={toggleFavoriteAction}
+              />
+            </div>
           ))}
         </div>
       ) : (

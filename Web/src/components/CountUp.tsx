@@ -65,13 +65,29 @@ export default function CountUp({ value, durationMs = 900, className = "" }: Cou
     return () => observer.disconnect();
   }, [value, durationMs]);
 
+  /* Reserva de ancho SIN texto fantasma.
+   *
+   * La primera versión renderizaba un `<span>` oculto con el valor final para
+   * fijar el ancho. Funcionaba visualmente, pero duplicaba el número en el
+   * DOM: `textContent` devolvía "3030 productos" en vez de "30 productos" —
+   * lo que rompe cualquier scraping, test o herramienta que lea el texto.
+   *
+   * En su lugar se reserva el espacio con `ch` (ancho del carácter "0") por
+   * cada dígito del valor final, y `tabular-nums` fija el ancho de todos los
+   * dígitos para que el número no "baile" mientras sube. Cero texto extra,
+   * cero CLS. */
+  const digitos = String(value).length;
+
   return (
-    <span ref={ref} className={className}>
-      {/* Reserva de ancho con el valor final, invisible e ignorado por
-          lectores de pantalla: evita que el layout salte al contar. */}
-      <span aria-hidden className="invisible absolute pointer-events-none">
-        {value}
-      </span>
+    <span
+      ref={ref}
+      className={className}
+      style={{
+        display: "inline-block",
+        minWidth: `${digitos}ch`,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
       {display}
     </span>
   );
