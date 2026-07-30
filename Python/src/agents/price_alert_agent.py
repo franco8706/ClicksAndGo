@@ -12,9 +12,17 @@ de la DB); acá solo se envían emails y se marca lo enviado.
 """
 
 import os
+import time
+
 import requests
 
 RESEND_ENDPOINT = "https://api.resend.com/emails"
+
+# 🔁 Reintentos del envío individual. El ciclo que dispara este agente es
+# diario, así que sin reintento en el momento un 503 puntual de Resend retrasa
+# el aviso ~24h — y una alerta de precio que llega tarde no sirve.
+EMAIL_RETRY_ATTEMPTS = 3
+EMAIL_RETRY_BASE_DELAY = 1.0  # segundos; backoff 1s, 2s
 
 # Símbolos por moneda para un email legible (fallback: el código ISO).
 _CURRENCY_SYMBOL = {
@@ -155,16 +163,49 @@ class PriceAlertAgent:
             "subject": f"💸 {title} alcanzó tu precio objetivo",
             "html": html,
         }
-        try:
-            res = requests.post(
-                RESEND_ENDPOINT,
-                headers={"Authorization": f"Bearer {self.resend_key}", "Content-Type": "application/json"},
-                json=payload,
-                timeout=10,
-            )
-            if res.status_code in (200, 201):
-                return True
-            self._log(f"Resend respondió {res.status_code} para {to}.", "WARNING")
-        except Exception as e:
-            self._log(f"Fallo al enviar email a {to}: {e}", "ERROR")
+        # 🔁 Reintentos ante fallo TRANSITORIO de Resend.
+        #
+        # Ya existe durabilidad: `check_and_notify` solo marca como notificadas
+        # las alertas cuyo envío devolvió True, así que un fallo no pierde el
+        # email — lo reintenta el ciclo siguiente. El problema es que el ciclo
+        # es DIARIO (`full-cycle-daily` a las 04:00), o sea que un 503 puntual
+        # de Resend retrasa el aviso ~24h y la alerta de precio pierde su valor.
+        #
+        # Se reintenta acá mismo en vez de montar una cola con persistencia:
+        # Postgres ya cumple ese rol (la fila no marcada ES la cola) y una cola
+        # aparte agregaría infraestructura sin resolver nada que esto no cubra.
+        for intento in range(1, EMAIL_RETRY_ATTEMPTS + 1):
+            try:
+                res = requests.post(
+                    RESEND_ENDPOINT,
+                    headers={"Authorization": f"Bearer {self.resend_key}", "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=10,
+                )
+                if res.status_code in (200, 201):
+                    return True
+
+                # 4xx (salvo 429) es determinista: email inválido, dominio no
+                # verificado, key revocada. Reintentar solo repite el error.
+                if 400 <= res.status_code < 500 and res.status_code != 429:
+                    self._log(
+                        f"Resend rechazó definitivamente el email a {to} ({res.status_code}). No se reintenta.",
+                        "ERROR",
+                    )
+                    return False
+
+                self._log(
+                    f"Resend respondió {res.status_code} para {to} (intento {intento}/{EMAIL_RETRY_ATTEMPTS}).",
+                    "WARNING",
+                )
+            except Exception as e:
+                self._log(
+                    f"Fallo al enviar email a {to} (intento {intento}/{EMAIL_RETRY_ATTEMPTS}): {e}",
+                    "WARNING",
+                )
+
+            if intento < EMAIL_RETRY_ATTEMPTS:
+                time.sleep(EMAIL_RETRY_BASE_DELAY * (2 ** (intento - 1)))  # 1s, 2s
+
+        self._log(f"Email a {to} no pudo enviarse tras {EMAIL_RETRY_ATTEMPTS} intentos; queda pendiente para el próximo ciclo.", "ERROR")
         return False
