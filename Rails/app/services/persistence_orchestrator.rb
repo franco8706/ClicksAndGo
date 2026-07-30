@@ -87,9 +87,28 @@ class PersistenceOrchestrator
 
       laptop.save!
 
-      # 📈 REGISTRO HISTÓRICO: Verificamos precio delegando en DB
-      last_price = laptop.latest_price
-      
+      # 📈 REGISTRO HISTÓRICO — con bloqueo de fila (pessimistic lock).
+      #
+      # ⚠️ Por qué el lock es obligatorio acá: el MasterOrchestrator postea con
+      # `ThreadPoolExecutor(max_workers=5)`, o sea 5 requests concurrentes. Si
+      # dos traen el MISMO sku (el mismo producto puede venir repetido en un
+      # feed, o cubierto por dos fuentes), ambas transacciones leían
+      # `latest_price` fuera de cualquier bloqueo, las dos veían el mismo
+      # precio previo, y las dos insertaban en `price_histories` → historial
+      # duplicado para el mismo instante. Eso envenena el futuro cálculo del
+      # mínimo de 30 días que exige la Directiva Omnibus para poder mostrar
+      # descuentos (ver redesign_plan.md), así que no es solo ruido.
+      #
+      # `lock!` hace `SELECT ... FOR UPDATE` sobre la fila de la laptop y
+      # serializa a las escrituras concurrentes del mismo producto: la segunda
+      # espera, ve el precio que insertó la primera y omite el duplicado.
+      laptop.lock!
+
+      # Consulta explícita en vez de `laptop.latest_price`: la asociación
+      # `has_one` quedó cacheada por el `find_or_initialize_by` de arriba y
+      # devolvería el valor pre-lock, anulando el propósito del bloqueo.
+      last_price = PriceHistory.where(laptop_id: laptop.id).order(recorded_at: :desc).first
+
       if last_price.nil? || last_price.precio_actual != financials[:current_price].to_f
         PriceHistory.create!(
           laptop_id: laptop.id,

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# =========================================================
+# Corre la suite de Rails contra la base LOCAL de test.
+#
+# Uso:
+#   bin/test                                  # toda la suite
+#   bin/test test/models/laptop_test.rb       # un archivo
+#
+# 🛡️ Se limpia DATABASE_URL: en este repo apunta a Cloud SQL (producción) y
+# Rails la prioriza sobre host/username, así que dejarla puesta haría que la
+# suite truncara la base real. `test_helper.rb` tiene además una segunda
+# guarda que aborta si el nombre de la base no termina en `_test`.
+# =========================================================
+set -euo pipefail
+
+export RAILS_ENV=test
+export POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}"
+unset DATABASE_URL
+
+if [ "$#" -gt 0 ]; then
+  files=("$@")
+else
+  # mapfile evita que los paths lleguen como UNA sola cadena al require
+  # (era el bug de la primera versión de este script).
+  mapfile -t files < <(find test -name '*_test.rb' | sort)
+fi
+
+exec bundle exec ruby -Itest \
+  -e 'ARGV.each { |f| require File.expand_path(f) }' \
+  "${files[@]}"
