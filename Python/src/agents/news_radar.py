@@ -3,15 +3,15 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 from src.providers import TASK_NEWS_EVAL
+from src.rails_client import NEWS_PATH, post_json, rails_url
 
 class NewsRadarAgent:
     def __init__(self, orchestrator):
         self.orchestrator = orchestrator
         self.ai = orchestrator.ai
-        self.rails_api_url = (
-            os.getenv("RAILS_API_URL", "http://rails_backend:3000")
-            + "/api/v1/notebooks/hardware_news"
-        )
+        # 🔗 Vía rails_url: concatenar a mano generaba un path duplicado y
+        # POSTeaba a un 404 desde el 2026-06-09 (ver src/rails_client.py).
+        self.rails_api_url = rails_url(NEWS_PATH)
 
         # Fuentes RSS especializadas en hardware, laptops y tech — globales + latam
         self.rss_feeds = {
@@ -173,32 +173,17 @@ class NewsRadarAgent:
         }
 
     def _send_to_rails(self, news_batch: list[dict]):
-        try:
-            resp = requests.post(
-                self.rails_api_url,
-                json={"news": news_batch},
-                # 🔐 Rails corre con `ingress: all`: sin esta cabecera el
-                # endpoint queda abierto y cualquiera puede inyectar noticias
-                # que se renderizan en el ticker del home (con su `source_url`
-                # como link clickeable). Ver InternalApiAuth.
-                headers={
-                    "X-Internal-Key": os.getenv("INTERNAL_API_KEY", ""),
-                    "Content-Type": "application/json",
-                },
-                timeout=15,
+        # `post_json` autentica, verifica el status y loguea el modo de fallo.
+        # Antes esto informaba el status code dentro de un mensaje [SUCCESS]:
+        # un 404 se leía como éxito y las noticias quedaron 51 días congeladas.
+        ok, status = post_json(NEWS_PATH, {"news": news_batch})
+        if ok:
+            self.orchestrator.log_action(
+                "NewsRadar", f"{len(news_batch)} artículos guardados en Rails."
             )
-            if resp.status_code == 401:
-                # No silenciar: sin esto el radar reportaría "enviado" mientras
-                # Rails descarta todo, y las noticias quedarían congeladas.
-                self.orchestrator.log_action(
-                    "NewsRadar",
-                    "Rails devolvió 401: INTERNAL_API_KEY ausente o incorrecta. Noticias NO guardadas.",
-                    "ERROR",
-                )
-                return
+        else:
             self.orchestrator.log_action(
                 "NewsRadar",
-                f"Rails respondió {resp.status_code}. {len(news_batch)} artículos enviados.",
+                f"Rails RECHAZÓ el lote (HTTP {status}). {len(news_batch)} artículos NO guardados.",
+                "ERROR",
             )
-        except Exception as e:
-            self.orchestrator.log_action("NewsRadar", f"Fallo enviando a Rails: {e}", "ERROR")

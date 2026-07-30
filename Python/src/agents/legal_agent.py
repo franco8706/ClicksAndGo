@@ -25,6 +25,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from src.providers import TASK_LEGAL_AUDIT
+from src.rails_client import NEWS_PATH, post_json, rails_url
 
 # URL del motor Rust — preprocesa el diff antes de llamar a Gemini.
 # RUST_API_URL puede venir como base (docker: http://rust_engine:8080) o como
@@ -230,10 +231,9 @@ class LegalComplianceAgent:
     def __init__(self, orchestrator):
         self.orchestrator     = orchestrator
         self.ai               = orchestrator.ai
-        self.rails_news_url   = (
-            os.getenv("RAILS_API_URL", "http://rails_backend:3000")
-            + "/api/v1/notebooks/hardware_news"
-        )
+        # 🔗 Vía rails_url — ver src/rails_client.py: la concatenación directa
+        # duplicaba el path y TODAS las alertas legales murieron en un 404.
+        self.rails_news_url   = rails_url(NEWS_PATH)
         self.db_connected     = orchestrator.db_connected
         self.db               = orchestrator.db if orchestrator.db_connected else None
 
@@ -651,17 +651,22 @@ Return ONLY valid JSON:
                 "recorded_at":  datetime.datetime.utcnow().isoformat(),
             }]
         }
-        try:
-            resp = requests.post(self.rails_news_url, json=news_payload, timeout=10)
+        # Esta alerta es el producto final de todo el agente legal: si no llega
+        # a Rails, un cambio CRITICAL en los ToS de una red pasa desapercibido.
+        # Venía POSTeando a un 404 (path duplicado) y logueando el status
+        # dentro de un mensaje de éxito — o sea, silenciado por partida doble.
+        ok, status = post_json(NEWS_PATH, news_payload, timeout=10)
+        if ok:
             self.orchestrator.log_action(
                 "LegalAgent",
-                f"Alerta {severity} enviada a Rails para {source_def['source']} (HTTP {resp.status_code})",
+                f"Alerta {severity} publicada en Rails para {source_def['source']}",
             )
-        except Exception as e:
+        else:
             self.orchestrator.log_action(
                 "LegalAgent",
-                f"No se pudo enviar alerta a Rails: {e}",
-                "WARNING",
+                f"ALERTA {severity} NO PUBLICADA (HTTP {status}) para {source_def['source']} — "
+                f"revisar RAILS_API_URL/INTERNAL_API_KEY.",
+                "ERROR",
             )
 
     # ── Scraping de texto limpio ──────────────────────────────────────────────

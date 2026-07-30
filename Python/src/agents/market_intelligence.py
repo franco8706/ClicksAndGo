@@ -3,6 +3,7 @@ import requests
 import datetime
 from pymongo import MongoClient
 from src.providers import TASK_PROMO_CALENDAR
+from src.rails_client import NEWS_PATH, rails_url
 
 class MarketIntelligenceAgent:
     """
@@ -13,7 +14,10 @@ class MarketIntelligenceAgent:
     def __init__(self, orchestrator=None):
         self.orchestrator = orchestrator
         self.ai = orchestrator.ai if orchestrator else None
-        self.rails_api_url = os.getenv("RAILS_API_URL", "http://rails_backend:3000") + "/api/v1/notebooks/hardware_news"
+        # 🔗 Vía rails_url: la concatenación directa duplicaba el path y este
+        # GET traía [] siempre, así que el calendario promocional se generaba
+        # SIN contexto de noticias (ver src/rails_client.py).
+        self.rails_api_url = rails_url(NEWS_PATH)
 
         # Conexión al Data Lake para guardar el calendario dinámico
         mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://mongodb_lake:27017")
