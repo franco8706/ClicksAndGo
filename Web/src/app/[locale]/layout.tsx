@@ -84,8 +84,14 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
   const session = await auth().catch(() => null);
 
+  // ♿ `<html>` va SIN la clase `scroll-smooth` de Tailwind. Es redundante
+  // —`html { scroll-behavior: smooth }` ya está en @layer base— y además
+  // rompía la accesibilidad: al ser una clase (especificidad 0,1,0) le ganaba
+  // al selector `html` (0,0,1) de la regla de `prefers-reduced-motion`, así
+  // que el scroll seguía siendo suave para quien pide menos movimiento.
+  // Verificado en un navegador con la preferencia emulada antes de quitarla.
   return (
-    <html lang={locale} className={`${barlow.variable} ${barlowCondensed.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang={locale} className={`${barlow.variable} ${barlowCondensed.variable}`} suppressHydrationWarning>
       {/* Verificación de propiedad del sitio para Impact.com (red de afiliados).
           Se renderiza crudo (atributo `value=`, NO `content=`) porque el crawler
           de Impact busca específicamente `value`; la Metadata API de Next emite

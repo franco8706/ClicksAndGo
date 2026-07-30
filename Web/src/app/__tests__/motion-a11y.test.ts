@@ -10,8 +10,17 @@ import { join } from "node:path";
  * from Interactions). El riesgo real es humano: se agrega una animación nueva
  * y se olvida el guard, y no hay forma de notarlo mirando la página.
  *
- * Este test lee el CSS y exige que toda utilidad que anime declare su
- * excepción. Si alguien suma una animación sin guard, la suite falla.
+ * ⚠️ ALCANCE DE ESTE ARCHIVO. Analiza el TEXTO del CSS, no la cascada. Eso
+ * significa que **no puede detectar problemas de especificidad**: un test así
+ * daba verde mientras en el navegador real la clase `.scroll-smooth` de
+ * Tailwind le ganaba a la regla de reduced-motion y el scroll seguía siendo
+ * suave. Se descubrió emulando la preferencia en un navegador de verdad.
+ *
+ * Conclusión que vale para el próximo que toque esto: estos tests fijan
+ * REGRESIONES conocidas; la verificación de que el motion realmente se
+ * detiene se hace en un navegador con la media feature emulada
+ * (`page.emulateMedia({ reducedMotion: 'reduce' })`) comparando
+ * `getComputedStyle(...).animationDuration` contra el estado normal.
  */
 
 const CSS = readFileSync(
@@ -61,8 +70,23 @@ describe("sistema de motion — accesibilidad", () => {
     expect(texto).toMatch(/animation-iteration-count:\s*1\s*!important/);
   });
 
-  it("el scroll suave se desactiva con reduced-motion", () => {
-    expect(CSS).toMatch(/prefers-reduced-motion[\s\S]*?scroll-behavior:\s*auto/);
+  it("el scroll suave se desactiva con reduced-motion, y con !important", () => {
+    // El `!important` NO es decorativo. Verificado en producción: `<html>`
+    // llevaba la clase `scroll-smooth` de Tailwind y una clase (0,1,0) le gana
+    // al selector `html` (0,0,1) incluso dentro del media query — el scroll
+    // seguía siendo suave para quien pidió menos movimiento. Se quitó esa
+    // clase (era redundante) y además se blindó la regla, para que ninguna
+    // utilidad futura pueda volver a pisar la preferencia del usuario.
+    expect(CSS).toMatch(/prefers-reduced-motion[\s\S]*?scroll-behavior:\s*auto\s*!important/);
+  });
+
+  it("<html> no lleva la clase scroll-smooth (le ganaría por especificidad)", () => {
+    const layout = readFileSync(
+      join(process.cwd(), "src/app/[locale]/layout.tsx"),
+      "utf-8"
+    );
+    const etiquetaHtml = layout.match(/<html[^>]*>/)?.[0] ?? "";
+    expect(etiquetaHtml).not.toMatch(/scroll-smooth/);
   });
 
   it("no usa `animation: none` global (congelaría elementos en su frame 0)", () => {

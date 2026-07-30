@@ -145,7 +145,12 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-    html { scroll-behavior: auto; }
+    /* `!important` a propósito: cualquier clase utilitaria sobre <html>
+       (`.scroll-smooth` de Tailwind, por ejemplo) le gana por especificidad
+       a un selector de elemento y dejaría el scroll suave para quien pidió
+       menos movimiento. Con !important la preferencia del usuario no se
+       puede pisar por accidente. Mismo criterio que las líneas de arriba. */
+    html { scroll-behavior: auto !important; }
   }
 
   body {
