@@ -84,9 +84,23 @@
     to   { transform: translateX(220%)  skewX(-18deg); }
   }
 
+  /* Entrada de secciones y de hijos escalonados.
+   *
+   * ⚠️ Usa la propiedad INDEPENDIENTE `translate`, no `transform`. Motivo
+   * concreto, verificado en producción: esta animación corre con
+   * `animation-fill-mode: forwards`, y el fill de una animación GANA sobre
+   * las declaraciones normales en la cascada. Mientras animaba `transform`,
+   * el `transform` del hover de `lift-card` quedaba pisado y las cards NO se
+   * elevaban — el borde y la sombra sí cambiaban, así que el `:hover` estaba
+   * disparando; lo único bloqueado era el movimiento.
+   *
+   * `translate` y `transform` son propiedades distintas y el navegador las
+   * COMPONE, así que la entrada y el hover conviven sin pelearse. En un
+   * navegador sin soporte de `translate` (pre-2022) la card entra sin
+   * desplazamiento pero el fade y el hover siguen funcionando. */
   @keyframes fadeInUp {
-    from { opacity: 0; transform: translate3d(0, 1rem, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    from { opacity: 0; translate: 0 1rem; }
+    to   { opacity: 1; translate: 0 0; }
   }
   @keyframes shimmer {
     0%   { background-position: -200% 0; }

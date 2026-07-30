@@ -120,27 +120,22 @@ export default function CatalogSection({
           key={activeFilter}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start stagger-children"
         >
-          {/* ⚠️ El wrapper NO es decorativo. `stagger-children` aplica
-              `animation: fadeInUp … forwards` a sus hijos directos, y una
-              animación con `forwards` GANA sobre las declaraciones normales
-              en la cascada: mientras la card fuera hija directa del grid, el
-              `transform` de su hover (`lift-card`) quedaba pisado por el
-              fill de la animación y la card no se elevaba. Verificado en
-              producción: el transform no cambiaba entre reposo y hover.
-              Separando responsabilidades —el div se anima al entrar, la card
-              se eleva al hover— las dos conviven sin pelearse. */}
+          {/* Sin wrapper: el conflicto entre la animación de entrada y el
+              hover de la card se resolvió en el CSS —`fadeInUp` anima la
+              propiedad independiente `translate`, no `transform`— así que
+              vale para los 6 componentes que usan `stagger-children`, no
+              solo para este grid. Ver la nota en globals.css. */}
           {filtered.map((laptop) => (
-            <div key={laptop.id}>
-              <LaptopCard
-                laptop={laptop}
-                dict={dict}
-                locale={locale}
-                isExpanded={expandedId === String(laptop.id)}
-                onToggle={() => handleToggle(String(laptop.id))}
-                isFavorite={favoriteSet.has(String(laptop.id))}
-                toggleFavoriteAction={toggleFavoriteAction}
-              />
-            </div>
+            <LaptopCard
+              key={laptop.id}
+              laptop={laptop}
+              dict={dict}
+              locale={locale}
+              isExpanded={expandedId === String(laptop.id)}
+              onToggle={() => handleToggle(String(laptop.id))}
+              isFavorite={favoriteSet.has(String(laptop.id))}
+              toggleFavoriteAction={toggleFavoriteAction}
+            />
           ))}
         </div>
       ) : (
