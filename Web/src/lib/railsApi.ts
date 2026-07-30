@@ -13,6 +13,10 @@ import "server-only";
 const RAILS_API_URL = process.env.RAILS_API_URL || "http://rails_backend:3000";
 const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "";
 
+/** ⏱️ Techo de espera a Rails: sin esto, un Rails colgado bloquea el render
+ *  (o la Server Action) hasta el límite de request de Cloud Run. */
+const RAILS_TIMEOUT_MS = 8_000;
+
 async function railsFetch(path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(`${RAILS_API_URL}${path}`, {
     ...init,
@@ -22,6 +26,7 @@ async function railsFetch(path: string, init: RequestInit = {}): Promise<Respons
       ...init.headers,
     },
     cache: "no-store",
+    signal: init.signal ?? AbortSignal.timeout(RAILS_TIMEOUT_MS),
   });
 }
 

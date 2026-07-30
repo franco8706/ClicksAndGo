@@ -22,6 +22,9 @@ import enDict from "@/dictionaries/en.json";
 import ptDict from "@/dictionaries/pt.json";
 import itDict from "@/dictionaries/it.json";
 
+/** ⏱️ Techo de espera a Rails. Más allá de esto se degrada en vez de colgar. */
+const RAILS_TIMEOUT_MS = 8_000;
+
 // ── Why trust us ─────────────────────────────────────────────────────────────
 // (StatsBanner eliminado: quedó como código muerto cuando se dejó de renderizar
 //  en el reordenamiento UI v2 — recuperable desde git si se quiere reincorporar.)
@@ -123,7 +126,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   }
 
   const railsApiUrl  = process.env.RAILS_API_URL || "http://rails_backend:3000";
-  const fetchConfig  = { next: { revalidate: 60, tags: [`catalog-${countryCode}`] } };
+  const fetchConfig  = {
+    next: { revalidate: 60, tags: [`catalog-${countryCode}`] },
+    // ⏱️ Sin timeout, si Rails se cuelga el render del home se queda esperando
+    // hasta el límite de request de Cloud Run (minutos) y el visitante ve una
+    // pestaña en blanco. Con timeout la página sale degradada pero sale.
+    signal: AbortSignal.timeout(RAILS_TIMEOUT_MS),
+  };
 
   const [laptopsRes, newsRes] = await Promise.allSettled([
     fetch(`${railsApiUrl}/api/v1/notebooks?country=${countryCode}&limit=40`, fetchConfig),
@@ -135,10 +144,18 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     try { laptops = await laptopsRes.value.json(); } catch (e) { console.error("Laptops parse error:", e); }
   }
 
-  // Fallback to US catalog if local region is empty
+  // Fallback al catálogo US si la región local viene vacía.
+  // ⚠️ Va en try/catch a propósito: antes era un `await fetch` desnudo, así que
+  // un Rails caído hacía **500 el home entero para todo visitante no-US** — el
+  // único camino sin red de contención de la página (los dos fetch de arriba sí
+  // usan Promise.allSettled). Un catálogo vacío es degradación; un 500 no.
   if (laptops.length === 0 && countryCode !== "US") {
-    const fb = await fetch(`${railsApiUrl}/api/v1/notebooks?country=US&limit=40`, fetchConfig);
-    if (fb.ok) laptops = await fb.json();
+    try {
+      const fb = await fetch(`${railsApiUrl}/api/v1/notebooks?country=US&limit=40`, fetchConfig);
+      if (fb.ok) laptops = await fb.json();
+    } catch (e) {
+      console.error("Fallback US catalog error:", e);
+    }
   }
 
   let news: HardwareNews[] = [];

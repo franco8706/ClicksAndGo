@@ -17,11 +17,15 @@ type PageProps = {
   params: Promise<{ locale: string; slug: string }>;
 };
 
+/** ⏱️ Techo de espera a Rails — ver la nota en page.tsx del home. */
+const RAILS_TIMEOUT_MS = 8_000;
+
 async function getLaptopData(slug: string): Promise<Laptop | null> {
   const railsApiUrl = process.env.RAILS_API_URL || 'http://rails_backend:3000';
   try {
-    const res = await fetch(`${railsApiUrl}/api/v1/notebooks?slug=${slug}&limit=1`, {
-      next: { revalidate: 60, tags: [`laptop-${slug}`] }
+    const res = await fetch(`${railsApiUrl}/api/v1/notebooks?slug=${encodeURIComponent(slug)}&limit=1`, {
+      next: { revalidate: 60, tags: [`laptop-${slug}`] },
+      signal: AbortSignal.timeout(RAILS_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const data = await res.json();
