@@ -82,14 +82,40 @@ export default function ProductImage({
     );
   }
 
-  // Placeholder neutro: ícono de la categoría, sin simular el producto.
+  /* Placeholder de categoría — sin simular el producto.
+   *
+   * Es el estado del 97% del catálogo (68 de 70 productos no tienen foto
+   * real verificada), así que no puede ser una caja gris con un ícono
+   * diminuto: es LA superficie visual del sitio. Se compone de tres capas:
+   *   1. `product-canvas` — malla de gradientes en el azul del sistema.
+   *   2. Aro concéntrico que enmarca el ícono y le da escala.
+   *   3. Ícono grande flotando, que reacciona al hover de la card.
+   * Todo con los mismos tokens de color; nada de esto insinúa ser el
+   * producto, que es la línea que no se cruza (ver nota legal arriba). */
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center select-none"
+      className="absolute inset-0 product-canvas flex items-center justify-center select-none overflow-hidden"
       aria-label={alt}
       role="img"
     >
-      <Icon size={iconSize} strokeWidth={1.25} className="text-[#c3c9d2]" />
+      {/* Aros concéntricos: dan profundidad y centran la mirada. Escalan
+          con el hover de la card padre (`group` en LaptopCard). */}
+      <div
+        aria-hidden
+        className="absolute rounded-full border border-[#2563eb]/10 transition-transform duration-500 ease-out group-hover:scale-110"
+        style={{ width: iconSize * 3.4, height: iconSize * 3.4 }}
+      />
+      <div
+        aria-hidden
+        className="absolute rounded-full border border-[#2563eb]/[0.07] transition-transform duration-700 ease-out group-hover:scale-125"
+        style={{ width: iconSize * 5, height: iconSize * 5 }}
+      />
+
+      <Icon
+        size={iconSize * 1.55}
+        strokeWidth={1}
+        className="relative text-[#8b95a5] float-soft transition-all duration-300 ease-out group-hover:text-[#2563eb] group-hover:scale-105"
+      />
     </div>
   );
 }

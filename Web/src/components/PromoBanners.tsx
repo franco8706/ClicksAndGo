@@ -76,7 +76,7 @@ export default function PromoBanners({ laptops, dict }: PromoBannersProps) {
         <button
           key={b.family}
           onClick={() => go(b.family)}
-          className="group flex items-stretch bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md card-bloom overflow-hidden text-left cursor-pointer select-none"
+          className="group flex items-stretch bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md lift-card sheen overflow-hidden text-left cursor-pointer select-none"
         >
           {/* Contenido */}
           <div className="flex-1 p-7 sm:p-8 flex flex-col justify-center">

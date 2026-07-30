@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { X } from "lucide-react";
 import LaptopCard from "./LaptopCard";
+import CountUp from "./CountUp";
 import type { Laptop } from "@/types/laptop";
 import { PRODUCT_TYPES, PRODUCT_FAMILY, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
@@ -84,7 +85,7 @@ export default function CatalogSection({
   };
 
   const countNoun = (n: number) =>
-    `${n} ${n === 1 ? (dict.common?.productSingular || "producto") : (dict.common?.products || "productos")}`;
+    n === 1 ? (dict.common?.productSingular || "producto") : (dict.common?.products || "productos");
 
   return (
     <>
@@ -92,13 +93,17 @@ export default function CatalogSection({
       {filtered.length > 0 && (
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <p className="text-[#9aa1ac] text-[11px] font-black uppercase tracking-widest">
+            {/* `key` por filtro: el contador vuelve a contar en cada cambio de
+                categoría, así el número acompaña al re-render del grid en vez
+                de saltar de golpe. */}
+            <CountUp key={activeFilter} value={filtered.length} className="relative" />{" "}
             {countNoun(filtered.length)}
           </p>
           {activeFilter !== ALL && (
             <button
               onClick={() => handleFilterChange(ALL)}
               aria-label={dict.common?.clearFilter || "Quitar filtro"}
-              className="inline-flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-[2px] px-3 py-1.5 hover:bg-blue-100 transition-colors cursor-pointer select-none"
+              className="inline-flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-[2px] px-3 py-1.5 hover:bg-blue-100 transition-colors cursor-pointer select-none pressable pop-in"
             >
               {activeLabel()}
               <X size={12} />

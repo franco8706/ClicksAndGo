@@ -5,6 +5,7 @@ import "../globals.css";
 
 import Navbar from "@/components/Navbar";
 import ConsentBanner from "@/components/ConsentBanner";
+import ScrollProgress from "@/components/ScrollProgress";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Cpu, Mail, ShieldCheck, MessageSquare, Briefcase, Code2 } from "lucide-react";
 import { auth } from "@/auth";
@@ -92,6 +93,12 @@ export default async function RootLayout({ children, params }: LayoutProps) {
       <meta {...({ name: "impact-site-verification", value: "c697e065-b482-46fc-a612-d26eac2d1e18" } as Record<string, string>)} />
       <body className="antialiased font-sans min-h-screen flex flex-col transition-colors selection-premium">
         <ThemeProvider>
+
+          {/* Progreso de lectura: el home es largo (hero → confianza →
+              categorías → 30 cards → banners → ofertas) y sin señal de avance
+              el visitante no sabe cuánto falta. z-[60] para quedar por encima
+              del navbar (z-50). */}
+          <ScrollProgress />
 
           <Navbar dict={dict} currentLocale={locale} session={session} />
 

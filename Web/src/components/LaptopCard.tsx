@@ -175,12 +175,12 @@ export default function LaptopCard({
 
   return (
     <div
-      className={`bg-white rounded-md border card-bloom flex flex-col overflow-hidden group ${
+      className={`bg-white rounded-md border lift-card flex flex-col overflow-hidden group ${
         isExpanded
           ? "border-blue-400 shadow-md"
           : isGranOportunidad
           ? "border-emerald-300 hover:border-emerald-400"
-          : "border-[#e6e8ec] hover:border-[#d3d7dd]"
+          : "border-[#e6e8ec]"
       }`}
     >
       {/* ── Brand + tipo + Score ── */}
@@ -211,10 +211,13 @@ export default function LaptopCard({
       </div>
 
       {/* ── Imagen ── */}
-      <div className="relative aspect-video bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border-b border-[#e6e8ec] overflow-hidden">
+      {/* `sheen` barre una luz diagonal al pasar el mouse. Va acá y no en la
+          card entera para que el brillo recorra la superficie visual y no
+          pase por encima del precio y el CTA. */}
+      <div className="relative aspect-video border-b border-[#e6e8ec] overflow-hidden sheen">
         {/* Chip de evento comercial activo (dato del agente de mercado) */}
         {promoEvent && (
-          <span className="absolute top-3 left-3 z-10 bg-[#0a0e14] text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[2px] select-none">
+          <span className="absolute top-3 left-3 z-10 bg-[#0a0e14] text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[2px] select-none pop-in">
             {promoEvent}
           </span>
         )}
@@ -233,13 +236,20 @@ export default function LaptopCard({
                 ? dict.dashboard?.removeFromFavorites || "Quitar de favoritos"
                 : dict.dashboard?.saveToFavorites || "Guardar en favoritos"
             }
-            className={`absolute top-3 right-3 z-10 p-2 rounded-full border backdrop-blur-sm transition-all cursor-pointer active:scale-90 disabled:opacity-60 ${
+            className={`absolute top-3 right-3 z-10 p-2 rounded-full border backdrop-blur-sm cursor-pointer disabled:opacity-60 pressable hover:scale-110 transition-[color,background-color,border-color,transform] duration-200 ${
               isFavorite
                 ? "bg-red-50 border-red-200 text-red-500"
                 : "bg-white/80 border-[#e6e8ec] text-[#9aa1ac] hover:text-red-500 hover:border-red-200"
             }`}
           >
-            <Heart size={15} className={isFavorite ? "fill-current" : ""} />
+            {/* `key` fuerza el remount al cambiar de estado: así el rebote de
+                `pop-in` se dispara en cada alternancia y el click se siente
+                confirmado, en vez de que el ícono cambie de color sin más. */}
+            <Heart
+              key={isFavorite ? "on" : "off"}
+              size={15}
+              className={isFavorite ? "fill-current pop-in" : ""}
+            />
           </button>
         )}
         <ProductImage

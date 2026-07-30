@@ -105,7 +105,7 @@ export default function CategoryShowcase({ laptops, dict }: CategoryShowcaseProp
             <button
               key={type}
               onClick={() => select(type)}
-              className="snap-start shrink-0 w-[148px] sm:w-[164px] bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md card-bloom p-5 flex flex-col items-center gap-3 group cursor-pointer select-none text-center"
+              className="snap-start shrink-0 w-[148px] sm:w-[164px] bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md lift-card p-5 flex flex-col items-center gap-3 group cursor-pointer select-none text-center"
             >
               <div className="w-14 h-14 rounded bg-[#eff5ff] border border-[#cddffb] flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5">
                 <Icon size={26} className="text-blue-600" />

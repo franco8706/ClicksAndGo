@@ -98,7 +98,7 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
                   document.getElementById("productos")?.scrollIntoView({ behavior: "smooth" });
                 }, 60);
               }}
-              className="snap-start shrink-0 w-[210px] bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md card-bloom overflow-hidden group cursor-pointer select-none"
+              className="snap-start shrink-0 w-[210px] bg-white border border-[#e6e8ec] hover:border-blue-300 rounded-md lift-card overflow-hidden group cursor-pointer select-none"
             >
               <div className="relative h-[120px] bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border-b border-[#e6e8ec]">
                 <ProductImage

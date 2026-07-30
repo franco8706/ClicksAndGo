@@ -45,12 +45,44 @@
 
   /* ── Timing NVIDIA: rápido y directo ── */
   --ease-out-nv: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Rebote contenido para micro-interacciones (corazón, chips, botones).
+     Sobrepasa apenas el destino y vuelve — se lee como respuesta física
+     sin caricaturizar. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Entrada/salida simétrica para lo que se abre y se cierra. */
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* ── Animaciones ── */
   --animate-hero-entry:    fadeInUp 0.7s var(--ease-out-nv) forwards;
   --animate-shimmer:       shimmer 1.8s infinite linear;
   --animate-scroll-bounce: scrollBounce 2s infinite ease-in-out;
   --animate-ticker:        tickerScroll 80s linear infinite;
+  --animate-float-soft:    floatSoft 5s ease-in-out infinite;
+  --animate-orb-drift:     orbDrift 18s ease-in-out infinite;
+  --animate-pop-in:        popIn 0.32s var(--ease-spring) forwards;
+
+  /* Flotación mínima del ícono de categoría. 6px de recorrido: se percibe
+     como "vivo" sin competir con el texto ni marear en un grid de 30 cards. */
+  @keyframes floatSoft {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(0, -6px, 0); }
+  }
+  /* Deriva lenta de los halos de ambiente del hero. */
+  @keyframes orbDrift {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    33%      { transform: translate3d(3%, -4%, 0) scale(1.06); }
+    66%      { transform: translate3d(-3%, 3%, 0) scale(0.96); }
+  }
+  /* Aparición con rebote para elementos que responden a un click. */
+  @keyframes popIn {
+    0%   { opacity: 0; transform: scale(0.82); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  /* Barrido de luz sobre la card al pasar el mouse. */
+  @keyframes sheenSweep {
+    from { transform: translateX(-120%) skewX(-18deg); }
+    to   { transform: translateX(220%)  skewX(-18deg); }
+  }
 
   @keyframes fadeInUp {
     from { opacity: 0; transform: translate3d(0, 1rem, 0); }
@@ -90,6 +122,30 @@
     scroll-behavior: smooth;
     scroll-padding-top: 6rem;
     text-size-adjust: 100%;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     ♿ RED DE SEGURIDAD DE MOVIMIENTO (WCAG 2.1 — 2.3.3)
+     Para parte de las personas el movimiento en pantalla provoca mareo
+     o migraña. Las utilidades del sistema traen su propio guard, pero
+     depender de que alguien se acuerde de agregarlo en cada animación
+     futura es una garantía frágil: esto lo vuelve el comportamiento por
+     defecto de TODO, incluido el CSS de terceros.
+
+     No se usa `animation: none`: eso puede dejar un elemento congelado
+     en el frame 0 de una animación con `forwards` (por ejemplo, invisible
+     si arranca en opacity 0). Con una duración casi nula la animación
+     "termina" al instante y el estado final queda aplicado.
+     ───────────────────────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    html { scroll-behavior: auto; }
   }
 
   body {
@@ -245,18 +301,45 @@
 
 /* Botón primario azul, esquinas casi rectas, micro-lift */
 @utility btn-primary {
+  position: relative;
+  overflow: hidden;
   background-color: var(--color-brand-primary);
   color: #ffffff;
   border-radius: var(--radius-btn);
   will-change: transform, box-shadow;
   transition: background-color 0.2s ease-out, transform 0.2s var(--ease-out-nv), box-shadow 0.2s ease-out;
 
+  /* Barrido de luz sobre el CTA principal — el mismo lenguaje que el `sheen`
+     de las cards, aplicado al elemento que convierte. */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+    transform: translateX(-120%) skewX(-18deg);
+    pointer-events: none;
+    opacity: 0;
+  }
+
   &:hover {
     background-color: var(--color-brand-hover);
     transform: translate3d(0, -1px, 0);
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
   }
-  &:active { transform: translate3d(0, 0, 0); }
+  &:hover::after {
+    opacity: 1;
+    animation: sheenSweep 0.7s var(--ease-out-nv);
+  }
+  /* Se hunde al click: confirma la pulsación antes de que navegue. */
+  &:active { transform: scale(0.98); }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: background-color 0.2s ease-out;
+    &::after { display: none; }
+    &:hover  { transform: none; }
+    &:active { transform: none; }
+  }
 }
 
 /* Botón sólido (CTA tipo "Learn More" de NVIDIA): rectángulo nítido.
@@ -305,6 +388,136 @@
   &:hover {
     box-shadow: 0 0 15px rgba(10, 14, 20, 0.16);
   }
+}
+
+/* =========================================================
+   MICRO-INTERACCIONES
+   Cada utilidad trae su propio guard de `prefers-reduced-motion`:
+   la accesibilidad no puede depender de acordarse de agregarlo.
+   ========================================================= */
+
+/* Elevación de card con acento de marca. Reemplaza al hover plano:
+   la card sube, proyecta sombra e ilumina su borde en azul del sistema. */
+@utility lift-card {
+  will-change: transform;
+  transition:
+    transform 0.28s var(--ease-out-nv),
+    box-shadow 0.28s var(--ease-out-nv),
+    border-color 0.2s ease-out;
+
+  &:hover {
+    transform: translate3d(0, -6px, 0);
+    box-shadow: 0 12px 28px rgba(10, 14, 20, 0.10), 0 2px 6px rgba(37, 99, 235, 0.08);
+    border-color: var(--color-brand-line);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: border-color 0.2s ease-out;
+    &:hover { transform: none; box-shadow: var(--shadow-md); }
+  }
+}
+
+/* Barrido de luz diagonal al pasar el mouse. El contenedor necesita
+   `position: relative` y `overflow: hidden`. `pointer-events: none`
+   para no robarle el click a la card. */
+@utility sheen {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 45%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 100%
+    );
+    transform: translateX(-120%) skewX(-18deg);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    animation: sheenSweep 0.85s var(--ease-out-nv);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after { display: none; }
+  }
+}
+
+/* Respuesta táctil al click: se hunde apenas y vuelve. */
+@utility pressable {
+  transition: transform 0.12s var(--ease-out-nv);
+  &:active { transform: scale(0.97); }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &:active { transform: none; }
+  }
+}
+
+/* Flotación del ícono de categoría (placeholder de producto sin foto). */
+@utility float-soft {
+  animation: var(--animate-float-soft);
+
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+/* Halo de ambiente que deriva lentamente (fondo del hero). */
+@utility orb-drift {
+  animation: var(--animate-orb-drift);
+
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+/* Aparición con rebote — para lo que surge como respuesta a un click. */
+@utility pop-in {
+  animation: var(--animate-pop-in);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Subrayado que crece desde la izquierda al hacer hover. */
+@utility underline-grow {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 2px;
+    width: 100%;
+    background-color: var(--color-brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s var(--ease-out-nv);
+  }
+
+  &:hover::after { transform: scaleX(1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after { transition: none; }
+  }
+}
+
+/* Fondo del placeholder de producto: malla de gradientes en el azul del
+   sistema. Da profundidad al 97% de las cards que hoy no tienen foto real,
+   sin simular un producto (ver ProductImage.tsx). */
+@utility product-canvas {
+  background-color: #f5f6f8;
+  background-image:
+    radial-gradient(60% 55% at 25% 20%, rgba(37, 99, 235, 0.10) 0%, transparent 60%),
+    radial-gradient(50% 50% at 80% 75%, rgba(37, 99, 235, 0.07) 0%, transparent 65%),
+    linear-gradient(160deg, #ffffff 0%, #eef0f3 100%);
 }
 
 /* Flecha cuadrada de carrusel (firma NVIDIA: rectángulo del color de

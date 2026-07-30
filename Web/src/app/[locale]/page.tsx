@@ -166,8 +166,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <main className="min-h-screen pb-0 font-sans relative overflow-hidden bg-white">
       {/* Tintes de ambiente muy sutiles sobre blanco */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none z-0" />
-      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-500/4 rounded-full blur-[120px] pointer-events-none z-0" />
+      {/* `orb-drift` los hace derivar muy lento (18s) y en fases distintas:
+          la página respira sin que nada llame la atención. Se apaga con
+          prefers-reduced-motion (ver la utilidad en globals.css). */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none z-0 orb-drift" />
+      <div
+        className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-500/4 rounded-full blur-[120px] pointer-events-none z-0 orb-drift"
+        style={{ animationDelay: "-9s" }}
+      />
 
       {/* 1. Hero + ticker de noticias integrado */}
       <HeroSection dict={dict} news={news} />

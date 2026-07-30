@@ -31,6 +31,11 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
+    // 🐛 Sincronización inicial: sin esta llamada el navbar solo reaccionaba al
+    // EVENTO scroll, así que al entrar con un ancla (`/es#productos`) o al
+    // restaurar la posición al recargar, se quedaba en su estado translúcido
+    // con el catálogo pasando por detrás y el logo ilegible.
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
