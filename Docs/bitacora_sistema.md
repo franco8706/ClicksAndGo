@@ -566,3 +566,53 @@ Durante mayo, el núcleo agéntico corrió decenas de ciclos autónomos de cacer
 3. **PITR (point-in-time recovery)** sigue apagado — los backups diarios cubren el caso grave, PITR cubriría "deshacer las últimas 2 horas". Cuesta algo más de storage por los binlogs.
 4. **`clicks-rust` se despliega con tag `latest`** (los otros 3 usan el SHA del commit). Con `latest` no hay forma de saber qué código corre ni de hacer rollback preciso.
 5. **Sin healthcheck externo del dominio**: si `clicks-and-go.com` cae, nadie se enteraría hasta que un humano lo abra. Un uptime check de GCP cuesta centavos.
+
+## 2026-07-30 (cont.) · 🧪 DESPLIEGUE AGRESIVO DE TESTS — 231 tests y 2 bugs más
+
+- `[Orden del titular]`: *"implementá y hacé un despliegue agresivo de tests para lograr la mayor robustez posible, el margen de error debe ser 0"*, más la lista de recomendaciones de un análisis externo (Gemini 3.5).
+- `[Primero: verificar el análisis externo]`. Los archivos que citaba existen todos. Una afirmación era **inexacta**: `migration_integrity_v5.sql` no tiene "CHECK constraints para URLs de imágenes" — sus CHECKs son de `deal_score`, precios y `target_price`; el de imágenes está en la **v6**, escrita en esta misma sesión. El resto de los diagnósticos técnicos se verificaron leyendo el código antes de actuar.
+
+### Infraestructura de test creada desde cero
+
+| Servicio | Antes | Ahora | Corre contra |
+|---|---|---|---|
+| Python | 0 | **117** (pytest) | mocks + red simulada |
+| Rails | 0 | **68** (minitest) | **Postgres 15 real** |
+| Web | 23 | **46** (vitest) | mocks |
+
+- `[Python]` `requirements-dev.txt` separado (pytest **no** entra a la imagen de producción), `pytest.ini` con `pythonpath=.`, `conftest.py` que apaga la verificación HTTP de imágenes y el FX en vivo → la suite corre **offline** salvo que el test mockee la red.
+- `[Rails]` No existía **ningún** `config/environments/`: el proyecto solo corría en production. Creado `test.rb` con `null_store` (un `Rails.cache.fetch` con TTL haría que un test vea el resultado del anterior). **Doble guarda contra tocar producción**: `bin/test` hace `unset DATABASE_URL` —en este repo apunta a Cloud SQL y Rails la prioriza sobre host/username— y `test_helper.rb` aborta si el nombre de la base no termina en `_test`. Fábricas sin FactoryBot: `normalized_offer` replica el payload exacto de `data_normalizer.py`, así el test **documenta el contrato Python→Rails**.
+
+### 🔴 BUG 4 — Drift de esquema: el repo no era reproducible (cerrado)
+
+- Apareció al correr el primer test de noticias: devolvía `[]`. La causa no era el test — **`hardware_news.source_url` existe en producción pero NO en los `.sql` del repositorio**. Se agregó a mano en algún momento, sin archivo de migración.
+- El síntoma era invisible por diseño: `notebooks#hardware_news` la incluye en su `SELECT`, así que sobre una base reconstruida desde el repo la query lanza `PG::UndefinedColumn`, y el `rescue StandardError` del controller lo convierte en `render json: [], status: :ok`. **El sitio se quedaría sin noticias devolviendo 200**, sin error visible en ninguna parte.
+- Comparación completa prod↔repo (94 vs 98 columnas): **era el único drift real**; las otras 5 filas son bookkeeping de Rails (`schema_migrations`, `ar_internal_metadata`).
+- `[Corregido]` `migration_news_source_url_v7.sql`, idempotente, aplicada en producción y en la base de test. **Los backups guardan los datos; esto guarda la estructura** — un restore desde cero ya no produce una base distinta.
+
+### 🔴 BUG 5 — Race condition en el historial de precios (cerrado)
+
+- Recomendación externa **confirmada leyendo el código**: `latest_price` se leía fuera de todo bloqueo y el `MasterOrchestrator` postea con `ThreadPoolExecutor(max_workers=5)`. Dos requests del mismo SKU veían el mismo precio previo y **ambas insertaban** → historial duplicado.
+- No es solo ruido: envenena el futuro cálculo del **mínimo de 30 días** que exige la Directiva Omnibus para poder volver a mostrar descuentos (ver `redesign_plan.md`).
+- `[Corregido]` `laptop.lock!` (`SELECT … FOR UPDATE`) **+ consulta explícita** a `PriceHistory` en vez de la asociación `has_one`, que quedaba cacheada por el `find_or_initialize_by` y **anulaba el propósito del lock**. Ese segundo detalle es la parte que el análisis externo no mencionaba y sin la cual el fix no funcionaba.
+
+### Recomendaciones externas: aplicadas, y una redimensionada
+
+1. **Retries en `railsApi`** ✅ — implementado con backoff (3 intentos, 200/400 ms) ante 429/502/503/504 y fallo de red. **Lo importante es qué NO se reintenta**: `toggleFavorite` es un POST no idempotente y repetirlo dejaría el corazón en el estado contrario al que pidió el usuario. Se reintentan GET/HEAD y los PATCH explícitamente marcados como idempotentes (`profile`, `geo`). Hay 23 tests que fijan exactamente eso.
+2. **Pessimistic lock** ✅ — ver BUG 5.
+3. **Cola de mensajes para emails** ⚠️ **redimensionada**. Se propuso "desacoplar en una cola con persistencia para evitar pérdida de emails". Verificado en el código: **los emails no se pierden hoy** — `check_and_notify` solo marca como notificadas las alertas cuyo envío devolvió `True`, así que *una fila no marcada ES la cola* y Postgres ya es su capa de persistencia. El problema real es distinto: el ciclo es **diario**, así que un 503 puntual de Resend retrasa el aviso ~24 h. Fix proporcionado: **reintento con backoff dentro del envío individual** (3 intentos; un 4xx que no sea 429 no se reintenta porque es determinista). Una cola aparte habría sumado infraestructura sin resolver nada que esto no cubra.
+4. **Monitoreo sintético** ✅ — había **0 uptime checks**. Creado uno cada 5 min contra `https://clicks-and-go.com/es` desde **USA, Europa y Sudamérica**, con alerta al email del titular cuando falla en **más de 2 regiones** (una sola región fallando es ruido de red, no el sitio caído).
+
+### Qué cubren los 231 tests
+
+- **Seguridad** (15): escrituras sin clave → 401 y **no persisten**; clave incorrecta/incompleta/vacía rechazadas; las 4 lecturas siguen públicas; rutas por usuario protegidas contra IDOR; **fail-closed** si `INTERNAL_API_KEY` no está seteada.
+- **El bug de los 51 días** (26): la URL no duplica `/api/v1/` en los 5 formatos reales de la env var; `post_json` considera éxito **solo** 2xx — literalmente el test que faltaba.
+- **Política de imágenes reales** (37 + 19): los 8 hosts de stock y sus subdominios; 404, 403 de Scene7, 302-a-HTML de ASUS y el placeholder de marca de MSI por hash; el CHECK de Postgres rechaza stock y `http://` **incluso vía `update_column`**, que saltea las validaciones de Rails.
+- **Contrato DTO** (18): si una clave se renombra, `laptop.ts` rompería en silencio; ahora falla la suite.
+- **Persistencia** (16): upsert idempotente, slug preservado (permalinks), sin historial duplicado, link de afiliado intacto.
+- **Reintentos** (23 + 18): incluido qué **no** se reintenta.
+
+### Detalles operativos
+
+- `Gemfile.lock` **no se commitea**: el Docker usa **Ruby 3.2** y este entorno **3.4.7**; un lock resuelto acá puede romper el build de producción. Alinear versiones queda como mejora aparte.
+- `[Verificado en vivo]` tras desplegar los 4 servicios con digests confirmados (`clicks-rails-00014-29q`, `clicks-web-00028-bdd`, `clicks-python-00023-t7t`): sitio 200 ×4 idiomas · escrituras 401 ×2 · sitemap 292 URLs · 20 noticias con `sourceUrl` · catálogo US 30 productos.
