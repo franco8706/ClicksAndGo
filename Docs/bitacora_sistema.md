@@ -662,3 +662,50 @@ Easings `--ease-spring` y `--ease-in-out-soft`; keyframes `floatSoft`, `orbDrift
 - `[Nota de método]`: la verificación por `document.styleSheets` dio un falso negativo en la red de reduced-motion — el bucle no atraviesa `@layer`. Se confirmó descargando el CSS servido y buscando la regla en el texto. Vale como recordatorio: cuando un chequeo en el navegador dice "no está", verificar el artefacto real antes de concluir.
 - `[Verificación local]`: `next start` **no funciona con `output: standalone`** (el proyecto lo usa para Docker). Para previsualizar hay que correr `node .next/standalone/server.js`. Se dejó anotado porque costó varios intentos.
 - `[Verificado]`: tsc 0 · ESLint 0 · vitest **54/54** · build ✓.
+
+## 2026-07-30 (cont.) · 🔬 Verificación por COMPORTAMIENTO — 3 fallos que los tests no veían
+
+- `[Origen]`: el titular señaló la nota de método del turno anterior (una verificación por `document.styleSheets` había dado un falso negativo) y pidió **revisar hasta que todo funcione perfectamente**.
+- `[Método]`: en vez de leer CSS o código, se **midió comportamiento** en un navegador real con la media feature emulada (`page.emulateMedia({ reducedMotion })`), comparando `getComputedStyle` entre estado normal y estado hover/reducido. **Los 3 fallos que siguen daban verde en `tsc`, ESLint, los 55 tests y el build.**
+
+### 🔴 FALLO 1 — El scroll suave ignoraba `prefers-reduced-motion`
+
+- La verificación por texto decía OK: la regla `html { scroll-behavior: auto }` estaba en el CSS, dentro del media query y en el orden correcto. En el navegador computaba **`smooth`**.
+- **Causa**: `<html>` llevaba la clase `scroll-smooth` de Tailwind. Una clase (especificidad 0,1,0) le gana a un selector de elemento (0,0,1) **incluso dentro de `@media`**. Para alguien con trastorno vestibular, el scroll suave es exactamente lo que la preferencia busca evitar.
+- **Fix doble**: se quita la clase (era redundante, `html { scroll-behavior: smooth }` ya está en `@layer base`) y se blinda la regla con `!important`, para que ninguna utilidad futura pueda volver a pisar la preferencia.
+- **Lección**: un test que analiza texto **no puede detectar problemas de especificidad**. Quedó escrito en el encabezado de `motion-a11y.test.ts`.
+
+### 🔴 FALLO 2 — La card no se elevaba al hover (la interacción firma del rediseño)
+
+- Medido: `transform` **idéntico** en reposo y en hover (`matrix(1,0,0,1,0,0)`), mientras `borderColor` y `boxShadow` **sí** cambiaban. O sea: el `:hover` disparaba, pero el movimiento estaba bloqueado.
+- **Causa**: `stagger-children` aplica `animation: fadeInUp … forwards`, y **el fill de una animación gana sobre las declaraciones normales en la cascada**. Mientras `fadeInUp` animara `transform`, el `transform` del hover de `lift-card` quedaba pisado.
+- **Primer intento equivocado**: envolver la card en un `div` en `CatalogSection`. Al re-medir apareció que el elemento que seguía fallando era una card de **CategoryShowcase** — son **6** los componentes que usan `stagger-children`, así que envolver cada uno era el fix equivocado.
+- **Fix correcto, en el CSS y una sola vez**: `fadeInUp` anima la propiedad **independiente `translate`** en vez de `transform`. Son propiedades distintas y el navegador las **compone**, así que la entrada y el hover conviven. Se revirtió el wrapper.
+- **Confirmado en vivo**: reposo `none` → hover `matrix(1, 0, 0, 1, 0, -6)`, en cards de categoría **y** de producto.
+- Degradación: en navegadores sin soporte de `translate` (pre-2022) la card entra sin desplazamiento, pero el fade y el hover siguen funcionando.
+
+### 🔴 FALLO 3 — `CountUp` duplicaba el número en el DOM
+
+- Para reservar el ancho renderizaba un `<span>` oculto con el valor final. Visualmente correcto, pero `textContent` devolvía **`"3030 productos"`** en vez de `"30 productos"` — invisible a la vista y capaz de romper scraping, tests y cualquier herramienta que lea texto.
+- **Fix**: reservar el espacio con `ch` por dígito + `tabular-nums`. Mismo CLS 0, sin texto fantasma.
+
+### Verificación final por comportamiento
+
+| Chequeo | Normal | Reduced-motion |
+|---|---|---|
+| `scroll-behavior` | `smooth` | **`auto`** ✅ |
+| Halos del hero | `18s` | **`0.00001s`** ✅ |
+| Ícono flotante | `5s` | **`0.00001s`** ✅ |
+| Cards invisibles | **0** de 41 | **0** de 41 ✅ |
+
+| Salud | Resultado |
+|---|---|
+| Hover eleva la card | `matrix(1,0,0,1,0,-6)` ✅ |
+| **CLS** | **0.0000** |
+| Imágenes rotas | **0** |
+| Contador | `"30 productos"` (sin duplicado) |
+| `navbar_bg` | `rgba(255,255,255,0.94)` |
+| Placeholders nuevos | 30 · barra de progreso presente |
+| Idiomas | es/en/pt/it → **200** |
+
+- `[Conclusión de método]`: para CSS, **verificar el artefacto no alcanza — hay que verificar el comportamiento**. La cascada, la especificidad y la precedencia de las animaciones no son visibles ni en el código fuente ni en el CSS compilado. Las tres fallas de esta sesión eran de ese tipo y ninguna suite basada en texto podía atraparlas.
