@@ -7,6 +7,8 @@ import threading
 
 import requests
 
+from src.agents.taxonomy import ALL_SUBCATEGORIES
+
 logger = logging.getLogger(__name__)
 
 # ── Matriz cambiaria FX (unidades por 1 USD) ──────────────────────────────────
@@ -207,12 +209,16 @@ class DataNormalizerAgent:
     Garantiza que ningún dato tóxico o mal tipado llegue a la IA o a la Base de Datos.
     """
 
-    # Espejo de `product_categories.code` (migration_integrity_v5.sql). Único
-    # vocabulario de producto que este sitio vende: nada fuera de tecnología.
-    DIGITAL_CATEGORIES = {
-        "laptop", "desktop", "monitor", "keyboard",
-        "mouse", "headphones", "webcam", "printer", "supplies",
-    }
+    # Espejo de `product_categories.code`. Único vocabulario de producto que
+    # este sitio vende: nada fuera de tecnología.
+    #
+    # Se importa de `taxonomy.py` en vez de listarse a mano. Antes eran 9
+    # valores escritos acá y otros 9 en la migración, y bastaba con agregar un
+    # tipo en un lado y olvidarlo en el otro para que la ingesta descartara en
+    # silencio productos perfectamente válidos. Ahora las tres capas —este
+    # guard, el SQL de `product_categories` y la clasificación— salen del
+    # mismo módulo.
+    DIGITAL_CATEGORIES = ALL_SUBCATEGORIES
 
     @staticmethod
     def sanitize_string(text: str) -> str:
@@ -331,6 +337,10 @@ class DataNormalizerAgent:
             "brand": self.sanitize_string(raw_data.get("brand", "Genérica")),
             "name": title[:150],
             "condition": "new",
+            # 📂 `product_type` ES la subcategoría de la taxonomía v8 (56
+            # valores). La categoría macro NO viaja acá: se resuelve por JOIN
+            # con `product_categories.family`, que es la única fuente. Mandar
+            # ambas por el feed permitiría que llegaran contradiciéndose.
             "product_type": product_type,
             "specs": raw_specs if isinstance(raw_specs, dict) else {},
             "hardware": {

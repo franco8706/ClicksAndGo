@@ -26,7 +26,7 @@ module Api
       # =====================================================================
       include InternalApiAuth
       skip_before_action :authenticate_internal_service!,
-                         only: %i[index hardware_news sitemap]
+                         only: %i[index hardware_news sitemap categories]
 
       # =========================================================
       # 💻 ENDPOINT: GET /api/v1/notebooks
@@ -41,23 +41,84 @@ module Api
           end
         else
           country = (params[:country].presence || 'US').upcase[0, 2]
-          limit   = (params[:limit] || 40).to_i.clamp(1, 100)
-          # 📦 Multi-producto: filtro opcional por tipo (?type=monitor|keyboard|...).
-          #    Sin `type` => todo el catálogo del país. `has_product_type?` degrada
-          #    con gracia si aún no se corrió migration_products_v3.sql.
-          type = params[:type].presence
-          type = nil unless has_product_type? && type
-          # 🛡️ El limit y el type DEBEN formar parte de la cache key: sin ellos, un
-          # request con ?limit=1 o ?type=X envenenaba el catálogo cacheado del país.
-          cache_key = "products/catalog/#{country}/#{type || 'all'}/#{limit}"
+
+          # 📄 PAGINACIÓN REAL (taxonomía v8).
+          #
+          # Antes solo existía `limit` clampeado a 100, o sea que el catálogo
+          # era inalcanzable más allá de los primeros 100 productos de cada
+          # país. Con el catálogo completo de un retailer (Newegg expone
+          # ~693.000 items) eso deja el 99,98% del catálogo sin ninguna URL
+          # que lo muestre.
+          #
+          # `per_page` sigue topado en 100: es lo que una página del sitio
+          # puede renderizar sin castigar al navegador, y evita que un
+          # request pida 50.000 productos y se lleve puesta la memoria del
+          # contenedor (512 MiB, ver cloudrun-rails.yaml).
+          per_page = (params[:per_page] || params[:limit] || 40).to_i.clamp(1, 100)
+          page     = (params[:page] || 1).to_i.clamp(1, MAX_PAGE)
+
+          # 📦 Filtros de la taxonomía de dos niveles:
+          #    ?type=ssd            → subcategoría (product_type)
+          #    ?category=storage    → categoría macro (product_categories.family)
+          # `has_product_type?` degrada con gracia si aún no corrió la v3.
+          type     = has_product_type? ? params[:type].presence : nil
+          category = params[:category].presence
+
+          # 🛡️ TODO parámetro que cambia el resultado va en la cache key: sin
+          # eso un request con ?page=7 envenenaba el catálogo cacheado del
+          # país entero. Es una regresión que ya ocurrió con `limit` y `type`.
+          cache_key = "products/catalog/v8/#{country}/#{category || 'all'}/" \
+                      "#{type || 'all'}/#{page}/#{per_page}"
+
           result = Rails.cache.fetch(cache_key, expires_in: 60.seconds) do
-            scope = Laptop.includes(:retailer, :latest_price).where(country_code: country)
-            scope = scope.where(product_type: type) if type
-            scope.limit(limit).map { |l| serialize_laptop(l) }
+            catalog_scope(country, category, type)
+              .offset((page - 1) * per_page)
+              .limit(per_page)
+              .map { |l| serialize_laptop(l) }
           end
         end
 
         render json: result, status: :ok
+      end
+
+      # =========================================================
+      # 📂 ENDPOINT: GET /api/v1/products/categories
+      #
+      # Árbol de navegación con conteos reales, para que el menú del sitio no
+      # ofrezca ramas vacías. Devuelve:
+      #   [{ code: "storage", label: "Almacenamiento", total: 412,
+      #      subcategories: [{ code: "ssd", label: "Discos SSD", total: 83 }] }]
+      #
+      # Se calcula con UN solo GROUP BY sobre el índice de cobertura
+      # `idx_laptops_type_counts`, no con una query por rama: con 56
+      # subcategorías × 7 países eso serían 392 queries por request.
+      #
+      # Cache de 5 minutos: el árbol cambia solo cuando la ingesta agrega un
+      # tipo nuevo, no en cada request, y es lo que se pinta en TODAS las
+      # páginas del sitio.
+      # =========================================================
+      def categories
+        country = (params[:country].presence || 'US').upcase[0, 2]
+
+        # `race_condition_ttl` evita la estampida al vencer el cache. Medido
+        # con 500.000 productos, este GROUP BY tarda 130 ms; sin protección,
+        # las 10 requests que entran en ese instante (2 workers × 5 threads,
+        # ver cloudrun-rails.yaml) lo recalculan TODAS y el pico se multiplica
+        # por 10 justo cuando hay tráfico. Con esto, la primera lo recalcula y
+        # las demás siguen sirviendo el valor viejo unos segundos.
+        result = Rails.cache.fetch("products/categories/v8/#{country}",
+                                   expires_in: 5.minutes,
+                                   race_condition_ttl: 10.seconds) do
+          conteos = Laptop.where(country_code: country).group(:product_type).count
+          build_category_tree(conteos)
+        end
+
+        render json: result, status: :ok
+      rescue StandardError => e
+        # El menú no puede tumbar la página: si falla, el sitio se sirve sin
+        # navegación por categorías en vez de devolver un 500.
+        Rails.logger.error("[categories] #{e.class}: #{e.message}")
+        render json: [], status: :ok
       end
 
       # =========================================================
@@ -88,6 +149,29 @@ module Api
       # subir este número sino partir en sitemap index (varios archivos) —
       # `generateSitemaps()` de Next lo soporta nativo.
       SITEMAP_MAX_PRODUCTS = 10_000
+
+      # 📄 Tope de página. `OFFSET` en Postgres cuesta O(offset): pedir la
+      # página 100.000 obliga a recorrer y descartar 4 millones de filas antes
+      # de devolver 40. Se corta en 1.000 páginas (40.000 productos con el
+      # per_page por defecto) — más profundo que eso nadie navega, y lo que
+      # haría falta para ir más lejos no es subir este número sino paginar por
+      # cursor (`WHERE id > ?`), que no degrada con la profundidad.
+      MAX_PAGE = 1_000
+
+      # 📂 Etiquetas de las 9 categorías macro. Viven acá y no en la DB porque
+      # son de presentación: `product_categories.family` guarda el código
+      # estable, y traducirlo es responsabilidad de quien lo muestra.
+      FAMILY_LABELS = {
+        'computing'   => 'Computadoras',
+        'displays'    => 'Monitores y pantallas',
+        'components'  => 'Componentes',
+        'storage'     => 'Almacenamiento',
+        'peripherals' => 'Periféricos',
+        'networking'  => 'Redes',
+        'printing'    => 'Impresión',
+        'power'       => 'Energía y cables',
+        'accessories' => 'Accesorios'
+      }.freeze
 
       def sitemap
         result = Rails.cache.fetch('products/sitemap', expires_in: 1.hour) do
@@ -255,6 +339,49 @@ module Api
       # corrió migration_products_v3.sql (default seguro: 'laptop').
       def product_type_for(laptop)
         laptop.has_attribute?(:product_type) ? (laptop.product_type.presence || 'laptop') : 'laptop'
+      end
+
+      # 📦 Scope base del catálogo, compartido por `index` y por los conteos.
+      #
+      # El orden es EXPLÍCITO por `id`. Sin `ORDER BY`, Postgres no garantiza
+      # un orden estable entre queries, y con paginación eso significa que un
+      # producto puede aparecer en la página 1 y en la 3, u ocultarse en las
+      # dos — un bug invisible con 70 filas y sistemático con 50.000. Además
+      # `id` es la última columna de los índices de la v8, así que el orden
+      # sale del índice y no de un sort en memoria.
+      def catalog_scope(country, category, type)
+        scope = Laptop.includes(:retailer, :latest_price).where(country_code: country)
+        scope = scope.where(product_type: type) if type.present?
+        if category.present?
+          # Semi-join: `product_categories` tiene 56 filas y vive en caché de
+          # Postgres, así que resolver la familia no agrega costo medible.
+          scope = scope.where(product_type: ProductCategory.codes_for_family(category))
+        end
+        scope.order(:id)
+      end
+
+      # 📂 Arma el árbol categoría → subcategorías desde un hash
+      # {product_type => conteo}, sin una query por rama.
+      #
+      # Las ramas con 0 productos NO se emiten: un menú que ofrece "Servidores"
+      # y lleva a una página vacía es peor que no ofrecerlo.
+      def build_category_tree(conteos)
+        ProductCategory
+          .where(code: conteos.keys)
+          .order(:family, :code)
+          .group_by(&:family)
+          .map do |family, cats|
+            subs = cats.map { |c| { code: c.code, label: c.label, total: conteos[c.code].to_i } }
+                       .reject { |s| s[:total].zero? }
+            next if subs.empty?
+
+            { code: family,
+              label: FAMILY_LABELS[family] || family.humanize,
+              total: subs.sum { |s| s[:total] },
+              subcategories: subs.sort_by { |s| -s[:total] } }
+          end
+          .compact
+          .sort_by { |f| -f[:total] }
       end
 
       # 📦 Specs uniformes para el frontend (SPEC_SCHEMA en product.ts):

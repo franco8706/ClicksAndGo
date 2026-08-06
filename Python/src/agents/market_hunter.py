@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus
 from defusedxml import ElementTree as DefusedET
 from src.agents.data_normalizer import DataNormalizerAgent
+from src.agents.taxonomy import classify_product
 
 # Pool de User-Agents de browsers reales — rota en cada sesión para evitar fingerprinting
 USER_AGENTS = [
@@ -684,6 +685,11 @@ class RakutenNetworkAPI(RetailerAPI):
                 "saleprice":    txt("saleprice"),
                 "linkurl":      txt("linkurl"),
                 "imageurl":     txt("imageurl"),
+                # Jerarquía CRUDA — la taxonomía necesita la ruta completa
+                # para poder evaluar la hoja primero y la rama después.
+                "primary":       primaria,
+                "secondary_raw": secundaria,
+                # Versión aplanada, solo para diagnóstico y logs legibles.
                 "categoria":    f"{primaria} {hoja}".strip(),
             })
         return items
@@ -692,9 +698,20 @@ class RakutenNetworkAPI(RetailerAPI):
         normalized = []
         for item in raw_data:
             name = item.get("productname", "")
-            product_type = classify_digital_product(name, item.get("categoria", ""))
-            if not product_type:
-                continue  # el feed es de catálogo completo: sin filtro entra de todo
+
+            # 📂 Taxonomía v8 sobre la jerarquía CRUDA del feed. Se le pasa
+            # `secondary` sin aplanar porque `classify_product` mira primero
+            # la hoja de la ruta, que es el dato más específico que hay.
+            #
+            # El resultado (`subcategoría`) va directo a `product_type`: en la
+            # taxonomía v8 son lo mismo. La categoría macro no se guarda acá —
+            # sale del JOIN con `product_categories.family`.
+            par = classify_product(item.get("primary", ""),
+                                   item.get("secondary_raw", ""),
+                                   name)
+            if not par:
+                continue  # no es catálogo digital, o no ubicable en la taxonomía
+            product_type = par[1]
 
             def num(clave: str) -> float:
                 try:

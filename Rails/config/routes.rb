@@ -41,6 +41,11 @@ Rails.application.routes.draw do
       get  "products",      to: "notebooks#index"
       post "products",      to: "notebooks#create"
 
+      # 📂 Árbol de navegación con conteos reales (taxonomía v8).
+      #    Ej: /api/v1/products/categories?country=US
+      #    Lectura pública: la consume el SSR de Next.js para pintar el menú.
+      get  "products/categories", to: "notebooks#categories"
+
       # =========================================================
       # 🔔 DESPACHO DE ALERTAS DE PRECIO (system-level)
       # Consumido por el PriceAlertAgent (Python) tras cada ciclo de precios.
