@@ -97,22 +97,27 @@ spec:
         # vacía) y las otras redes siguen corriendo normalmente.
         # El SID no es secreto —viaja en cada link de afiliado— pero el
         # client id/secret sí, así que van por Secret Manager.
-        # ⏸️ Descomentar DESPUÉS de crear los secretos; Cloud Run rechaza el
-        # deploy entero si se referencia un secreto que no existe.
-        #   gcloud secrets create RAKUTEN_CLIENT_ID     --data-file=-
-        #   gcloud secrets create RAKUTEN_CLIENT_SECRET --data-file=-
-        # - name: RAKUTEN_SID
-        #   value: "4732622"
-        # - name: RAKUTEN_CLIENT_ID
-        #   valueFrom:
-        #     secretKeyRef:
-        #       name: RAKUTEN_CLIENT_ID
-        #       key: latest
-        # - name: RAKUTEN_CLIENT_SECRET
-        #   valueFrom:
-        #     secretKeyRef:
-        #       name: RAKUTEN_CLIENT_SECRET
-        #       key: latest
+        # ✅ Activo desde 2026-08-06. Los dos secretos existen en Secret Manager
+        # y `clicks-sa` tiene `roles/secretmanager.secretAccessor` sobre ambos.
+        # Ese binding NO es opcional: sin él Cloud Run acepta el deploy y el
+        # contenedor arranca, pero la lectura del secreto falla en ejecución y
+        # el adaptador se auto-desactiva en silencio — el peor modo de fallo,
+        # porque parece un despliegue sano con el catálogo vacío.
+        #
+        # Rotar el secreto = nueva versión, sin tocar este archivo:
+        #   printf '%s' 'NUEVO' | gcloud secrets versions add RAKUTEN_CLIENT_SECRET --data-file=-
+        - name: RAKUTEN_SID
+          value: "4732622"
+        - name: RAKUTEN_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: RAKUTEN_CLIENT_ID
+              key: latest
+        - name: RAKUTEN_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: RAKUTEN_CLIENT_SECRET
+              key: latest
         livenessProbe:
           httpGet:
             path: /health

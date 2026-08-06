@@ -766,3 +766,51 @@ Easings `--ease-spring` y `--ease-in-out-soft`; keyframes `floatSoft`, `orbDrift
 
 - `[Criterio]`: **ante la duda, descartar**. Hay 111k laptops disponibles en el feed, así que filtrar de más cuesta mucho menos que publicar un motherboard como si fuera una notebook.
 - `[Conclusión de método]`: la calidad de una ingesta **no se verifica leyendo el adaptador**. Cuatro rondas de medición sobre datos reales convirtieron 1-de-12 en 235-de-235; ninguna de las cuatro era predecible desde el código.
+
+---
+
+## ☁️ 2026-08-06 · Despliegue de la taxonomía v8 y auditoría del sitio en vivo
+
+- `[Origen]`: el titular pidió completar el despliegue y auditar el sitio con un navegador real buscando bloqueos y fugas.
+
+### La migración v8 en producción
+
+Aplicada contra `clicks-db2` (POSTGRES_18) por el Cloud SQL Auth Proxy:
+
+| | antes | después |
+|---|---|---|
+| Productos | 70 | **70** (ninguno migró) |
+| Categorías | 9 | **56** |
+| Familias | 3 | **9** |
+| Índices de escala | 0 | **4** |
+
+- **Cero productos huérfanos**: la FK `fk_laptops_product_type` quedó intacta.
+- **Retrocompatible verificado en caliente**: con la migración ya aplicada y el Rails VIEJO todavía sirviendo, `/notebooks` y `/sitemap` seguían en 200. Recién después se desplegó el código nuevo.
+
+### Un paso que casi se omite y habría fallado en silencio
+
+`clicks-sa` necesitaba `roles/secretmanager.secretAccessor` sobre los dos secretos de Rakuten. Sin ese binding Cloud Run **acepta el deploy y el contenedor arranca**, pero la lectura del secreto falla en ejecución y el adaptador se auto-desactiva. Es el peor modo de fallo posible: un despliegue que parece sano con el catálogo vacío. Quedó documentado en `cloudrun-python.yaml`.
+
+### 🔴 Tres defectos que solo aparecieron mirando el sitio en vivo
+
+1. **El `<title>` terminaba en coma** — `Clicks & Go | Tu Próxima Compra Tech,`. La coma está en `title1` a propósito (primera línea de un titular de dos), pero se usaba sola como título de página. Se veía en la pestaña **y en el resultado de Google**.
+2. **Tres links muertos en el footer** (`href="#"`) — clic sin destino.
+3. **Esos íconos medían 18×18 px** — bajo el mínimo de 24×24 de WCAG 2.5.5.
+
+Ninguno lo detecta `tsc`, ESLint ni los 309 tests: los tres son correctos como código y defectuosos como producto.
+
+### Verificación post-despliegue
+
+| Chequeo | Resultado |
+|---|---|
+| Fugas de credenciales en 349 KB de HTML | **0** (PATs, claves privadas, AWS, `INTERNAL_API_KEY`, `DATABASE_URL`, credenciales Rakuten) |
+| Escrituras de API sin token | **401** en las 4, incluido el `batch` nuevo |
+| Árbol de categorías | 200 con jerarquía y conteos reales |
+| Paginación | página 1 y 2 **sin un solo producto repetido** — la garantía del `ORDER BY id` explícito |
+| Filtros | `?category=peripherals` → 9 · `?type=laptop` → 11 |
+| Links de afiliado | 12/12 con `rel="sponsored"` |
+| Divulgación FTC + Amazon, consentimiento | presentes |
+| 4 locales, legales, sitemap (292 URLs), 404 | todos correctos |
+| Título / links muertos / WCAG | corregidos y confirmados en vivo |
+
+- `[Conclusión de método]`: se sostiene lo aprendido con el CSS. **Un despliegue verde no es un producto sano.** Las tres fallas de esta sesión pasaron por build, tests y deploy sin una queja, y solo aparecieron abriendo el sitio y midiendo lo que el visitante realmente recibe.
