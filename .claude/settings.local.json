@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(docker --version)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(gcloud secrets *)",
+      "Bash(gcloud iam *)",
+      "Bash(gcloud projects add-iam-policy-binding *)",
+      "Bash(gcloud run *)",
+      "Bash(gcloud builds *)",
+      "Bash(gcloud sql *)",
+      "Bash(gcloud services *)"
     ]
   }
 }

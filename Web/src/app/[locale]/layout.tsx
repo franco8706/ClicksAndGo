@@ -45,8 +45,20 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { locale } = await params;
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
+  // 🏷️ El título se arma con las DOS líneas del hero.
+  //
+  // `title1` termina en coma a propósito: es la primera línea de un titular
+  // de dos ("Tu Próxima Compra Tech," / "Al Mejor Precio"). Usarla sola dejaba
+  // la coma colgando —"Clicks & Go | Tu Próxima Compra Tech,"— en la pestaña
+  // del navegador y, peor, en el resultado de Google. Verificado en producción
+  // con el sitio en vivo, no leyendo el diccionario.
+  const tituloHero = [dict.hero?.title1, dict.hero?.title2]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/,\s*$/, "");   // red de seguridad si algún idioma solo trae title1
+
   return {
-    title: `Clicks & Go | ${dict.hero?.title1 || "Encuentra tu Laptop Ideal"}`,
+    title: `Clicks & Go | ${tituloHero || "Encuentra tu Laptop Ideal"}`,
     description: dict.footer?.description || "Innovación en hardware y auditoría agéntica distribuida.",
     // 🔍 Sin metadataBase, Next no puede resolver URLs relativas en `alternates`
     // — el hreflang de abajo se calculaba pero NUNCA se renderizaba en el HTML
@@ -152,10 +164,27 @@ export default async function RootLayout({ children, params }: LayoutProps) {
                       <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
                       <span className="text-xs font-bold tracking-wide text-[#6b7280]">Auditoría Clicks & Go v4.0</span>
                     </li>
-                    <li className="flex space-x-4 pt-3">
-                      <Link href="#" aria-label="Comunidad" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><MessageSquare size={18} /></Link>
-                      <Link href="#" aria-label="Negocios" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><Briefcase size={18} /></Link>
-                      <Link href="#" aria-label="Desarrollo" className="text-[#9aa1ac] hover:text-[#0a0e14] transition-colors"><Code2 size={18} /></Link>
+                    {/* 🔗 Tres íconos que apuntaban a `href="#"`.
+                        Medido en producción con un navegador real: eran links
+                        muertos —clic sin destino— y además cajas de 18×18 px,
+                        por debajo del mínimo de 24×24 que pide WCAG 2.5.5 para
+                        un objetivo táctil.
+                        Ahora llevan a destinos REALES del propio sitio y el
+                        área clickeable se agranda con padding, sin cambiar el
+                        tamaño visual del ícono. */}
+                    <li className="flex space-x-2 pt-3">
+                      <Link href={`/${locale}#catalogo`} aria-label={dict.footer?.catalogLink || "Ver catálogo"}
+                            className="p-1.5 -m-1.5 text-[#9aa1ac] hover:text-[#0a0e14] transition-colors">
+                        <MessageSquare size={18} />
+                      </Link>
+                      <a href="mailto:info@clicks-and-go.com?subject=Consulta%20comercial" aria-label={dict.footer?.businessLink || "Contacto comercial"}
+                         className="p-1.5 -m-1.5 text-[#9aa1ac] hover:text-[#0a0e14] transition-colors">
+                        <Briefcase size={18} />
+                      </a>
+                      <Link href={`/${locale}/terminos`} aria-label={dict.footer?.termsFullLink || "Términos y condiciones"}
+                            className="p-1.5 -m-1.5 text-[#9aa1ac] hover:text-[#0a0e14] transition-colors">
+                        <Code2 size={18} />
+                      </Link>
                     </li>
                   </ul>
                 </div>
