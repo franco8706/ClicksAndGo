@@ -709,3 +709,60 @@ Easings `--ease-spring` y `--ease-in-out-soft`; keyframes `floatSoft`, `orbDrift
 | Idiomas | es/en/pt/it → **200** |
 
 - `[Conclusión de método]`: para CSS, **verificar el artefacto no alcanza — hay que verificar el comportamiento**. La cascada, la especificidad y la precedencia de las animaciones no son visibles ni en el código fuente ni en el CSS compilado. Las tres fallas de esta sesión eran de ese tipo y ninguna suite basada en texto podía atraparlas.
+
+---
+
+## 🛒 2026-08-06 · Rakuten Advertising: el primer afiliado vivo, y por qué el catálogo publicaba repuestos
+
+- `[Origen]`: el titular consiguió la aprobación de **ASUS BR** en Rakuten y preguntó si había que pasar los enlaces. La respuesta fue que no: enlaces sueltos no sirven a esta arquitectura, lo que hacía falta eran **credenciales de feed**.
+- `[Método]`: se probó la API **en vivo** antes de escribir una línea de adaptador, y después se midió la calidad de la clasificación sobre 600 items reales del feed, ronda por ronda. Nada de esto era visible leyendo código.
+
+### Lo que la API reveló (y contradijo)
+
+| Hallazgo | Consecuencia |
+|---|---|
+| **100/100** items de una página traen `imageurl` real del comerciante | Es **la solución** al bloqueo de imágenes: solo 2 de 70 fichas tenían foto genuina, y la causa era la falta de credenciales, no el frontend |
+| `linkurl` ya viene firmado con el ID de publisher | El clic acredita sin post-procesar nada; reescribir la URL rompería el tracking |
+| `max=200` devuelve **200 OK con CERO items** | La peor forma de fallar: éxito aparente, catálogo vacío. `PAGE_SIZE=100` quedó fijado por test |
+| **ASUS BR publica 0 productos** | El anunciante que aprobó primero no sirve para el catálogo. Quien lo destraba es **Newegg** (111k laptops), con quien la asociación ya existía sin que el titular lo supiera |
+| Los access tokens viven **1 hora** | En el entorno van solo client id/secret; el token se pide en caliente. Guardarlo lo condenaría a vencerse y dejar el pipeline fallando en silencio — el modo de falla que ya costó 51 días |
+
+### 🔴 FALLO 1 — El clasificador decidía por orden de diccionario, no por el producto
+
+- Un `"KOORUI Mechanical Gaming Keyboard … for Laptop"` salía como **laptop**. También un mouse, y un monitor portátil.
+- **Causa**: `classify_digital_product` recorría `_CATEGORY_KEYWORDS` y devolvía la **primera** coincidencia. Como `laptop` es la primera clave del diccionario, cualquier producto que mencionara "laptop" en cualquier parte se llevaba esa etiqueta.
+- **Fix**: gana la keyword que aparece **antes en el título**. Los títulos de retail nombran el producto al principio y sus compatibilidades después, así que la coincidencia más temprana es la que dice **qué es** la cosa.
+- Afecta también a Awin y CJ: el clasificador es compartido a propósito.
+
+### 🔴 FALLO 2 — El feed de un retailer grande es mayoritariamente repuestos
+
+- Primera medición: **1 de 12** aceptados era un producto real. El resto: un motherboard, un filtro de privacidad, un hub USB, un touchpad suelto, un apoyamuñecas, una placa WiFi, cables.
+- **Causa**: los repuestos **repiten la categoría en su propio nombre** — "Laptop Motherboards", "Laptop Batteries", "Mouse Pad", "Monitor Riser Stand". Ninguna heurística sobre el nombre los distingue sin nombrarlos.
+- **Fix**: denylist de repuestos, accesorios, memorias, mochilas y soportes. **Cada término salió de un caso observado**, no de imaginar casos.
+
+### 🟡 Un término que se probó y se DESCARTÓ
+
+- `"for laptop"` parecía la señal perfecta de accesorio. Medido: costaba **3 periféricos legítimos** (dos mouse y un combo teclado+mouse que solo declaraban compatibilidad) y **no aportaba ninguno**, porque la regla de coincidencia más temprana ya clasificaba bien esos títulos y los accesorios reales caen por su propio nombre (`usb hub`, `privacy filter`).
+- Quedó documentado **en la denylist como advertencia de no volver a agregarlo**.
+
+### 🟡 Una trampa de la taxonomía
+
+- `"Electronics Accessories"` **encabeza categorías legítimas** en Rakuten: es la raíz de la rama donde viven mice y teclados reales. Filtrar por esa frase habría vaciado dos categorías enteras. Por eso las entradas de accesorios de la denylist son **frases completas**, nunca la palabra suelta.
+
+### 🔴 FALLO 3 — Regresión atrapada por un test viejo
+
+- Al reescribir el clasificador, `(title or "").lower()` reemplazó a un f-string que toleraba entradas no-string. Un campo numérico de un feed de terceros tumbaba la ingesta con `AttributeError`.
+- Lo atrapó `test_nunca_lanza_con_entradas_invalidas`, que ya existía. **El test de robustez escrito para otro motivo pagó acá.**
+
+### Resultado
+
+| Métrica | Valor |
+|---|---|
+| Items crudos evaluados | 600 |
+| Aceptados | **235** |
+| Con imagen real | **235 / 235 (100%)** |
+| Con link de afiliado firmado | **235 / 235 (100%)** |
+| Tests Python | **153** (117 previos + 36 nuevos) |
+
+- `[Criterio]`: **ante la duda, descartar**. Hay 111k laptops disponibles en el feed, así que filtrar de más cuesta mucho menos que publicar un motherboard como si fuera una notebook.
+- `[Conclusión de método]`: la calidad de una ingesta **no se verifica leyendo el adaptador**. Cuatro rondas de medición sobre datos reales convirtieron 1-de-12 en 235-de-235; ninguna de las cuatro era predecible desde el código.
