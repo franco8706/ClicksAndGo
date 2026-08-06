@@ -92,6 +92,27 @@ spec:
         #     secretKeyRef:
         #       name: AUTH_RESEND_KEY
         #       key: latest
+        # 🛒 Rakuten Advertising — primera red de afiliados viva del proyecto.
+        # Sin estas variables el adaptador se auto-desactiva (devuelve lista
+        # vacía) y las otras redes siguen corriendo normalmente.
+        # El SID no es secreto —viaja en cada link de afiliado— pero el
+        # client id/secret sí, así que van por Secret Manager.
+        # ⏸️ Descomentar DESPUÉS de crear los secretos; Cloud Run rechaza el
+        # deploy entero si se referencia un secreto que no existe.
+        #   gcloud secrets create RAKUTEN_CLIENT_ID     --data-file=-
+        #   gcloud secrets create RAKUTEN_CLIENT_SECRET --data-file=-
+        # - name: RAKUTEN_SID
+        #   value: "4732622"
+        # - name: RAKUTEN_CLIENT_ID
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: RAKUTEN_CLIENT_ID
+        #       key: latest
+        # - name: RAKUTEN_CLIENT_SECRET
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: RAKUTEN_CLIENT_SECRET
+        #       key: latest
         livenessProbe:
           httpGet:
             path: /health

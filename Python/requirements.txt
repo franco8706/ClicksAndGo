@@ -14,6 +14,9 @@ urllib3>=2.0.0          # Gestión robusta del Pool de Conexiones TCP
 aiohttp>=3.9.3          
 beautifulsoup4>=4.12.3
 lxml>=5.0.0
+# Parser XML endurecido — la Product Search API de Rakuten responde en XML y
+# xml.etree es vulnerable a expansión de entidades sobre contenido remoto.
+defusedxml>=0.7.1
            
 # ==============================================================
 # 🗄️ DATA LAKE (Almacenamiento Crudo)
