@@ -46,6 +46,10 @@ Rails.application.routes.draw do
       #    Lectura pública: la consume el SSR de Next.js para pintar el menú.
       get  "products/categories", to: "notebooks#categories"
 
+      # 📦 Ingesta por lotes (hasta 500 productos por request).
+      #    Escritura: protegida por InternalApiAuth como el resto de los POST.
+      post "products/batch", to: "notebooks#create_batch"
+
       # =========================================================
       # 🔔 DESPACHO DE ALERTAS DE PRECIO (system-level)
       # Consumido por el PriceAlertAgent (Python) tras cada ciclo de precios.

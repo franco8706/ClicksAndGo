@@ -10,7 +10,7 @@ import { PRODUCT_TYPES, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
 
 /* ── Iconos por tipo de producto (multi-producto) ── */
-const TYPE_ICON: Record<ProductType, React.ReactNode> = {
+const TYPE_ICON: Partial<Record<ProductType, React.ReactNode>> = {
   laptop:     <Laptop            size={16} className="text-blue-500" />,
   desktop:    <Monitor           size={16} className="text-blue-500" />,
   monitor:    <MonitorSmartphone size={16} className="text-blue-500" />,

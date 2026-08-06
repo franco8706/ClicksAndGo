@@ -6,7 +6,7 @@ import { Cpu, Box, HardDrive, ChevronLeft, ShoppingCart, Globe, Zap } from "luci
 
 import { formatCurrencyString } from "@/lib/currency";
 import { Laptop } from "@/types/laptop";
-import { SPEC_SCHEMA, formatSpec, type ProductType } from "@/types/product";
+import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
 
 import es from "@/dictionaries/es.json";
 import en from "@/dictionaries/en.json";
@@ -93,7 +93,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
 
   // 📦 Specs por tipo de producto (multi-producto): mismo SPEC_SCHEMA que la card.
   const productType = (laptop.product_type || "laptop") as ProductType;
-  const specSchema = SPEC_SCHEMA[productType] || SPEC_SCHEMA.laptop;
+  const specSchema = specSchemaFor(productType);
   const specSource: Record<string, unknown> =
     laptop.specs && Object.keys(laptop.specs).length > 0
       ? (laptop.specs as Record<string, unknown>)

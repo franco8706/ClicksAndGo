@@ -13,13 +13,14 @@ import React, { useMemo, useRef } from "react";
 import {
   Laptop, Monitor, MonitorSmartphone, Keyboard, Mouse,
   Headphones, Webcam, Printer, Droplet, ChevronLeft, ChevronRight,
+  Package,
 } from "lucide-react";
 import type { Laptop as Product } from "@/types/laptop";
 import { PRODUCT_TYPES, type ProductType } from "@/types/product";
 import { recordSignal } from "@/lib/affinity";
 import type { Dict } from "@/types/dictionary";
 
-const TYPE_ICON: Record<ProductType, React.ComponentType<{ size?: number; className?: string }>> = {
+const TYPE_ICON: Partial<Record<ProductType, React.ComponentType<{ size?: number; className?: string }>>> = {
   laptop: Laptop,
   desktop: Monitor,
   monitor: MonitorSmartphone,
@@ -100,7 +101,9 @@ export default function CategoryShowcase({ laptops, dict }: CategoryShowcaseProp
         className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2 stagger-children"
       >
         {entries.map(({ type, count }) => {
-          const Icon = TYPE_ICON[type];
+          // Respaldo obligatorio: `TYPE_ICON` es Partial desde que la
+          // taxonomía pasó de 9 a 56 tipos, y no todos declaran ícono propio.
+          const Icon = TYPE_ICON[type] ?? Package;
           return (
             <button
               key={type}

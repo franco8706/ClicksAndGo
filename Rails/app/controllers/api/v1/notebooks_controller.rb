@@ -235,10 +235,64 @@ module Api
       # =========================================================
       # 📥 ENDPOINT: POST /api/v1/notebooks
       # =========================================================
+      # =========================================================
+      # 📦 ENDPOINT: POST /api/v1/products/batch
+      #
+      # Ingesta de hasta BATCH_MAX_ITEMS productos en UN request.
+      #
+      # POR QUÉ: `create` persiste un producto por request HTTP. Con 70
+      # productos era irrelevante; con el catálogo completo de un retailer no
+      # cierra — 50.000 productos son 50.000 requests, y con los 5 hilos del
+      # MasterOrchestrator eso son ~3 horas de ingesta, más 50.000 arranques
+      # de transacción y 50.000 pasadas del stack de Rails.
+      #
+      # Cada item se persiste en su PROPIA transacción (dentro de
+      # `save_raw_offer`), no en una sola gigante: un producto con un precio
+      # inválido no puede tirar abajo los otros 499 del lote. Por eso la
+      # respuesta informa cuántos entraron y cuántos fallaron en vez de ser
+      # todo-o-nada.
+      # =========================================================
+      BATCH_MAX_ITEMS = 500
+
+      def create_batch
+        items = params.to_unsafe_h.deep_symbolize_keys[:items] || []
+
+        unless items.is_a?(Array)
+          return render json: { status: 'ERROR', message: 'items debe ser un array' },
+                        status: :unprocessable_entity
+        end
+
+        if items.length > BATCH_MAX_ITEMS
+          return render json: { status: 'ERROR',
+                                message: "máximo #{BATCH_MAX_ITEMS} items por lote, llegaron #{items.length}" },
+                        status: :unprocessable_entity
+        end
+
+        ok = 0
+        fallos = []
+        items.each_with_index do |item, i|
+          PersistenceOrchestrator.save_raw_offer(item)
+          ok += 1
+        rescue StandardError => e
+          # Se registra el índice y el SKU, no el payload entero: un lote de
+          # 500 items con error escribiría megabytes de log por request.
+          fallos << { index: i, sku: item[:sku_original], error: "#{e.class}: #{e.message}"[0, 200] }
+        end
+
+        Rails.logger.warn("[batch] #{fallos.length}/#{items.length} fallaron") if fallos.any?
+
+        render json: { status: 'SUCCESS', persisted: ok, failed: fallos.length, errors: fallos.first(20) },
+               status: :created
+      rescue StandardError => e
+        Rails.logger.error("🚨 [Batch API] #{e.class}: #{e.message}")
+        render json: { status: 'ERROR', message: 'Fallo al procesar el lote' },
+               status: :internal_server_error
+      end
+
       def create
         # 🛠️ Conversión profunda para evitar choques entre Hash de Strings y Símbolos
         payload = params.to_unsafe_h.deep_symbolize_keys
-        
+
         PersistenceOrchestrator.save_raw_offer(payload)
         render json: { status: 'SUCCESS', message: 'Oferta persistida en Postgres' }, status: :created
       rescue ActiveRecord::RecordInvalid => e

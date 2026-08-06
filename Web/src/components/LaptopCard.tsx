@@ -7,7 +7,7 @@ import { formatCurrencyString } from "@/lib/currency";
 import { recordSignal } from "@/lib/affinity";
 import { isPromoExpired } from "@/components/EventBanner";
 import type { Laptop, AIScoreLabel } from "@/types/laptop";
-import { SPEC_SCHEMA, formatSpec, type ProductType } from "@/types/product";
+import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
 import type { Dict } from "@/types/dictionary";
 
 interface LaptopCardProps {
@@ -29,7 +29,7 @@ interface LaptopCardProps {
 ─────────────────────────────────────────────────────────────────────────── */
 function buildSpecEntries(product: Laptop, dict: Dict): { label: string; value: string }[] {
   const type = (product.product_type || "laptop") as ProductType;
-  const schema = SPEC_SCHEMA[type] || SPEC_SCHEMA.laptop;
+  const schema = specSchemaFor(type);
   const source: Record<string, unknown> =
     product.specs && Object.keys(product.specs).length > 0
       ? (product.specs as Record<string, unknown>)

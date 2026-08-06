@@ -35,6 +35,11 @@ DEFAULT_RAILS_URL = "http://rails_backend:3000"
 # Endpoints de Rails. Declarados acá para que ningún agente los escriba a mano.
 NEWS_PATH = "/api/v1/notebooks/hardware_news"
 PRODUCTS_PATH = "/api/v1/notebooks"
+PRODUCTS_BATCH_PATH = "/api/v1/products/batch"
+
+# Espejo de `BATCH_MAX_ITEMS` en notebooks_controller.rb. Rails rechaza el
+# lote entero si se pasa, así que este número no puede subirse de un solo lado.
+BATCH_MAX_ITEMS = 500
 
 
 def rails_base() -> str:
@@ -91,3 +96,56 @@ def post_json(path: str, payload: dict, timeout: int = 15) -> tuple[bool, int]:
     else:
         logger.error("POST %s → %s: %s", url, status, resp.text[:200])
     return False, status
+
+
+def post_products_batch(productos: list, timeout: int = 120) -> tuple[int, int]:
+    """Persiste productos en Rails por LOTES. Devuelve `(guardados, fallidos)`.
+
+    Por qué existe: `post_json(PRODUCTS_PATH, ...)` manda un producto por
+    request. Con 70 productos daba igual; con el catálogo completo de un
+    retailer no cierra — 50.000 productos son 50.000 requests HTTP, cada uno
+    con su handshake, su pasada por el stack de Rails y su transacción.
+
+    Trocea en lotes de `BATCH_MAX_ITEMS` porque Rails rechaza los más grandes,
+    y porque un lote gigante multiplica el costo de un reintento: si falla la
+    red en el item 9.000, se reintenta el lote entero.
+
+    El timeout por defecto es alto (120 s) a propósito: un lote de 500
+    productos abre 500 transacciones del lado de Rails. Con los 15 s del
+    `post_json` normal, un lote sano moría por timeout y se reintentaba
+    duplicando trabajo ya hecho.
+    """
+    if not productos:
+        return 0, 0
+
+    guardados = fallidos = 0
+    for i in range(0, len(productos), BATCH_MAX_ITEMS):
+        lote = productos[i:i + BATCH_MAX_ITEMS]
+        url = rails_url(PRODUCTS_BATCH_PATH)
+        try:
+            resp = requests.post(url, json={"items": lote},
+                                 headers=internal_headers(), timeout=timeout)
+        except Exception as exc:
+            logger.error("Lote %s-%s falló sin respuesta: %s", i, i + len(lote), exc)
+            fallidos += len(lote)
+            continue
+
+        if 200 <= resp.status_code < 300:
+            try:
+                datos = resp.json()
+            except ValueError:
+                # 2xx con cuerpo ilegible: se contabiliza como guardado porque
+                # Rails ya persistió, pero queda el rastro para investigar.
+                logger.warning("Lote %s: 2xx con cuerpo no-JSON", i)
+                guardados += len(lote)
+                continue
+            guardados += int(datos.get("persisted", 0))
+            fallidos += int(datos.get("failed", 0))
+            for err in (datos.get("errors") or [])[:5]:
+                logger.warning("Item rechazado (sku=%s): %s", err.get("sku"), err.get("error"))
+        else:
+            logger.error("Lote %s → %s: %s", i, resp.status_code, resp.text[:200])
+            fallidos += len(lote)
+
+    logger.info("Ingesta por lotes: %s guardados, %s fallidos", guardados, fallidos)
+    return guardados, fallidos

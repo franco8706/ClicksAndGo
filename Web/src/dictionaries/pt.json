@@ -24,7 +24,13 @@
     "allProducts": "Todos",
     "products": "produtos",
     "productSingular": "produto",
-    "clearFilter": "Remover filtro"
+    "clearFilter": "Remover filtro",
+    "categories": "Categorias",
+    "all": "Tudo",
+    "pagination": "Paginação",
+    "previous": "Anterior",
+    "page": "Página",
+    "next": "Próximo"
   },
   "news": {
     "title": "Notícias de Tecnologia",

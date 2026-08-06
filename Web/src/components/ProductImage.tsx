@@ -33,7 +33,7 @@ import {
 import type { ProductType } from "@/types/product";
 import { isRealProductImage } from "@/lib/productImage";
 
-const TYPE_ICON: Record<ProductType, React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>> = {
+const TYPE_ICON: Partial<Record<ProductType, React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>>> = {
   laptop: Laptop,
   desktop: Monitor,
   monitor: MonitorSmartphone,
