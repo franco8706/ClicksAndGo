@@ -40,7 +40,22 @@ PRODUCTS_BATCH_PATH = "/api/v1/products/batch"
 
 # Espejo de `BATCH_MAX_ITEMS` en notebooks_controller.rb. Rails rechaza el
 # lote entero si se pasa, así que este número no puede subirse de un solo lado.
-BATCH_MAX_ITEMS = 500
+#
+# 50 y no 500. Medido contra producción: un lote de 500 devolvió
+# `504 upstream request timeout` porque Rails corre con `timeoutSeconds: 30`
+# (cloudrun-rails.yaml) y cada producto abre su propia transacción con
+# `lock!` — a ~0,35 s por producto, 500 necesitan ~175 s.
+#
+# ⚠️ El 504 es SOLO la vista del cliente: Rails siguió procesando y persistió
+# igual. El cliente contó 500 fallidos cuando en realidad se guardaron. Ese
+# desacuerdo es peor que el error en sí, porque invita a reintentar algo que
+# ya está hecho. Es inofensivo acá —el upsert va por (retailer_id,
+# sku_original), así que reintentar actualiza en vez de duplicar— pero el
+# reporte mentiría igual.
+#
+# 50 × 0,35 s ≈ 18 s deja margen dentro de los 30 s incluso con la latencia
+# de red y un arranque en frío parcial.
+BATCH_MAX_ITEMS = 50
 
 
 def rails_base() -> str:
@@ -157,7 +172,7 @@ def post_products_batch(productos: list, timeout: int = 120) -> tuple[int, int]:
     if not productos:
         return 0, 0
 
-    guardados = fallidos = 0
+    guardados = fallidos = indeterminados = 0
     for i in range(0, len(productos), BATCH_MAX_ITEMS):
         lote = productos[i:i + BATCH_MAX_ITEMS]
         url = rails_url(PRODUCTS_BATCH_PATH)
@@ -182,9 +197,34 @@ def post_products_batch(productos: list, timeout: int = 120) -> tuple[int, int]:
             fallidos += int(datos.get("failed", 0))
             for err in (datos.get("errors") or [])[:5]:
                 logger.warning("Item rechazado (sku=%s): %s", err.get("sku"), err.get("error"))
+        elif resp.status_code in (504, 502, 408):
+            # ⚠️ Timeout del gateway, NO de Rails. Medido en producción: un
+            # lote de 500 devolvió 504 a los 30 s y Rails siguió procesando y
+            # persistiendo por detrás. Contarlos como fallidos era mentir en
+            # el reporte, e invitaba a reintentar trabajo ya hecho.
+            #
+            # No se suman a `guardados` (no hay confirmación) ni a `fallidos`
+            # (no hay evidencia de fallo): quedan como INDETERMINADOS, que es
+            # lo único honesto que se puede decir desde acá. Reintentar es
+            # seguro igual —el upsert va por (retailer_id, sku_original)— pero
+            # el operador merece saber que el número no es confiable.
+            indeterminados += len(lote)
+            logger.warning(
+                "Lote %s → %s tras %ss: el gateway cortó, pero Rails puede "
+                "haber persistido igual. %s items quedan INDETERMINADOS — "
+                "verificar en la base antes de reintentar.",
+                i, resp.status_code, timeout, len(lote),
+            )
         else:
             logger.error("Lote %s → %s: %s", i, resp.status_code, resp.text[:200])
             fallidos += len(lote)
 
-    logger.info("Ingesta por lotes: %s guardados, %s fallidos", guardados, fallidos)
+    if indeterminados:
+        logger.warning(
+            "Ingesta por lotes: %s guardados, %s fallidos, %s INDETERMINADOS "
+            "(el gateway cortó; verificar en la base).",
+            guardados, fallidos, indeterminados,
+        )
+    else:
+        logger.info("Ingesta por lotes: %s guardados, %s fallidos", guardados, fallidos)
     return guardados, fallidos

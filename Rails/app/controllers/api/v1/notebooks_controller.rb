@@ -252,7 +252,12 @@ module Api
       # respuesta informa cuántos entraron y cuántos fallaron en vez de ser
       # todo-o-nada.
       # =========================================================
-      BATCH_MAX_ITEMS = 500
+      # 50 y no 500: Rails corre con `timeoutSeconds: 30` y cada item abre su
+      # propia transacción con `lock!`. Medido contra producción, un lote de
+      # 500 devolvió 504 a los 30 s — aunque Rails siguió persistiendo por
+      # detrás, así que el cliente reportaba fallos sobre datos ya guardados.
+      # Debe mantenerse igual a BATCH_MAX_ITEMS en Python/src/rails_client.py.
+      BATCH_MAX_ITEMS = 50
 
       def create_batch
         items = params.to_unsafe_h.deep_symbolize_keys[:items] || []
