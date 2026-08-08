@@ -14,6 +14,7 @@
  */
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import type { Dict } from "@/types/dictionary";
 
@@ -34,11 +35,12 @@ interface CategoryNavProps {
   readonly tree: readonly CategoryNode[];
   /** Subcategoría activa (`product_type`), o null para "todo". */
   readonly activeType: string | null;
-  readonly onSelect: (type: string | null) => void;
+  /** Base de la ruta del catálogo, ej. "/es". */
+  readonly basePath: string;
   readonly dict: Dict;
 }
 
-export default function CategoryNav({ tree, activeType, onSelect, dict }: CategoryNavProps) {
+export default function CategoryNav({ tree, activeType, basePath, dict }: CategoryNavProps) {
   // Se abre la categoría que contiene la subcategoría activa, así al recargar
   // con ?type=ssd el menú aparece en el lugar donde está parado el usuario.
   const familiaDelActivo =
@@ -53,9 +55,9 @@ export default function CategoryNav({ tree, activeType, onSelect, dict }: Catego
     <nav aria-label={dict.common?.categories || "Categorías"} className="mb-8">
       {/* ── Nivel 1 ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2 mb-3">
-        <button
-          onClick={() => { onSelect(null); setAbierta(null); }}
-          aria-pressed={activeType === null}
+        <Link
+          href={`${basePath}#catalogo`}
+          aria-current={activeType === null ? "page" : undefined}
           className={`text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-[2px] border transition-colors cursor-pointer pressable ${
             activeType === null
               ? "bg-[#0a0e14] text-white border-[#0a0e14]"
@@ -64,7 +66,7 @@ export default function CategoryNav({ tree, activeType, onSelect, dict }: Catego
         >
           {dict.common?.all || "Todo"}{" "}
           <span className="opacity-60 font-bold">{totalGeneral}</span>
-        </button>
+        </Link>
 
         {tree.map((cat) => {
           const contieneActivo = cat.subcategories.some((s) => s.code === activeType);
@@ -98,10 +100,18 @@ export default function CategoryNav({ tree, activeType, onSelect, dict }: Catego
           {tree
             .find((c) => c.code === abierta)
             ?.subcategories.map((sub) => (
-              <button
+              <Link
                 key={sub.code}
-                onClick={() => onSelect(sub.code === activeType ? null : sub.code)}
-                aria-pressed={sub.code === activeType}
+                // Navegación por URL y no por estado del cliente: con miles de
+                // productos el filtrado en memoria no alcanza (el servidor solo
+                // manda una página), y además un <Link> es rastreable — cada
+                // subcategoría pasa a ser una URL que Google puede indexar.
+                href={
+                  sub.code === activeType
+                    ? `${basePath}#catalogo`
+                    : `${basePath}?type=${encodeURIComponent(sub.code)}#catalogo`
+                }
+                aria-current={sub.code === activeType ? "page" : undefined}
                 className={`text-[11px] font-bold px-2.5 py-1.5 rounded-[2px] border transition-colors cursor-pointer pressable ${
                   sub.code === activeType
                     ? "bg-blue-600 text-white border-blue-600"
@@ -110,7 +120,7 @@ export default function CategoryNav({ tree, activeType, onSelect, dict }: Catego
               >
                 {sub.label}{" "}
                 <span className="opacity-60">{sub.total}</span>
-              </button>
+              </Link>
             ))}
         </div>
       )}

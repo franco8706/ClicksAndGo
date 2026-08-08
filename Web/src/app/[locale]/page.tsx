@@ -11,6 +11,8 @@ import type { Dict } from "@/types/dictionary";
 import HeroSection from "@/components/HeroSection";
 import CategoryShowcase from "@/components/CategoryShowcase";
 import CatalogSection from "@/components/CatalogSection";
+import CategoryNav, { type CategoryNode } from "@/components/CategoryNav";
+import Pagination from "@/components/Pagination";
 import AIDealsSection from "@/components/AIDealsSection";
 import PromoBanners from "@/components/PromoBanners";
 import EventBanner from "@/components/EventBanner";
@@ -86,8 +88,21 @@ function WhyTrustUs({ dict }: { dict: Dict }) {
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
-export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function HomePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ type?: string; page?: string }>;
+}) {
   const { locale } = await params;
+  // 📂 Filtro y página vienen de la URL, no del estado del cliente. Con 2.600+
+  // productos el servidor manda UNA página, así que filtrar en memoria dejaría
+  // fuera casi todo el catálogo. Además así cada subcategoría es una URL
+  // propia: compartible, marcable y rastreable por Google.
+  const sp = await searchParams;
+  const tipoActivo = (sp?.type || "").trim() || null;
+  const paginaActual = Math.max(1, Number.parseInt(sp?.page || "1", 10) || 1);
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
   const headersList = await headers();
@@ -134,15 +149,33 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     signal: AbortSignal.timeout(RAILS_TIMEOUT_MS),
   };
 
-  const [laptopsRes, newsRes] = await Promise.allSettled([
-    fetch(`${railsApiUrl}/api/v1/notebooks?country=${countryCode}&limit=40`, fetchConfig),
+  const PER_PAGE = 40;
+  const filtro = tipoActivo ? `&type=${encodeURIComponent(tipoActivo)}` : "";
+
+  const [laptopsRes, newsRes, catsRes] = await Promise.allSettled([
+    fetch(
+      `${railsApiUrl}/api/v1/notebooks?country=${countryCode}&page=${paginaActual}&per_page=${PER_PAGE}${filtro}`,
+      fetchConfig,
+    ),
     fetch(`${railsApiUrl}/api/v1/notebooks/hardware_news?country=${countryCode}`, fetchConfig),
+    // El árbol va en el mismo Promise.allSettled: si Rails lo falla, la página
+    // sale sin menú de categorías en vez de no salir.
+    fetch(`${railsApiUrl}/api/v1/products/categories?country=${countryCode}`, fetchConfig),
   ]);
 
   let laptops: Laptop[] = [];
   if (laptopsRes.status === "fulfilled" && laptopsRes.value.ok) {
     try { laptops = await laptopsRes.value.json(); } catch (e) { console.error("Laptops parse error:", e); }
   }
+
+  let categoryTree: CategoryNode[] = [];
+  if (catsRes.status === "fulfilled" && catsRes.value.ok) {
+    try { categoryTree = await catsRes.value.json(); } catch (e) { console.error("Categories parse error:", e); }
+  }
+
+  // Página llena ⇒ probablemente hay otra. No se pide el total a propósito:
+  // un COUNT(*) sobre el catálogo entero cuesta más que la propia página.
+  const hayPaginaSiguiente = laptops.length === PER_PAGE;
 
   // Fallback al catálogo US si la región local viene vacía.
   // ⚠️ Va en try/catch a propósito: antes era un `await fetch` desnudo, así que
@@ -218,6 +251,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             </span>
           </div>
 
+          {/* 📂 Navegación de dos niveles con conteos reales del backend.
+              Antes el catálogo solo mostraba los primeros 40 productos del
+              país y no había forma de llegar al resto: con 2.600+ productos
+              eso dejaba el 98% inalcanzable, sin URL y sin indexar. */}
+          <CategoryNav
+            tree={categoryTree}
+            activeType={tipoActivo}
+            basePath={`/${locale}`}
+            dict={dict}
+          />
+
           <CatalogSection
             laptops={laptops}
             countryCode={countryCode}
@@ -225,6 +269,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             locale={locale}
             favoriteIds={isLoggedIn ? favoriteIds : undefined}
             toggleFavoriteAction={toggleFavoriteAction}
+          />
+
+          <Pagination
+            page={paginaActual}
+            hasNext={hayPaginaSiguiente}
+            basePath={`/${locale}`}
+            activeType={tipoActivo}
+            dict={dict}
           />
         </div>
       </section>

@@ -15,6 +15,7 @@
  */
 
 import React from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Dict } from "@/types/dictionary";
 
@@ -27,11 +28,27 @@ interface PaginationProps {
    *  devuelve el total a propósito: `COUNT(*)` sobre medio millón de filas
    *  cuesta más que la propia página de resultados. */
   readonly hasNext: boolean;
-  readonly onPageChange: (page: number) => void;
+  /** Base de la ruta del catálogo, ej. "/es". */
+  readonly basePath: string;
+  /** Subcategoría activa, para conservarla al cambiar de página. */
+  readonly activeType?: string | null;
   readonly dict: Dict;
 }
 
-export default function Pagination({ page, hasNext, onPageChange, dict }: PaginationProps) {
+export default function Pagination({ page, hasNext, basePath, activeType, dict }: PaginationProps) {
+  // ⚠️ El href se construye ACÁ y no se recibe como función.
+  //
+  // Pasar `(n) => string` desde el Server Component tiraba el home entero con
+  // 500: "Functions cannot be passed directly to Client Components". React no
+  // puede serializar una función a través de esa frontera. Se pasan los datos
+  // (base y filtro) y el cliente arma la URL — mismo patrón que CategoryNav.
+  const hrefForPage = (n: number) => {
+    const qs = new URLSearchParams();
+    if (activeType) qs.set("type", activeType);
+    if (n > 1) qs.set("page", String(n));
+    const s = qs.toString();
+    return `${basePath}${s ? `?${s}` : ""}#catalogo`;
+  };
   const hayPrevia = page > 1;
   const haySiguiente = hasNext && page < MAX_PAGE;
 
@@ -47,14 +64,18 @@ export default function Pagination({ page, hasNext, onPageChange, dict }: Pagina
       aria-label={dict.common?.pagination || "Paginación"}
       className="flex items-center justify-center gap-4 mt-12"
     >
-      <button
-        onClick={() => onPageChange(page - 1)}
-        disabled={!hayPrevia}
-        className={`${btn} bg-white text-[#414855] border-[#e6e8ec] hover:border-[#0a0e14]`}
-      >
-        <ChevronLeft size={14} />
-        {dict.common?.previous || "Anterior"}
-      </button>
+      {hayPrevia ? (
+        <Link href={hrefForPage(page - 1)} rel="prev"
+              className={`${btn} bg-white text-[#414855] border-[#e6e8ec] hover:border-[#0a0e14]`}>
+          <ChevronLeft size={14} />
+          {dict.common?.previous || "Anterior"}
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={`${btn} bg-white text-[#414855] border-[#e6e8ec] opacity-40`}>
+          <ChevronLeft size={14} />
+          {dict.common?.previous || "Anterior"}
+        </span>
+      )}
 
       <span
         className="text-[11px] font-black uppercase tracking-widest text-[#9aa1ac]"
@@ -63,14 +84,18 @@ export default function Pagination({ page, hasNext, onPageChange, dict }: Pagina
         {dict.common?.page || "Página"} {page}
       </span>
 
-      <button
-        onClick={() => onPageChange(page + 1)}
-        disabled={!haySiguiente}
-        className={`${btn} bg-white text-[#414855] border-[#e6e8ec] hover:border-[#0a0e14]`}
-      >
-        {dict.common?.next || "Siguiente"}
-        <ChevronRight size={14} />
-      </button>
+      {haySiguiente ? (
+        <Link href={hrefForPage(page + 1)} rel="next"
+              className={`${btn} bg-white text-[#414855] border-[#e6e8ec] hover:border-[#0a0e14]`}>
+          {dict.common?.next || "Siguiente"}
+          <ChevronRight size={14} />
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={`${btn} bg-white text-[#414855] border-[#e6e8ec] opacity-40`}>
+          {dict.common?.next || "Siguiente"}
+          <ChevronRight size={14} />
+        </span>
+      )}
     </nav>
   );
 }
