@@ -24,6 +24,7 @@
 # =====================================================================
 
 import os
+import time
 import logging
 
 import requests
@@ -71,18 +72,56 @@ def internal_headers() -> dict:
     }
 
 
-def post_json(path: str, payload: dict, timeout: int = 15) -> tuple[bool, int]:
+# ⏱️ Timeout de una escritura a Rails.
+#
+# 45 s y no 15. Rails corre con `minScale: 0` (escala a cero por costo), así
+# que la PRIMERA petición después de un rato de inactividad paga el arranque
+# en frío: contenedor + boot de Rails + pool de Postgres.
+#
+# Con 15 s eso se cortaba antes de tiempo y `post_json` devolvía HTTP 0 —
+# "la petición ni salió"— perdiendo los datos en silencio. Medido en los logs
+# de producción: pasó el 2026-08-02, el 08-05 y el 08-07, siempre entre las
+# 00:35 y las 04:01, que es cuando corren las tareas programadas y no hay
+# visitas manteniendo Rails caliente. El del 08-07 se llevó 54 artículos.
+POST_TIMEOUT_S = 45
+
+# Reintentos ante fallo de CONEXIÓN (no ante 4xx: un 401 no mejora repitiendo).
+# El primer intento despierta a Rails aunque expire; el segundo lo encuentra
+# caliente. Por eso alcanzan 3 intentos con una espera corta.
+POST_MAX_INTENTOS = 3
+POST_ESPERA_S = 5
+
+
+def post_json(path: str, payload: dict, timeout: int = POST_TIMEOUT_S) -> tuple[bool, int]:
     """POST autenticado a Rails. Devuelve `(ok, status_code)`.
 
     `ok` es True solo con 2xx. `status_code` es 0 si la petición ni salió
     (red caída, timeout). Loguea el detalle de cada modo de fallo para que un
     404 o un 401 sean visibles en Cloud Logging en vez de pasar por buenos.
+
+    Reintenta SOLO los fallos de conexión. Un 4xx es determinista —
+    repetirlo da el mismo resultado y solo agrega ruido— y un 5xx podría
+    haber persistido a medias, así que reintentarlo arriesga duplicar.
     """
     url = rails_url(path)
-    try:
-        resp = requests.post(url, json=payload, headers=internal_headers(), timeout=timeout)
-    except Exception as exc:
-        logger.error("POST %s falló sin respuesta: %s", url, exc)
+    ultimo_error = None
+
+    for intento in range(1, POST_MAX_INTENTOS + 1):
+        try:
+            resp = requests.post(url, json=payload, headers=internal_headers(), timeout=timeout)
+            break
+        except Exception as exc:
+            ultimo_error = exc
+            if intento < POST_MAX_INTENTOS:
+                logger.warning(
+                    "POST %s sin respuesta (intento %s/%s): %s. "
+                    "Probablemente arranque en frío de Rails; reintentando en %ss.",
+                    url, intento, POST_MAX_INTENTOS, exc, POST_ESPERA_S,
+                )
+                time.sleep(POST_ESPERA_S)
+    else:
+        logger.error("POST %s falló sin respuesta tras %s intentos: %s",
+                     url, POST_MAX_INTENTOS, ultimo_error)
         return False, 0
 
     status = resp.status_code

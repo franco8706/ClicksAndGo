@@ -56,7 +56,10 @@ MONITORED_SOURCES = [
     # ── Redes de afiliados ──────────────────────────────────────────────────
     {
         "source":   "awin_publisher_terms",
-        "url":      "https://www.awin.com/gb/legal/terms-and-conditions",
+        # URL corregida 2026-08-08: la anterior devolvía 404 desde al menos
+        # el 08-02 y hacía fallar la vigilancia legal en silencio. Awin
+        # movió /gb/legal/* y ahora redirige (301) a /gb/compliance.
+        "url":      "https://www.awin.com/gb/compliance",
         "network":  "AWIN",
         "region":   "ES/EU/GB",
         "priority": "HIGH",
@@ -192,7 +195,7 @@ MONITORED_SOURCES = [
     # ── Políticas generales con impacto en afiliación ─────────────────────
     {
         "source":   "awin_privacy_policy",
-        "url":      "https://www.awin.com/gb/legal/privacy-policy",
+        "url":      "https://www.awin.com/gb/compliance",
         "network":  "AWIN",
         "region":   "ES/EU/GB",
         "priority": "NORMAL",

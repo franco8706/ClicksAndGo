@@ -20,6 +20,15 @@ type PageProps = {
 /** ⏱️ Techo de espera a Rails — ver la nota en page.tsx del home. */
 const RAILS_TIMEOUT_MS = 8_000;
 
+// Misma resolución que `layout.tsx` y `sitemap.ts` — una sola fuente de verdad
+// para el dominio público. Si estos tres divergieran, Google recibiría
+// canonical y hreflang apuntando a hosts distintos para la misma página.
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.AUTH_URL ||
+  "https://clicks-web-2myrvivvhq-uc.a.run.app"
+).replace(/\/$/, "");
+
 async function getLaptopData(slug: string): Promise<Laptop | null> {
   const railsApiUrl = process.env.RAILS_API_URL || 'http://rails_backend:3000';
   try {
@@ -56,14 +65,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       // en producción que los 4 idiomas devuelven 200. El slug marca el
       // MERCADO/retailer, no el idioma. Debe declararse igual que en sitemap.ts,
       // o Google recibe señales contradictorias entre el sitemap y la página.
+      // ⚠️ `metadataBase` se declara ACÁ, no se hereda del layout.
+      //
+      // Medido en producción (2026-08-08): la home servía 5 `<link hreflang>`
+      // y la ficha de producto servía CERO, con este bloque `alternates` ya
+      // escrito y correcto. Sin `metadataBase` en el punto donde se resuelve
+      // la metadata, Next no puede convertir estas rutas relativas en URLs
+      // absolutas y las **descarta en silencio** — no avisa, no rompe el
+      // build, simplemente no emite las etiquetas.
+      //
+      // Es el mismo fallo que ya había aparecido en el layout, y la misma
+      // consecuencia: Search Console reporta "Duplicada: el usuario no ha
+      // indicado ninguna versión canónica", porque ve los 4 idiomas del mismo
+      // producto sin ninguna señal de que son traducciones entre sí.
+      //
+      // Verificar SIEMPRE contando `<link hreflang>` en el HTML servido, no
+      // leyendo este archivo: el código se veía correcto mientras fallaba.
+      metadataBase: new URL(SITE_URL),
       alternates: {
-        canonical: `/${locale}/laptop/${slug}`,
+        // URLs ABSOLUTAS, igual que en layout.tsx. No es preferencia de
+        // estilo: con rutas relativas Next emitía el `canonical` pero
+        // descartaba TODOS los `languages`, incluso con `metadataBase`
+        // declarado en esta misma función. Se midió contando
+        // `<link hreflang>` en el HTML servido: 5 en la home (que arma
+        // absolutas) y 0 en la ficha (que armaba relativas), con el bloque
+        // `alternates` escrito y correcto en los dos lados.
+        //
+        // El síntoma en Search Console es "Duplicada: el usuario no ha
+        // indicado ninguna versión canónica": Google ve las 4 traducciones
+        // del mismo producto sin ninguna señal de que se corresponden.
+        canonical: `${SITE_URL}/${locale}/laptop/${slug}`,
         languages: {
-          es: `/es/laptop/${slug}`,
-          en: `/en/laptop/${slug}`,
-          pt: `/pt/laptop/${slug}`,
-          it: `/it/laptop/${slug}`,
-          "x-default": `/en/laptop/${slug}`,
+          es: `${SITE_URL}/es/laptop/${slug}`,
+          en: `${SITE_URL}/en/laptop/${slug}`,
+          pt: `${SITE_URL}/pt/laptop/${slug}`,
+          it: `${SITE_URL}/it/laptop/${slug}`,
+          "x-default": `${SITE_URL}/en/laptop/${slug}`,
         },
       },
       // 🖼️ OG image solo si hay foto REAL del producto. Sin respaldo de stock:
@@ -112,8 +149,52 @@ export default async function LaptopDetailPage({ params }: PageProps) {
     return <Zap size={20} />;
   };
 
+  /* 🔍 Datos estructurados schema.org/Product.
+   *
+   * Sin esto Google ve una página de texto cualquiera: no sabe que hay un
+   * producto, ni su precio, ni su moneda, ni su disponibilidad. Es una de las
+   * causas de "Rastreada: actualmente sin indexar" en un catálogo — la página
+   * existe, se rastrea, pero no aporta nada que valga la pena indexar.
+   *
+   * Solo se declara lo que el backend realmente tiene:
+   *   · `image` únicamente si hay foto REAL (misma regla que ProductImage y
+   *     que el OG de arriba). Declarar una imagen de stock como si fuera del
+   *     producto es la misma representación engañosa, pero además le miente a
+   *     un consumidor automatizado.
+   *   · `offers` solo con precio > 0, o Google marca el dato como inválido.
+   * Nada se inventa para "completar" el schema. */
+  const precio = laptop.financials?.current_price ?? 0;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${laptop.brand} ${laptop.name}`.trim(),
+    ...(laptop.urls?.image ? { image: [laptop.urls.image] } : {}),
+    ...(laptop.seo?.description ? { description: laptop.seo.description } : {}),
+    ...(laptop.brand ? { brand: { "@type": "Brand", name: laptop.brand } } : {}),
+    // Sin `sku`: el DTO público no expone `sku_original` y el contrato con
+    // Rails es inmutable. Un identificador inventado sería peor que ninguno.
+    category: categoryLabel,
+    ...(precio > 0
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: precio,
+            priceCurrency: laptop.currency || "USD",
+            availability: "https://schema.org/InStock",
+            url: `${SITE_URL}/${locale}/laptop/${slug}`,
+          },
+        }
+      : {}),
+  };
+
   return (
     <main className="min-h-screen pt-32 pb-20 relative overflow-hidden bg-white">
+      <script
+        type="application/ld+json"
+        // El objeto lo arma el servidor a partir del DTO ya validado por
+        // Rails; no hay entrada del usuario en este JSON.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[130px] pointer-events-none z-0" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
