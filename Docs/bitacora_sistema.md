@@ -920,3 +920,51 @@ Eliminar la regla arregla el futuro, no el pasado: las entradas ya envenenadas s
 | `/en`, `/pt`, página de detalle | placeholders | **41 · 41 · 1 `<img>`**, 0 placeholders |
 
 - `[Lección, segunda parte]`: **una cabecera de caché no distingue éxito de error si no se lo pedís.** Cachear agresivamente `/_next/image` parecía puro upside; el costo escondido era que cualquier fallo transitorio del optimizador se congelaba un mes en el navegador de cada visitante. Y el modo de fallo fue el peor posible para diagnosticar: `curl` decía que estaba arreglado y el navegador decía que no, los dos con razón.
+
+---
+
+## 🔀 2026-08-10 · `middleware.ts` → `proxy.ts`, y por qué el catálogo no se indexa
+
+### El rename que falla abierto
+
+`next build` avisaba que el convenio `middleware` está deprecado en Next 16. No es cosmético: Next busca el export **por el nombre del archivo**, así que un `proxy.ts` que siga exportando `middleware` no se encuentra — y el sitio queda sin ruteo de idioma, sin `/out` y sin cabeceras de seguridad. **Falla abierta, no cerrada**, que es el modo de fallo caro.
+
+Cambio de fondo: el proxy corre en **runtime Node.js**, no en el edge. `config.matcher` se mantiene; la config de segmento de ruta ya no se admite. Se corrigieron de paso los comentarios del `Dockerfile` y del propio archivo, que explicaban la inyección de `NEXT_PUBLIC_SITE_URL` por el edge runtime — razón que dejó de ser cierta.
+
+Verificado en producción (`clicks-web-00041-wl4`, digest `6be22694…` confirmado contra el registry):
+
+| Chequeo | Resultado |
+|---|---|
+| `/` → ruteo por geo | **307 → `/en`** |
+| CSP · HSTS · X-Frame-Options · Referrer-Policy | **presentes** |
+| `/out` a dominio permitido | **307 con `?tag=clicksandgo-20`** |
+| `/out` a dominio ajeno | **307 a `/es`** (open-redirect cerrado) |
+| Imágenes tras el deploy | 41 `<img>`, 0 placeholders, guarda en 400 |
+
+### 🔍 Por qué Google no indexa el catálogo
+
+Search Console reportaba 260 páginas sin indexar contra 37 indexadas. La foto ya estaba vieja al leerla: **el sitemap tiene 10.504 URLs** (2625 productos × 4 idiomas + 12 secciones), así que faltaban ~10.200 por descubrir.
+
+Lo primero fue descartar lo técnico, y **está todo bien**: canonicals self-referential por locale, hreflang completo (es/en/pt/it/x-default), robots correcto, JSON-LD presente, `lastmod` real de la ingesta (no la hora de la petición), y **TTFB ~150 ms** — la velocidad no es el cuello.
+
+El problema es de **selección de catálogo**, no de SEO:
+
+| Señal medida sobre 2585 productos US | |
+|---|---|
+| Repuestos y accesorios de bajo valor | **54,4%** (1405) |
+| — patrón "For \<modelo\>" · cables · baterías/CMOS | 777 · 384 · 160 |
+| Categoría más grande del catálogo | **`cables_power` (351)** — más que laptops (158) |
+| Texto por ficha | ~1.300 caracteres |
+| Títulos de más de 60 chars | **90,6%** (mediana 126, tope 150 = truncado por el feed) |
+| Títulos con la marca duplicada | 13,5% — *"Viewsonic ViewSonic"*, *"Hp HP Victus"* |
+| Nombres exactamente repetidos | 28 nombres → 69 fichas |
+| Grupos de casi-duplicados | 100 → 285 fichas |
+
+La meta description existe, pero es plantilla idéntica en las 2585 fichas: `"Análisis experto para {nombre}"`. Aplicada a *"POWER SUPPLY 24V"* promete un análisis que la página no tiene — la misma clase de sobrepromesa que la doctrina de imágenes reales prohíbe en lo visual.
+
+Y un multiplicador ×4: la interfaz sí está traducida (similitud 21-36% entre locales), pero **el nombre y las specs — lo único que distingue una ficha — son idénticos en inglés en los 4 idiomas**.
+
+Los 3 "Página con redirección" son `/` → `/en`, `/es/` → `/es` y `www` → apex: correctos, nada que arreglar.
+
+- `[Diagnóstico]`: "Descubierta: actualmente sin indexar" es una decisión de **selección por calidad**, no un bloqueo. Google encontró las URLs y eligió no gastar rastreo en ellas. Con más de la mitad del catálogo en cables y tornillos, títulos truncados y una meta genérica, la decisión es entendible.
+- `[Pendiente de decisión del titular]`: filtrar los repuestos en la ingesta sacaría ~5.600 URLs de golpe, pero es una decisión de producto —hay diferencia real entre "comparador de tecnología" y "catálogo de repuestos"— y define qué sitio se está construyendo. Ver `redesign_plan.md`.
