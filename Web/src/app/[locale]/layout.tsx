@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
         'pt': `${SITE_URL}/pt`,
         'it': `${SITE_URL}/it`,
         // x-default: qué versión servir a un idioma no listado — mismo destino
-        // que ya usa el middleware para países sin locale mapeado (getLocale → en).
+        // que ya usa el proxy para países sin locale mapeado (getLocale → en).
         'x-default': `${SITE_URL}/en`,
       },
     },

@@ -39,7 +39,7 @@ const SITE_URL = (
 
 const LOCALES = ["es", "en", "pt", "it"] as const;
 const DEFAULT_LOCALE = "es";
-/** Idioma servido a quien no matchea ningún locale (espeja el middleware). */
+/** Idioma servido a quien no matchea ningún locale (espeja el proxy). */
 const X_DEFAULT_LOCALE = "en";
 
 // Solo páginas públicas indexables. login/register/panel quedan fuera (privadas).

@@ -35,7 +35,7 @@ export default async function PanelPage({ params }: PanelPageProps) {
   if (!session?.user?.id) redirect(`/${locale}/login`);
   const userId = session.user.id;
 
-  /* ── 🌍 Geo del visitante (inyectado por el middleware desde la IP) ── */
+  /* ── 🌍 Geo del visitante (inyectado por el proxy desde la IP) ── */
   const headersList = await headers();
   const detectedCountry = (headersList.get("x-country-code") || "US").toUpperCase();
 

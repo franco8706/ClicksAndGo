@@ -109,9 +109,10 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-// Base pública canónica del sitio, inyectada en BUILD (NEXT_PUBLIC_* queda
-// inlined en el edge runtime del middleware — process.env NO se lee en runtime
-// acá). Detrás de Cloudflare el Host que llega al server es `*.run.app` (hay un
+// Base pública canónica del sitio, inyectada en BUILD: las `NEXT_PUBLIC_*` se
+// reemplazan por su valor al compilar, así que lo que llega al contenedor ya
+// viene bakeado (ver el ARG del Dockerfile). Detrás de Cloudflare el Host que
+// llega al server es `*.run.app` (hay un
 // override de Host para que Cloud Run enrute), así que construir el redirect
 // desde el Host filtraría esa URL interna al navegador. Con esta base los
 // redirects siempre apuntan al dominio real.
@@ -136,7 +137,20 @@ function getLocale(request: NextRequest): string {
   }
 }
 
-export function middleware(request: NextRequest) {
+/**
+ * Punto de entrada del proxy (antes `middleware`).
+ *
+ * Next 16 deprecó el convenio `middleware.ts`: el archivo pasa a llamarse
+ * `proxy.ts` y la función exportada `proxy`. El nombre del export debe
+ * coincidir con el del archivo o Next no lo encuentra y **el sitio queda sin
+ * ruteo de idioma, sin `/out` y sin cabeceras de seguridad** — falla abierta,
+ * no cerrada, así que no es un rename cosmético.
+ *
+ * Cambio real de fondo: el proxy corre en **runtime Node.js**, no en el edge.
+ * `config.matcher` sigue igual, pero la config de segmento de ruta (`runtime`)
+ * ya no se admite acá.
+ */
+export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Extracción del código de país por IP (Vercel, Cloudflare o Fallback a US)
