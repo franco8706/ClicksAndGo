@@ -884,3 +884,39 @@ Ese último chequeo importa: un test que no puede fallar no es una guarda. Se ve
 
 - `[Lección]`: se repite el patrón del 2026-08-06, un escalón más arriba. **Un despliegue verde no es un producto sano** — y esta vez tampoco lo fue un `onError` bien escrito. Una degradación elegante sobre un fallo de configuración es indistinguible de una decisión de diseño: el sitio no se veía roto, se veía sobrio. El único chequeo que lo habría atrapado es el que compara la **configuración contra los datos reales**, que antes no existía y ahora corre con un comando.
 - `[Regla operativa nueva]`: el host de la imagen lo elige el **comerciante**, no la red de afiliados. Asociar un comerciante nuevo en Rakuten/Awin/CJ obliga a correr `npm run check:image-hosts`.
+
+### 🔁 El segundo fallo: el arreglo desplegado y el sitio igual de roto
+
+Desplegada la revisión `clicks-web-00039-sb9` (digest verificado contra el registry), el optimizador respondía `200 image/jpeg` por `curl`… y el navegador seguía mostrando 41 íconos de categoría con 41 errores `400`. Mismo URL, distinta respuesta.
+
+La medición que lo resolvió, sobre la página ya cargada:
+
+```js
+fetch(u)                    // → 400   (caché del navegador)
+fetch(u, {cache:'reload'})  // → 200   (red)
+```
+
+La regla de `headers()` para `/_next/image` aplicaba `public, max-age=2678400, immutable` a **todas** las respuestas, también a los errores. Cada `400` quedaba cacheado **inmutable por 31 días**, y `immutable` significa que el navegador ni siquiera revalida. **El bug se volvía autopersistente:** arreglar el servidor no bastaba para que la foto llegara a quien ya había visitado el sitio roto — ni al titular al recargar.
+
+Y la regla no aportaba nada en el caso exitoso: el optimizador ya pone la suya (`max-age=946080000, must-revalidate`), que es la que se ve en los `200`. Solo servía para envenenar fallos.
+
+| | antes | después |
+|---|---|---|
+| `200` | `946080000, must-revalidate` | **igual** (sin regresión) |
+| `400` | `2678400, immutable` | **sin `Cache-Control`** |
+
+Eliminar la regla arregla el futuro, no el pasado: las entradas ya envenenadas siguen ahí 31 días. Como `q` es parte de la URL del optimizador y por lo tanto de la clave de caché, se movió `quality` de 90 (cards) y 95 (detalle) a **85** — un valor que nunca se pidió roto. Estrena la clave, el arreglo llega en la primera visita, y de paso pesa menos.
+
+### Verificación final en producción (`clicks-web-00040-897`, digest `b8f535c7…` confirmado)
+
+| Chequeo | Antes | Después |
+|---|---|---|
+| `<img>` cargadas en la home | 0 de 41 | **41 de 41** |
+| Imágenes rotas | 41 | **0** |
+| Placeholders de categoría | 41 | **0** |
+| Errores de consola | 41 | **0** |
+| `400` cacheable | `immutable` 31 días | sin `Cache-Control` |
+| Host no declarado / Unsplash | 400 | **400** (guarda intacta) |
+| `/en`, `/pt`, página de detalle | placeholders | **41 · 41 · 1 `<img>`**, 0 placeholders |
+
+- `[Lección, segunda parte]`: **una cabecera de caché no distingue éxito de error si no se lo pedís.** Cachear agresivamente `/_next/image` parecía puro upside; el costo escondido era que cualquier fallo transitorio del optimizador se congelaba un mes en el navegador de cada visitante. Y el modo de fallo fue el peor posible para diagnosticar: `curl` decía que estaba arreglado y el navegador decía que no, los dos con razón.
