@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:image-hosts": "CHECK_LIVE_HOSTS=1 vitest run imageHosts.live"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.8.7",

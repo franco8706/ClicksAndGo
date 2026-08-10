@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import type { ProductType } from "@/types/product";
 import { isRealProductImage } from "@/lib/productImage";
+import { isRenderableImageHost } from "@/lib/imageHosts";
 
 const TYPE_ICON: Partial<Record<ProductType, React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>>> = {
   laptop: Laptop,
@@ -65,8 +66,29 @@ export default function ProductImage({
   const normalized = src?.replace(/^http:\/\//, "https://");
   const [failed, setFailed] = useState(false);
 
-  const showPhoto = isRealProductImage(normalized) && !failed;
+  /* Dos preguntas distintas, y hay que hacer las dos:
+   *   · `isRealProductImage`  — ¿se PUEDE mostrar? (legal: no es foto de stock)
+   *   · `isRenderableImageHost` — ¿se VA A poder servir? (técnico: el host está
+   *     en `remotePatterns`, si no `next/image` responde 400 y la foto no llega)
+   * Preguntar solo la primera fue el bug del 2026-08-10: la Web renderizaba un
+   * <Image> condenado al 400, y el `onError` de abajo lo tapaba con el ícono de
+   * categoría — el catálogo se veía genérico teniendo las fotos en la DB. */
+  const isReal = isRealProductImage(normalized);
+  const isRenderable = isRenderableImageHost(normalized);
+  const showPhoto = isReal && isRenderable && !failed;
   const Icon = TYPE_ICON[(productType || "laptop") as ProductType] || ImageOff;
+
+  /* Una foto real que se descarta solo por configuración es un fallo de
+   * despliegue, no una degradación honesta: hay que verlo en desarrollo en vez
+   * de descubrirlo mirando el sitio meses después. En producción se calla —
+   * `npm run check:image-hosts` lo audita contra el catálogo en vivo. */
+  if (process.env.NODE_ENV !== "production" && isReal && !isRenderable) {
+    console.warn(
+      `[ProductImage] "${normalized}" es una foto real pero su host no está en ` +
+        `PRODUCT_IMAGE_HOSTS (src/lib/imageHosts.ts): next/image la rechazaría ` +
+        `con 400. Se muestra el ícono de categoría. Agregá el host a la lista.`,
+    );
+  }
 
   if (showPhoto) {
     return (
@@ -84,9 +106,10 @@ export default function ProductImage({
 
   /* Placeholder de categoría — sin simular el producto.
    *
-   * Es el estado del 97% del catálogo (68 de 70 productos no tienen foto
-   * real verificada), así que no puede ser una caja gris con un ícono
-   * diminuto: es LA superficie visual del sitio. Se compone de tres capas:
+   * Fue el estado del 97% del catálogo hasta que Rakuten trajo las fotos
+   * reales (hoy 2557 de 2625 productos tienen una). Sigue siendo el destino
+   * de los que no la tienen, así que no puede ser una caja gris con un ícono
+   * diminuto. Se compone de tres capas:
    *   1. `product-canvas` — malla de gradientes en el azul del sistema.
    *   2. Aro concéntrico que enmarca el ícono y le da escala.
    *   3. Ícono grande flotando, que reacciona al hover de la card.

@@ -814,3 +814,73 @@ Ninguno lo detecta `tsc`, ESLint ni los 309 tests: los tres son correctos como c
 | Título / links muertos / WCAG | corregidos y confirmados en vivo |
 
 - `[Conclusión de método]`: se sostiene lo aprendido con el CSS. **Un despliegue verde no es un producto sano.** Las tres fallas de esta sesión pasaron por build, tests y deploy sin una queja, y solo aparecieron abriendo el sitio y midiendo lo que el visitante realmente recibe.
+
+---
+
+## 🖼️ 2026-08-10 · El allowlist que escondió 2555 fotos reales
+
+- `[Origen]`: el titular revisó el sitio y notó que **no cargan las imágenes de los productos**. No era una impresión: era el 99,9% del catálogo.
+
+### El síntoma medido, no supuesto
+
+Con el navegador sobre `clicks-and-go.com/es`:
+
+| Medición | Valor |
+|---|---|
+| `<img>` en el DOM tras hidratar | **0** |
+| Placeholders de categoría dibujados | **41** |
+| Errores en consola | **41**, todos `HTTP 400` |
+| Respuesta del optimizador | `"url" parameter is not allowed` |
+
+Y contra el catálogo completo de Rails (2625 productos, paginando los 7 países):
+
+| | |
+|---|---|
+| Productos con foto real persistida | **2557** (97,4%) |
+| Renderizables por la Web | **2** |
+| Bloqueadas | **2555** — todas de `c1.neweggimages.com` |
+
+El origen respondía perfecto: `200`, `image/jpeg`, 18,9 KB. La foto existía, estaba verificada y era la del producto. La Web se negaba a mostrarla.
+
+### La causa: dos listas que responden preguntas distintas
+
+La doctrina de imágenes reales dice "4 capas con **la misma lista de hosts**". Era falso, y ahí estaba el defecto:
+
+| Capa | Naturaleza | Ante un CDN nuevo |
+|---|---|---|
+| 1. Python `clean_image_url` | **denylist** de bancos de stock | deja pasar ✅ |
+| 2. Postgres `chk_laptops_no_stock_image` | **denylist** | deja pasar ✅ |
+| 3. Rails `real_image_url` | **denylist** | deja pasar ✅ |
+| 4. `next.config.ts` `remotePatterns` | **allowlist** | **rechaza** ❌ |
+
+Las tres primeras bloquean lo que enumeran; la cuarta bloquea todo lo que **no** enumera. Lógica invertida, no lista compartida. Un comerciante nuevo atraviesa limpio las tres primeras y muere en la cuarta.
+
+Peor: `productImage.ts` decidía mostrar la foto consultando **solo la denylist**, así que la Web renderizaba un `<Image>` condenado al 400, y su propio `onError` lo tapaba con el ícono de categoría. La degradación elegante —escrita para cubrir una CDN que empieza a fallar— terminó disfrazando un error de configuración de decisión de diseño.
+
+### La ironía
+
+Rakuten Advertising se integró el 2026-08-06 **precisamente para resolver la falta de fotos**: su feed trae `imageurl` alojada por el propio comerciante. Funcionó — el catálogo pasó de 70 a 2625 productos y de ~2 fotos a 2557. El pipeline resolvió el problema de fondo y un allowlist de 18 líneas se comió el resultado entero, en silencio, mientras el sitio se veía "correcto".
+
+### El arreglo
+
+1. **`src/lib/imageHosts.ts` — fuente única de verdad.** `next.config.ts` ya no lleva su lista suelta: **deriva** `remotePatterns` de ahí. No pueden volver a divergir.
+2. **Sumado `**.neweggimages.com`** (y `**.newegg.com`).
+3. **`ProductImage` pregunta las dos cosas**: `isRealProductImage` (¿se *puede* mostrar? — legal) **e** `isRenderableImageHost` (¿se *va a poder* servir? — técnico). Una foto real con host no declarado ahora cae al placeholder sin pedir un 400, y en desarrollo emite un `console.warn` que nombra el host y el archivo a editar.
+4. **`npm run check:image-hosts`** — audita el allowlist contra el catálogo **en vivo**, paginando los 7 países, y falla nombrando host y cantidad de productos afectados.
+
+### Verificación
+
+| Chequeo | Resultado |
+|---|---|
+| `tsc --noEmit` · `next build` | 0 errores ✅ |
+| vitest | **64 pasan** (9 nuevos) ✅ |
+| Optimizador con el fix, imagen de Newegg | `400` → **`200 image/jpeg`** ✅ |
+| Host no declarado / Unsplash | siguen en **400** — la guarda no se aflojó ✅ |
+| Home renderizada contra Rails prod | 41 `<img>`, **0 placeholders** ✅ |
+| 15 URLs reales del markup servidas | **15/15 200** ✅ |
+| Auditor con Newegg removido a propósito | **falla** y reporta `2555 producto(s) → c1.neweggimages.com` ✅ |
+
+Ese último chequeo importa: un test que no puede fallar no es una guarda. Se verificó que detecta el bug real antes de darlo por bueno.
+
+- `[Lección]`: se repite el patrón del 2026-08-06, un escalón más arriba. **Un despliegue verde no es un producto sano** — y esta vez tampoco lo fue un `onError` bien escrito. Una degradación elegante sobre un fallo de configuración es indistinguible de una decisión de diseño: el sitio no se veía roto, se veía sobrio. El único chequeo que lo habría atrapado es el que compara la **configuración contra los datos reales**, que antes no existía y ahora corre con un comando.
+- `[Regla operativa nueva]`: el host de la imagen lo elige el **comerciante**, no la red de afiliados. Asociar un comerciante nuevo en Rakuten/Awin/CJ obliga a correr `npm run check:image-hosts`.

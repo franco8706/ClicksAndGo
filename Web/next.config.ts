@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { REMOTE_IMAGE_PATTERNS } from "./src/lib/imageHosts";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -53,38 +54,13 @@ const nextConfig: NextConfig = {
     qualities: [75, 85, 90, 95],
     // Cacheo agresivo del optimizador para soportar picos de tráfico
     minimumCacheTTL: 2678400, // 31 días
-    // 🖼️ Allowlist de CDNs de producto. Solo se optimizan imágenes de
-    // retailers/fabricantes: los bancos de stock (Unsplash, placehold.co…)
-    // están deliberadamente FUERA, así el optimizador rechaza con 400
-    // cualquier foto decorativa que llegara a colarse en el DTO. Es la
-    // última de las cuatro capas de la guarda de imágenes reales
-    // (ingesta Python → CHECK en Postgres → serializer Rails → esto).
-    remotePatterns: [
-      { protocol: 'https', hostname: '**.lenovo.com' },
-      { protocol: 'https', hostname: '**.hp.com' },
-      { protocol: 'https', hostname: '**.dell.com' },
-      { protocol: 'https', hostname: '**.mlstatic.com' },
-      { protocol: 'https', hostname: 'm.media-amazon.com' },
-      { protocol: 'https', hostname: '**.awin1.com' },
-      { protocol: 'https', hostname: '**.static.pub' },
-      { protocol: 'https', hostname: '**.cdn-apple.com' },
-      { protocol: 'https', hostname: '**.hptstore.com' },
-      // CDNs de fabricante que el pipeline puede devolver por feed de afiliado
-      { protocol: 'https', hostname: '**.www8-hp.com' },
-      { protocol: 'https', hostname: '**.msi.com' },
-      { protocol: 'https', hostname: '**.asus.com' },
-      { protocol: 'https', hostname: '**.acer.com' },
-      { protocol: 'https', hostname: 'www.apple.com' },
-      { protocol: 'https', hostname: '**.razer.com' },
-      { protocol: 'https', hostname: 'hybrismediaprod.blob.core.windows.net' },
-      // 👤 Avatares reales del proveedor OAuth (panel de usuario). Faltaban:
-      // next/image aborta ante un host no declarado, así que la foto de perfil
-      // de Google/Microsoft/Facebook no cargaba nunca.
-      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
-      { protocol: 'https', hostname: 'graph.microsoft.com' },
-      { protocol: 'https', hostname: '**.fbcdn.net' },
-      { protocol: 'https', hostname: 'platform-lookaside.fbsbx.com' }
-    ],
+    // 🖼️ Allowlist de CDNs de producto — derivada de `src/lib/imageHosts.ts`,
+    // que es la ÚNICA fuente de verdad. Antes esta lista vivía acá suelta y la
+    // Web decidía si mostrar la foto con otro criterio (la denylist de stock),
+    // así que un CDN de comerciante nuevo pasaba las capas 1-3 y moría acá con
+    // un 400 silencioso: el 2026-08-10 eso ocultó 2555 de 2557 fotos reales.
+    // Derivarla evita que los dos criterios vuelvan a divergir.
+    remotePatterns: REMOTE_IMAGE_PATTERNS,
   },
 };
 
