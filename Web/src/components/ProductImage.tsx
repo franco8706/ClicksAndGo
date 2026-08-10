@@ -57,11 +57,21 @@ interface ProductImageProps {
   readonly imageClassName?: string;
   /** Tamaño del ícono del placeholder. */
   readonly iconSize?: number;
+  /**
+   * ⚠️ 85, y no 90/95, a propósito. `q` forma parte de la URL del
+   * optimizador y por lo tanto de la clave de caché. Durante la ventana en
+   * que el allowlist rechazaba a Newegg (2026-08-10) las cards pidieron
+   * `q=90` y el detalle `q=95`, y esos `400` quedaron cacheados como
+   * `immutable` por 31 días en cada navegador que pasó. Mover el valor a
+   * uno que nunca se usó roto estrena la clave y hace que el arreglo
+   * llegue en la primera visita, en vez de esperar a que expire la caché.
+   * A q85 en AVIF/WebP la foto sigue impecable y pesa menos (mejor LCP).
+   */
   readonly quality?: number;
 }
 
 export default function ProductImage({
-  src, alt, productType, sizes, imageClassName = "", iconSize = 44, quality = 90,
+  src, alt, productType, sizes, imageClassName = "", iconSize = 44, quality = 85,
 }: ProductImageProps) {
   const normalized = src?.replace(/^http:\/\//, "https://");
   const [failed, setFailed] = useState(false);

@@ -30,13 +30,20 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'no-store' },
         ],
       },
-      {
-        // Imágenes optimizadas: CDN las cachea agresivamente
-        source: '/_next/image(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=2678400, immutable' },
-        ],
-      },
+      /* ⚠️ NO declarar un Cache-Control propio para `/_next/image`.
+       *
+       * Había uno (`public, max-age=2678400, immutable`) y se aplicaba a
+       * TODAS las respuestas — también a los errores. Cuando el allowlist
+       * rechazaba un host, ese `400` se cacheaba como **inmutable por 31
+       * días**: el navegador ni siquiera revalidaba. El bug se volvía
+       * autopersistente, y arreglar el servidor no alcanzaba para que la
+       * foto llegara a quien ya había visitado el sitio roto (2026-08-10).
+       *
+       * El optimizador ya pone su propia cabecera en las respuestas buenas
+       * (`max-age=946080000, must-revalidate`), así que la regla no sumaba
+       * nada en el caso exitoso y envenenaba el fallido. `minimumCacheTTL`
+       * de abajo es el control correcto para la caché del optimizador.
+       */
       {
         // JS/CSS buildados (hash inmutable en el nombre): caché permanente
         source: '/_next/static/(.*)',

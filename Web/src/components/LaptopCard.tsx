@@ -256,7 +256,7 @@ export default function LaptopCard({
           src={laptop.urls?.image}
           alt={`${laptop.brand} ${laptop.name}`}
           productType={laptop.product_type}
-          quality={90}
+          quality={85}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
           imageClassName="object-contain transform group-hover:scale-105 transition-transform duration-700 p-4 drop-shadow-2xl"
           iconSize={52}

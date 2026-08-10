@@ -119,7 +119,7 @@ function DealStage({
           src={laptop.urls?.image}
           alt={`${laptop.brand} ${laptop.name}`}
           productType={laptop.product_type}
-          quality={90}
+          quality={85}
           sizes="(max-width: 768px) 100vw, 50vw"
           imageClassName="object-contain p-8 drop-shadow-2xl"
           iconSize={88}

@@ -207,7 +207,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div className="space-y-8">
             <div className={`relative aspect-square rounded-2xl border border-[#e6e8ec] flex items-center justify-center p-12 overflow-hidden shadow-md bg-[#f5f6f8] ${isGranOportunidad ? "neon-glow border-emerald-300" : ""}`}>
-              <ProductImage src={laptop.urls?.image} alt={`${laptop.brand} ${laptop.name}`} productType={laptop.product_type} quality={95} sizes="(max-width: 768px) 100vw, 50vw" imageClassName="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" iconSize={120} />
+              <ProductImage src={laptop.urls?.image} alt={`${laptop.brand} ${laptop.name}`} productType={laptop.product_type} quality={85} sizes="(max-width: 768px) 100vw, 50vw" imageClassName="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" iconSize={120} />
             </div>
 
             {laptop.intelligence?.ai_reasoning && (
