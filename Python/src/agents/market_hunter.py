@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus
 from defusedxml import ElementTree as DefusedET
-from src.agents.data_normalizer import DataNormalizerAgent
+from src.agents.data_normalizer import DataNormalizerAgent, prewarm_image_cache
 from src.agents.taxonomy import classify_product
 
 # Pool de User-Agents de browsers reales — rota en cada sesión para evitar fingerprinting
@@ -221,7 +221,14 @@ def _retry_get(session: requests.Session, url: str, max_retries: int = 3, **kwar
                 time.sleep((2 ** attempt) * random.uniform(2.0, 5.0))
                 continue
             return resp
-        except requests.exceptions.ConnectionError:
+        # ⚠️ `Timeout` va aparte de `ConnectionError`: NO son la misma rama del
+        # árbol de excepciones de requests. `ReadTimeout` hereda solo de
+        # `Timeout`, así que con `except ConnectionError` a secas un servidor
+        # que acepta la conexión y después no responde se escapaba del backoff
+        # y propagaba hacia arriba sin reintentar ni una vez. (`ConnectTimeout`
+        # sí hereda de ambas y quedaba cubierto, lo que hacía el hueco más
+        # difícil de ver.) Verificado sobre la jerarquía real de la librería.
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             time.sleep((2 ** attempt) * random.uniform(1.0, 3.0))
     return None
 
@@ -246,6 +253,34 @@ class RetailerAPI(ABC):
     @abstractmethod
     def _normalize(self, raw_data: list, country_code: str) -> list:
         pass
+
+    #: Claves donde cada red publica la foto. Son distintas por API y no hay
+    #: forma de adivinarlas: Awin usa `merchant_image_url`, CJ `image-url`,
+    #: Rakuten `imageurl` y MercadoLibre `image`.
+    _CLAVES_IMAGEN = ("image", "merchant_image_url", "image-url", "imageurl", "thumbnail")
+
+    def _prewarm_images(self, raw_data: list) -> None:
+        """Verifica en paralelo las imágenes del lote antes de normalizar.
+
+        `normalize_laptop_data` verifica cada foto por HTTP antes de aceptarla
+        (política de imágenes reales). Hacerlo dentro del bucle serial costaba
+        217 ms por producto medidos contra la CDN real — ~3,2 minutos para las
+        900 fotos de una corrida de Rakuten, dentro de un ciclo que ya venía
+        peleando por terminar antes de que Cloud Run lo cortara.
+
+        Esto NO relaja ninguna verificación: llena la misma caché que consulta
+        `_image_responds_ok`, así que el bucle de abajo la encuentra resuelta.
+        Es puramente un cambio de latencia, no de criterio.
+        """
+        urls = [
+            item[k]
+            for item in raw_data
+            if isinstance(item, dict)
+            for k in self._CLAVES_IMAGEN
+            if isinstance(item.get(k), str) and item[k].startswith("https://")
+        ]
+        if urls:
+            prewarm_image_cache(urls)
 
 
 # ==============================================================================
@@ -285,6 +320,7 @@ class MercadoLibreAPI(RetailerAPI):
         return tokens[0].capitalize() if tokens else "Genérica"
 
     def _normalize(self, raw_data: list, country_code: str) -> list:
+        self._prewarm_images(raw_data)
         normalized = []
         for item in raw_data[:50]:
             title = str(item.get("title", "Laptop Genérica"))
@@ -389,6 +425,7 @@ class AwinNetworkAPI(RetailerAPI):
         return []
 
     def _normalize(self, raw_data: list, country_code: str) -> list:
+        self._prewarm_images(raw_data)
         normalized = []
         for item in raw_data:
             name = str(item.get("product_name", ""))
@@ -470,6 +507,7 @@ class CJAffiliateAPI(RetailerAPI):
         return []
 
     def _normalize(self, raw_data: list, country_code: str) -> list:
+        self._prewarm_images(raw_data)
         def clean_price(val) -> float:
             return float(str(val).replace("$", "").replace(",", "").strip() or 0)
 
@@ -695,6 +733,7 @@ class RakutenNetworkAPI(RetailerAPI):
         return items
 
     def _normalize(self, raw_data: list, country_code: str) -> list:
+        self._prewarm_images(raw_data)
         normalized = []
         for item in raw_data:
             name = item.get("productname", "")
@@ -754,7 +793,15 @@ class RakutenNetworkAPI(RetailerAPI):
 # Países → API: LATAM → MercadoLibre | ES → Awin | US → CJ + Rakuten
 # ==============================================================================
 class MarketHunterOrchestrator:
-    def __init__(self):
+    def __init__(self, orchestrator=None):
+        # 📡 El orquestador se inyecta para escribir telemetría en MongoDB.
+        # Antes este agente reportaba SOLO con `print()`: 11 llamadas a stdout
+        # y cero a `log_action`. Es el agente que llena el catálogo, o sea el
+        # más caro de tener fallando a ciegas, y sus errores no llegaban a la
+        # colección `agent_logs` — solo a los logs de Cloud Run, donde nadie
+        # mira salvo que ya sospeche. Opcional: sin orquestador sigue
+        # funcionando igual (los tests lo instancian pelado).
+        self.orchestrator = orchestrator
         self.ml_api      = MercadoLibreAPI()
         self.awin_api    = AwinNetworkAPI()
         self.cj_api      = CJAffiliateAPI()
@@ -771,6 +818,15 @@ class MarketHunterOrchestrator:
             [(self.rakuten_api, c) for c in ["US"]]
         )
 
+    def _log(self, mensaje: str, status: str = "SUCCESS") -> None:
+        """Reporta a stdout y, si hay orquestador, también a telemetría."""
+        print(mensaje)
+        if self.orchestrator is not None:
+            try:
+                self.orchestrator.log_action("MarketHunter", mensaje.strip(), status)
+            except Exception:
+                pass  # la telemetría nunca puede tumbar la cacería
+
     def hunt_all_markets(self) -> list:
         """Dispara todas las fuentes en paralelo. Cada hilo maneja su propia sesión."""
         all_deals = []
@@ -786,10 +842,10 @@ class MarketHunterOrchestrator:
                     deals = future.result()
                     all_deals.extend(deals)
                     if deals:
-                        print(f"✅ [MarketHunter/{api_name}] {country}: {len(deals)} ofertas.")
+                        self._log(f"✅ [MarketHunter/{api_name}] {country}: {len(deals)} ofertas.")
                     else:
-                        print(f"⚠️  [MarketHunter/{api_name}] {country}: sin resultados (¿API key configurada?).")
+                        self._log(f"⚠️  [MarketHunter/{api_name}] {country}: sin resultados (¿API key configurada?).", "WARNING")
                 except Exception as e:
-                    print(f"🚨 [MarketHunter/{api_name}] {country}: {e}")
+                    self._log(f"🚨 [MarketHunter/{api_name}] {country}: {e}", "ERROR")
 
         return all_deals

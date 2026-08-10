@@ -4,6 +4,7 @@ pub mod models;
 use axum::{
     extract::{DefaultBodyLimit, State},
     http::StatusCode,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -30,7 +31,7 @@ use crate::agents::price_sentinel::PriceSentinel;
 use crate::agents::legal_differ::LegalDiffer;
 use crate::agents::link_validator::LinkValidator;
 use crate::models::{
-    BatchSpecs, HardwareSpecs, ScoreResult,
+    BatchSpecs, HardwareSpecs, ScoreResult, MAX_BATCH_SIZE,
     CanonicalizeRequest, CanonicalResult,
     PriceAnomalyRequest, PriceAnomalyResult,
     LegalDiffRequest, LegalDiffResult,
@@ -106,14 +107,44 @@ async fn calculate_deal_score(
     Json(ScoreResult { sku: specs.sku, score, discount_pct, usd_reference_price, savings })
 }
 
+/// Puntúa un lote. **Rechaza** los que exceden el tope en vez de recortarlos.
+///
+/// ⚠️ Antes devolvía `200 OK` con los primeros `MAX_BATCH_SIZE` ítems y
+/// descartaba el resto en silencio (solo un `eprintln!` que nadie lee). Medido
+/// el 2026-08-10: enviando 1.000 y 5.000 ítems la respuesta era `200` con
+/// **500** resultados en ambos casos. El orquestador manda el catálogo entero
+/// en un solo lote, así que eso significaba miles de productos sin score real
+/// y un `deal_score` neutral servido como si fuera calculado.
+///
+/// Un `413` es ruidoso y accionable; un `200` a medias es indistinguible del
+/// éxito. Quien llama debe trocear (ver `score_batch_chunked` en Python).
 async fn calculate_batch_scores(
     Json(batch): Json<BatchSpecs>,
-) -> (StatusCode, Json<Vec<ScoreResult>>) {
+) -> Response {
     if batch.items.is_empty() {
-        return (StatusCode::OK, Json(vec![]));
+        return (StatusCode::OK, Json(Vec::<ScoreResult>::new())).into_response();
     }
+
+    if batch.items.len() > MAX_BATCH_SIZE {
+        let recibidos = batch.items.len();
+        eprintln!(
+            "[score/batch] Rechazado: {} ítems supera el máximo de {}",
+            recibidos, MAX_BATCH_SIZE
+        );
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(serde_json::json!({
+                "error": "batch_too_large",
+                "received": recibidos,
+                "max_batch_size": MAX_BATCH_SIZE,
+                "hint": "Trocear el lote; la respuesta parcial sería indistinguible del éxito.",
+            })),
+        )
+            .into_response();
+    }
+
     let results = ConcurrencyRouter::process_batch(batch.items).await;
-    (StatusCode::OK, Json(results))
+    (StatusCode::OK, Json(results)).into_response()
 }
 
 async fn run_benchmarks(

@@ -9,7 +9,11 @@ impl ConcurrencyRouter {
     /// Procesa un lote de specs en paralelo usando todos los núcleos (Rayon).
     /// Toma ownership del Vec — sin .to_vec() cuando el batch ya está en límite.
     pub async fn process_batch(mut specs_batch: Vec<HardwareSpecs>) -> Vec<ScoreResult> {
-        // Truncar silenciosamente solo si el batch excede el límite
+        // 🛡️ Red de seguridad, no la puerta principal: el handler HTTP rechaza
+        // con 413 antes de llegar acá (ver `calculate_batch_scores`). Esto solo
+        // protege a quien llame al router desde dentro del proceso. Recortar en
+        // silencio era el comportamiento por defecto y devolvía medio resultado
+        // con código 200 — indistinguible del éxito.
         if specs_batch.len() > MAX_BATCH_SIZE {
             eprintln!(
                 "[ConcurrencyRouter] Batch truncado: {} → {} ítems",

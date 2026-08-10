@@ -23,6 +23,11 @@ class MasterOrchestratorAgent:
         # el router cae a Antigravity (costo cero). Configurable por entorno
         # para ajustar el gasto sin tocar código (ej. AI_DAILY_LIMIT=100 en prod).
         self.DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "500"))
+
+        # 📦 Tamaño de lote para el scoring en Rust. Debe ser ≤ `MAX_BATCH_SIZE`
+        # de `Rust/src/models.rs` (500) o Rust responde 413. Se mantiene igual a
+        # ese tope: es el punto de mayor rendimiento medido (~5.150 ítems/s).
+        self.RUST_BATCH_SIZE = int(os.getenv("RUST_BATCH_SIZE", "500"))
         
         # 🌐 Endpoints de Microservicios Internos
         self.rust_batch_url = os.getenv("RUST_API_URL", "http://rust_engine:8080/api/v1/score/batch")
@@ -149,7 +154,7 @@ class MasterOrchestratorAgent:
             self.log_action("MasterOrchestrator", f"Timeout delegando a Rust: {e}", "ERROR")
 
         # 4. 🛒 Cacería Comercial (APIs Multihilo)
-        market_hunter = MarketHunterOrchestrator()
+        market_hunter = MarketHunterOrchestrator(orchestrator=self)
         deals = market_hunter.hunt_all_markets()
         self.log_action("MarketHunter", f"Capturadas {len(deals)} ofertas verificadas.")
         
@@ -167,6 +172,13 @@ class MasterOrchestratorAgent:
             enriched_deals.extend(semantic_engine.enrich_batch(batch))
             
         # 7. 🚀 Evaluación Matemática Masiva (Rust Rayon)
+        #
+        # ⚠️ EN LOTES DE `RUST_BATCH_SIZE`. Rust rechaza con 413 los lotes que
+        # superan su `MAX_BATCH_SIZE` (500). Antes los recortaba en silencio
+        # devolviendo 200: se mandaba el catálogo entero en un solo POST y solo
+        # los primeros 500 productos volvían con score real — el resto caía al
+        # neutral 5.0 sin que nada lo indicara. Medido el 2026-08-10 enviando
+        # 1.000 y 5.000 ítems: 200 OK con 500 resultados en ambos casos.
         try:
             # 🚀 Payload COMPLETO: Rust necesita los campos financieros para su matemática de bajo nivel
             hardware_payload = {
@@ -188,22 +200,50 @@ class MasterOrchestratorAgent:
                     "currency": d.get("currency", "USD"),
                 } for d in enriched_deals]
             }
-            res_rust = requests.post(self.rust_batch_url, json=hardware_payload, timeout=15)
-            if res_rust.status_code == 200:
-                scores = res_rust.json()
-                score_map = {item["sku"]: item for item in scores if "sku" in item}
-                for deal in enriched_deals:
-                    result = score_map.get(deal["sku_original"])
-                    if result:
-                        deal["intelligence"]["deal_score"] = result.get("score", 5.0)
-                        # Reusamos la matemática financiera resuelta en metal por Rust
-                        deal["financials"]["discount_pct"] = result.get("discount_pct", deal["financials"].get("discount_pct", 0))
-                    else:
-                        deal["intelligence"]["deal_score"] = 5.0
-            else:
-                self.log_action("RustEngine", f"Fallo Batch Rust ({res_rust.status_code}). Asignando score neutral.", "WARNING")
-                for deal in enriched_deals:
-                    deal["intelligence"].setdefault("deal_score", 5.0)
+            items = hardware_payload["items"]
+            score_map = {}
+            lotes_ok = lotes_fallidos = 0
+
+            for i in range(0, len(items), self.RUST_BATCH_SIZE):
+                lote = items[i:i + self.RUST_BATCH_SIZE]
+                res_rust = requests.post(self.rust_batch_url, json={"items": lote}, timeout=30)
+                if res_rust.status_code == 200:
+                    score_map.update(
+                        {it["sku"]: it for it in res_rust.json() if "sku" in it}
+                    )
+                    lotes_ok += 1
+                else:
+                    lotes_fallidos += 1
+                    self.log_action(
+                        "RustEngine",
+                        f"Lote {i}-{i + len(lote)} rechazado ({res_rust.status_code}): "
+                        f"{res_rust.text[:150]}",
+                        "WARNING",
+                    )
+
+            # Reporte honesto: cuántos productos quedaron SIN score real. Es la
+            # métrica que faltaba — el catálogo terminó con 98,8% en score 0 sin
+            # que ninguna línea de log lo dijera.
+            sin_score = 0
+            for deal in enriched_deals:
+                result = score_map.get(deal["sku_original"])
+                if result:
+                    deal["intelligence"]["deal_score"] = result.get("score", 5.0)
+                    # Reusamos la matemática financiera resuelta en metal por Rust
+                    deal["financials"]["discount_pct"] = result.get("discount_pct", deal["financials"].get("discount_pct", 0))
+                else:
+                    deal["intelligence"]["deal_score"] = 5.0
+                    sin_score += 1
+
+            nivel = "WARNING" if (sin_score or lotes_fallidos) else "SUCCESS"
+            self.log_action(
+                "RustEngine",
+                f"Scoring: {len(score_map)}/{len(items)} productos puntuados en "
+                f"{lotes_ok} lote(s) de {self.RUST_BATCH_SIZE}"
+                + (f", {lotes_fallidos} lote(s) fallido(s)" if lotes_fallidos else "")
+                + (f", {sin_score} con score neutral 5.0" if sin_score else ""),
+                nivel,
+            )
         except Exception as e:
             self.log_action("RustEngine", f"Error de conexión con Rust: {e}", "ERROR")
             for deal in enriched_deals:
