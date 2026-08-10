@@ -968,3 +968,64 @@ Los 3 "Página con redirección" son `/` → `/en`, `/es/` → `/es` y `www` →
 
 - `[Diagnóstico]`: "Descubierta: actualmente sin indexar" es una decisión de **selección por calidad**, no un bloqueo. Google encontró las URLs y eligió no gastar rastreo en ellas. Con más de la mitad del catálogo en cables y tornillos, títulos truncados y una meta genérica, la decisión es entendible.
 - `[Pendiente de decisión del titular]`: filtrar los repuestos en la ingesta sacaría ~5.600 URLs de golpe, pero es una decisión de producto —hay diferencia real entre "comparador de tecnología" y "catálogo de repuestos"— y define qué sitio se está construyendo. Ver `redesign_plan.md`.
+
+---
+
+## 🔎 2026-08-10 · Arreglar lo que Google rechazaba: títulos, metas e índice
+
+Continuación del diagnóstico anterior. Lo técnico ya estaba bien; se atacó el texto y la selección de qué se pide indexar.
+
+### Lo que estaba mal, medido sobre 2585 productos
+
+| Defecto | Alcance |
+|---|---|
+| Marca `"Genérica"` impresa en `<title>` y H1 | **66%** (1718) |
+| Marca duplicada: `${brand} ${name}` con el nombre que ya la traía | 13,5% — *"Viewsonic ViewSonic VX1655…"* |
+| Misma marca en dos grafías | `Hp` (188) y `HP` (5) · `Msi` (15) y `MSI` (1) · `Lg` (32) y `LG` (1) |
+| Títulos de más de 60 chars (se truncan en Google) | **90,6%** — mediana 126, tope 150 |
+| Meta description de plantilla idéntica | **100%** — `"Análisis experto para {nombre}"` |
+
+Esa meta, sobre *"POWER SUPPLY 24V"*, promete un análisis que la página no tiene: la misma sobrepromesa que la doctrina de imágenes reales prohíbe en lo visual.
+
+### El arreglo: `src/lib/productSeo.ts`
+
+Se corrige en **presentación, no en la base**. Arregla las 2625 fichas al instante, sin migración ni reingesta, y deja intacto el dato crudo del feed — que es el que hay que poder auditar contra el comerciante.
+
+- `normalizeBrand` descarta el placeholder y unifica grafías.
+- `splitTitle` alimenta el H1 de dos líneas sin repetir la marca.
+- `seoTitle` acota a 62 chars en límite de palabra y limpia el `"with...."` que deja el truncado del feed.
+- `buildMetaDescription` arma la descripción con precio, descuento y specs reales, en los 4 idiomas, y dice "precio actualizado" cuando no hay precio en vez de inventarlo.
+
+### 🚫 Commodities fuera del índice, NO del sitio
+
+**No se borró nada.** La taxonomía v8 declaró `power` y `accessories` a propósito el 6/8; borrar los repuestos revertiría esa decisión de producto. Se los saca del sitemap y se les pone `noindex` — reversible sacándolos de `NON_INDEXABLE_TYPES`.
+
+Dos señales, porque ninguna alcanza sola: la **categoría** (commodity que no compite contra Amazon) y el **nombre** (repuesto escondido en una categoría legítima — una pila CMOS cae en `batteries`, una pantalla de reemplazo en `monitor`).
+
+Rails empezó a emitir `product_type` y `name` en el endpoint de sitemap para que el criterio tenga **un solo dueño**: filtrarlo en Ruby lo duplicaría en dos lenguajes, que es exactamente la divergencia que escondió 2555 fotos esta misma semana.
+
+### 🐛 El sitemap vacío que nadie habría notado
+
+Primer intento desplegado: `pluck(:slug, :updated_at, :product_type, :name)`. **La columna se llama `modelo`** — es el serializer el que la renombra en el DTO. `pluck(:name)` lanzó, y el `rescue StandardError` de ese endpoint —que devuelve `[]` con 200 a propósito, porque un sitemap reducido es preferible a un 500 servido a Google— se tragó la excepción.
+
+Resultado: el sitemap pasó de 10.504 URLs a **cero**, con la API respondiendo 200 y el catálogo intacto. Ni el build ni los tests ni el deploy dijeron nada. Se detectó **mirando el payload después de desplegar**.
+
+Es el tercer caso de la misma familia en la semana: una degradación bien intencionada (`onError` de la imagen, `Cache-Control` inmutable, `rescue → []`) convirtiendo un fallo duro en uno invisible.
+
+### Verificación en producción (`clicks-rails-00018-mcs` · `clicks-web-00042-vhk`)
+
+| Chequeo | Antes | Después |
+|---|---|---|
+| `<title>` | `Viewsonic ViewSonic VX1655 … with...` (150+ chars) | **`ViewSonic VX1655 15.6 Inch 1080p FHD Portable LED Monitor - Clicks & Go`** |
+| Meta description | `Análisis experto para …` | **`… Desde $176 USD. Comparación de precios y ofertas verificadas.`** |
+| `"Genérica"` visible en la home | presente | **0** |
+| JSON-LD `brand` | `Viewsonic` | **`ViewSonic`** |
+| URLs en el sitemap | 10.504 (14,2 MB) | **4.820 (6,4 MB)** — 1202 productos × 4 |
+| Ficha commodity | indexable y en sitemap | **`noindex, follow`** y 0 apariciones en sitemap |
+| Ficha legítima | — | en sitemap, **sin** `robots` meta |
+| Imágenes / `/out` / robots.txt | — | 41/41, tag inyectado, 200 (sin regresión) |
+
+96 tests (31 nuevos). Dos los escribí y **fallaron**: el patrón de repuesto era sensible a mayúsculas y los datos dicen *"For Satellite"* con F, y la limpieza de conectores colgados solo cubría inglés cuando el catálogo también recibe feeds en español.
+
+- `[Nota]`: `vitest.config.ts` es nuevo. Vitest corría **sin config y por lo tanto sin el alias `@/`**; el test de sitemap falló al importar `@/lib/productSeo` con un error del runner que apuntaba al archivo equivocado, mientras `tsc` y `next build` resolvían el mismo import sin quejarse.
+- `[Pendiente]`: falta ver si Google reacciona. La indexación no es inmediata — conviene revisar Search Console en 2-3 semanas y comparar contra las 37 páginas indexadas de hoy.
