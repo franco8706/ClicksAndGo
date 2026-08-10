@@ -5,6 +5,7 @@ import ProductImage from "@/components/ProductImage";
 import { Cpu, Box, HardDrive, ChevronLeft, ShoppingCart, Globe, Zap } from "lucide-react";
 
 import { formatCurrencyString } from "@/lib/currency";
+import { displayTitle, normalizeBrand, splitTitle, seoTitle, buildMetaDescription, isIndexableProduct } from "@/lib/productSeo";
 import { Laptop } from "@/types/laptop";
 import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
 
@@ -51,9 +52,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   try {
     const laptop = await getLaptopData(slug);
     if (!laptop) return { title: "Laptop | Clicks & Go" };
+    /* 🔍 Título y descripción — ver `productSeo.ts` para el porqué.
+     *
+     * El título se armaba `${brand} ${name}`, que con el feed de Rakuten daba
+     * "Viewsonic ViewSonic VX1655…" (13,5% del catálogo) y "Genérica …" en el
+     * 66% donde el extractor de marca no reconoce nada. La descripción caía a
+     * `"Análisis experto para {nombre}"`, idéntica en las 2585 fichas y
+     * prometiendo un análisis que la página no tiene. */
+
+    /* 🚫 Commodities fuera del índice. No se sacan del sitio —se navegan y
+     * monetizan igual—, solo se deja de pedirle rastreo a Google para un cable
+     * de corriente genérico que no puede posicionar contra Amazon. Va junto
+     * con la exclusión del sitemap: listar en el sitemap una URL `noindex` es
+     * mandar señales contradictorias. */
+    const indexable = isIndexableProduct({ product_type: laptop.product_type, name: laptop.name });
+
     return {
-      title: laptop.seo?.title || `${laptop.brand} ${laptop.name} - Clicks & Go`,
-      description: laptop.seo?.description || laptop.intelligence?.ai_reasoning || `Análisis experto para ${laptop.name}.`,
+      title: laptop.seo?.title || seoTitle(laptop.brand, laptop.name),
+      description:
+        laptop.seo?.description ||
+        laptop.intelligence?.ai_reasoning ||
+        buildMetaDescription(laptop, locale, formatCurrencyString),
+      ...(indexable ? {} : { robots: { index: false, follow: true } }),
       // 🔍 Canonical auto-referenciado + hreflang. `metadataBase` viene heredado
       // del layout — ver ahí la nota de por qué hacía falta (Search Console:
       // "Duplicada... ninguna versión canónica").
@@ -164,13 +184,19 @@ export default async function LaptopDetailPage({ params }: PageProps) {
    *   · `offers` solo con precio > 0, o Google marca el dato como inválido.
    * Nada se inventa para "completar" el schema. */
   const precio = laptop.financials?.current_price ?? 0;
+  /* Mismo criterio que el `<title>` y el H1: sin marca repetida y sin el
+   * placeholder "Genérica". Declarar `brand: "Genérica"` en schema.org sería
+   * darle a un consumidor automatizado un fabricante que no existe. */
+  const marcaLimpia = normalizeBrand(laptop.brand);
+  const nombreLimpio = displayTitle(laptop.brand, laptop.name);
+  const tituloPartido = splitTitle(laptop.brand, laptop.name);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${laptop.brand} ${laptop.name}`.trim(),
+    name: nombreLimpio,
     ...(laptop.urls?.image ? { image: [laptop.urls.image] } : {}),
     ...(laptop.seo?.description ? { description: laptop.seo.description } : {}),
-    ...(laptop.brand ? { brand: { "@type": "Brand", name: laptop.brand } } : {}),
+    ...(marcaLimpia ? { brand: { "@type": "Brand", name: marcaLimpia } } : {}),
     // Sin `sku`: el DTO público no expone `sku_original` y el contrato con
     // Rails es inmutable. Un identificador inventado sería peor que ninguno.
     category: categoryLabel,
@@ -207,7 +233,7 @@ export default async function LaptopDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div className="space-y-8">
             <div className={`relative aspect-square rounded-2xl border border-[#e6e8ec] flex items-center justify-center p-12 overflow-hidden shadow-md bg-[#f5f6f8] ${isGranOportunidad ? "neon-glow border-emerald-300" : ""}`}>
-              <ProductImage src={laptop.urls?.image} alt={`${laptop.brand} ${laptop.name}`} productType={laptop.product_type} quality={85} sizes="(max-width: 768px) 100vw, 50vw" imageClassName="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" iconSize={120} />
+              <ProductImage src={laptop.urls?.image} alt={nombreLimpio} productType={laptop.product_type} quality={85} sizes="(max-width: 768px) 100vw, 50vw" imageClassName="object-contain hover:scale-105 transition-transform duration-500 p-8 drop-shadow-[0_10px_25px_rgba(10,14,20,0.12)]" iconSize={120} />
             </div>
 
             {laptop.intelligence?.ai_reasoning && (
@@ -231,9 +257,13 @@ export default async function LaptopDetailPage({ params }: PageProps) {
                   {categoryLabel}
                 </span>
               </div>
+              {/* H1 de dos líneas sin repetir la marca ni imprimir la que no
+                  existe. `splitTitle` la saca del nombre cuando el feed ya la
+                  trae dentro —"ViewSonic" sobre "ViewSonic VX1655…"— y
+                  devuelve marca vacía para el 66% que llega como "Genérica". */}
               <h1 className="text-5xl md:text-6xl font-black text-[#0a0e14] tracking-tighter leading-[0.95]">
-                {laptop.brand} <br />
-                <span className="text-blue-600">{laptop.name}</span>
+                {tituloPartido.brand && (<>{tituloPartido.brand} <br /></>)}
+                <span className="text-blue-600">{tituloPartido.rest}</span>
               </h1>
             </header>
 

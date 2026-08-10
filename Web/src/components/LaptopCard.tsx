@@ -5,6 +5,7 @@ import ProductImage from "@/components/ProductImage";
 import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
 import { recordSignal } from "@/lib/affinity";
+import { normalizeBrand, displayTitle } from "@/lib/productSeo";
 import { isPromoExpired } from "@/components/EventBanner";
 import type { Laptop, AIScoreLabel } from "@/types/laptop";
 import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
@@ -115,6 +116,11 @@ export default function LaptopCard({
   // Señales de afinidad: locales al navegador (ver lib/affinity.ts).
   const signalInfo = { product_type: laptop.product_type || "laptop", brand: laptop.brand };
 
+  // Marca y título saneados — ver `productSeo.ts`: el feed trae "Genérica"
+  // como marca en el 66% de las fichas y repite la marca dentro del nombre.
+  const marcaLimpia = normalizeBrand(laptop.brand);
+  const tituloCompleto = displayTitle(laptop.brand, laptop.name);
+
   const handleToggleFavorite = () => {
     if (!toggleFavoriteAction) return;
     recordSignal("favorite", signalInfo);
@@ -186,9 +192,14 @@ export default function LaptopCard({
       {/* ── Brand + tipo + Score ── */}
       <div className="p-5 pb-0 flex items-start justify-between">
         <div className="flex flex-col gap-1.5">
-          <span className="text-blue-600 text-xs font-semibold uppercase tracking-widest">
-            {laptop.brand}
-          </span>
+          {/* Solo si el feed trajo una marca real: el 66% del catálogo llega
+              con el placeholder "Genérica", que se imprimía como si fuera el
+              fabricante. Sin marca, la card arranca por el tipo de producto. */}
+          {marcaLimpia && (
+            <span className="text-blue-600 text-xs font-semibold uppercase tracking-widest">
+              {marcaLimpia}
+            </span>
+          )}
           <span className="w-fit text-[9px] font-bold uppercase tracking-wider text-[#6b7280] bg-[#f5f6f8] border border-[#e6e8ec] rounded-[2px] px-1.5 py-0.5">
             {typeLabel}
           </span>
@@ -254,7 +265,7 @@ export default function LaptopCard({
         )}
         <ProductImage
           src={laptop.urls?.image}
-          alt={`${laptop.brand} ${laptop.name}`}
+          alt={tituloCompleto}
           productType={laptop.product_type}
           quality={85}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"

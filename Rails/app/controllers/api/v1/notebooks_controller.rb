@@ -174,13 +174,21 @@ module Api
       }.freeze
 
       def sitemap
-        result = Rails.cache.fetch('products/sitemap', expires_in: 1.hour) do
+        result = Rails.cache.fetch('products/sitemap/v2', expires_in: 1.hour) do
+          # `product_type` y `name` viajan para que la Web decida qué entra al
+          # índice (`isIndexableProduct` en `src/lib/productSeo.ts`). Se podría
+          # filtrar acá y ahorrar payload, pero entonces el criterio viviría en
+          # Ruby y en TypeScript a la vez: es exactamente la divergencia que
+          # escondió 2555 fotos el 2026-08-10 (denylist vs allowlist). Un solo
+          # dueño del criterio, aunque cueste ~1,5 MB en una llamada interna
+          # que además queda cacheada 1 h.
           Laptop.order(updated_at: :desc)
                 .limit(SITEMAP_MAX_PRODUCTS)
-                .pluck(:slug, :updated_at)
-                .filter_map do |slug, updated_at|
+                .pluck(:slug, :updated_at, :product_type, :name)
+                .filter_map do |slug, updated_at, product_type, name|
                   next if slug.blank?
-                  { slug: slug, updated_at: updated_at&.utc&.iso8601 }
+                  { slug: slug, updated_at: updated_at&.utc&.iso8601,
+                    product_type: product_type, name: name }
                 end
         end
 

@@ -15,6 +15,7 @@ import ProductImage from "@/components/ProductImage";
 import { ShoppingCart, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { Laptop } from "@/types/laptop";
 import { formatCurrencyString } from "@/lib/currency";
+import { displayTitle } from "@/lib/productSeo";
 import type { Dict } from "@/types/dictionary";
 
 const SLIDE_MS = 7000; // firma NVIDIA: 7s por slide, avance linear
@@ -117,7 +118,7 @@ function DealStage({
       <div className="order-1 md:order-2 relative aspect-[4/3] rounded bg-gradient-to-b from-[#f5f6f8] to-[#eef0f3] border border-[#e6e8ec] overflow-hidden">
         <ProductImage
           src={laptop.urls?.image}
-          alt={`${laptop.brand} ${laptop.name}`}
+          alt={displayTitle(laptop.brand, laptop.name)}
           productType={laptop.product_type}
           quality={85}
           sizes="(max-width: 768px) 100vw, 50vw"

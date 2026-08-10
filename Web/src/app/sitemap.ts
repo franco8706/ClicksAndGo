@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { isIndexableProduct } from "@/lib/productSeo";
 
 /**
  * Sitemap del catálogo global.
@@ -112,20 +113,50 @@ async function fetchProducts(): Promise<SitemapProduct[]> {
     // corrupto no puede tumbar el sitemap entero.
     const seen = new Set<string>();
     const products: SitemapProduct[] = [];
+    let excluidos = 0;
 
     for (const row of data) {
       if (typeof row !== "object" || row === null) continue;
-      const { slug, updated_at: updatedAt } = row as Record<string, unknown>;
+      const {
+        slug,
+        updated_at: updatedAt,
+        product_type: productType,
+        name,
+      } = row as Record<string, unknown>;
 
       if (typeof slug !== "string" || !SAFE_SLUG.test(slug)) continue;
       if (seen.has(slug)) continue; // el mismo producto no puede repetirse
       seen.add(slug);
+
+      /* 🚫 Commodities fuera del sitemap — mismo criterio que el `noindex` de
+       * la ficha (`isIndexableProduct`), a propósito: pedirle a Google que
+       * rastree una URL que después le dice `noindex` es gastarle presupuesto
+       * de rastreo para nada, y mandarle señales contradictorias.
+       *
+       * Rails empezó a emitir `product_type` y `name` para esto. Si viniera un
+       * payload viejo sin esos campos, `isIndexableProduct` recibe `undefined`
+       * y solo descarta por nombre vacío — o sea, el sitemap degrada a su
+       * comportamiento anterior en vez de vaciarse. */
+      if (!isIndexableProduct({
+        product_type: typeof productType === "string" ? productType : null,
+        name: typeof name === "string" ? name : slug,
+      })) {
+        excluidos++;
+        continue;
+      }
 
       const parsed = typeof updatedAt === "string" ? new Date(updatedAt) : null;
       const lastModified =
         parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
 
       products.push({ slug, lastModified });
+    }
+
+    if (excluidos > 0) {
+      console.info(
+        `[sitemap] ${products.length} productos indexables · ${excluidos} commodities excluidos ` +
+          `(cables, baterías, repuestos — ver isIndexableProduct en lib/productSeo.ts).`,
+      );
     }
 
     return products;
