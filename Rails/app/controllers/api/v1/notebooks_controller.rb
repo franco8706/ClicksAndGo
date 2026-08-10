@@ -182,13 +182,20 @@ module Api
           # escondió 2555 fotos el 2026-08-10 (denylist vs allowlist). Un solo
           # dueño del criterio, aunque cueste ~1,5 MB en una llamada interna
           # que además queda cacheada 1 h.
+          # ⚠️ La columna es `modelo`, NO `name`: el DTO público la renombra
+          # (`name: laptop.modelo` en el serializer) y es fácil olvidarlo acá,
+          # donde se va a SQL directo. `pluck(:name)` lanza, el `rescue` de
+          # abajo lo convierte en `[]` con 200 y el sitemap queda **vacío sin
+          # avisar** — pasó exactamente así al escribir esto.
           Laptop.order(updated_at: :desc)
                 .limit(SITEMAP_MAX_PRODUCTS)
-                .pluck(:slug, :updated_at, :product_type, :name)
-                .filter_map do |slug, updated_at, product_type, name|
+                .pluck(:slug, :updated_at, :product_type, :modelo)
+                .filter_map do |slug, updated_at, product_type, modelo|
                   next if slug.blank?
+                  # Se emite como `name` para hablar el mismo idioma que el
+                  # resto del DTO que consume la Web.
                   { slug: slug, updated_at: updated_at&.utc&.iso8601,
-                    product_type: product_type, name: name }
+                    product_type: product_type, name: modelo }
                 end
         end
 
