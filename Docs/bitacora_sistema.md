@@ -1029,3 +1029,58 @@ Es el tercer caso de la misma familia en la semana: una degradación bien intenc
 
 - `[Nota]`: `vitest.config.ts` es nuevo. Vitest corría **sin config y por lo tanto sin el alias `@/`**; el test de sitemap falló al importar `@/lib/productSeo` con un error del runner que apuntaba al archivo equivocado, mientras `tsc` y `next build` resolvían el mismo import sin quejarse.
 - `[Pendiente]`: falta ver si Google reacciona. La indexación no es inmediata — conviene revisar Search Console en 2-3 semanas y comparar contra las 37 páginas indexadas de hoy.
+
+---
+
+## 🤝 2026-08-11 · Impact.com (Lenovo): la señal de oferta que al catálogo le faltaba
+
+Lenovo aceptó la afiliación por **Impact.com**. La lectura obvia es "una fuente más de productos", pero lo importante es otra cosa: es la primera red del proyecto que publica **evidencia de oferta**.
+
+### El problema que esto resuelve
+
+El ciclo diario quedó funcionando el 2026-08-10 (878/878 ofertas guardadas, 13,4 min). Pero al medir el catálogo apareció algo incómodo: **3031 de 3100 productos etiquetados "BAJO"**. La causa no era el motor de scoring sino el dato de entrada:
+
+> El feed de Rakuten/Newegg solo expone `price` y `saleprice`, y `saleprice` llega en 0 cuando no hay descuento. Sin descuento, sin rating y sin reseñas, `calculate_generic_score` hace `5.0 + 0 + 0 = 5.0`, y el umbral de Rails marca `< 6.0` como "BAJO".
+
+O sea: **un comparador de ofertas cuyo único feed no informa ni descuentos ni valoraciones no puede computar qué tan buena es una oferta.** El motor calculaba bien; no había con qué.
+
+El esquema OpenAPI v16 de la Partner Catalogs API de Impact sí trae lo que faltaba. Cada campo se verificó contra el esquema antes de mapearlo (no se asumió ninguno):
+
+| Campo de Impact | Para qué |
+|---|---|
+| `OriginalPrice` + `DiscountPercentage` | Descuento **real** — lo único que puede mover el score genérico por encima del 5.0 neutro |
+| `StockAvailability` | Deja de mandarse tráfico afiliado a fichas agotadas: un clic que no puede convertir |
+| `Condition` | Un refurbished dejaba de distinguirse de un producto nuevo |
+| `Manufacturer` | Marca declarada por el comerciante, no adivinada del título por regex |
+| `Url` | **Ya viene firmada** con el ID de partner ("unique to your partner account") — no se reescribe, igual que el `linkurl` de Rakuten |
+
+### Decisiones que vale la pena registrar
+
+- **`Catalogs/ItemSearch` y no `Catalogs/{id}/Items`.** Busca sobre *todos* los catálogos en una sola llamada, así la próxima marca que se sume a Impact entra sola, sin tocar código ni configuración. El modelo de negocio es sumar marcas.
+- **Dedupe por `Id`, no por `CatalogItemId`.** El segundo solo es único *dentro* de un catálogo; al sumar la segunda marca, dos productos distintos colisionarían.
+- **El descuento se reconstruye, no se inventa.** Si falta `OriginalPrice` pero la marca declara `DiscountPercentage`, se deriva el precio de referencia — es aritmética sobre un dato que el comerciante afirma. Con tope del 95%: un 100% haría división por cero y un 99% inflaría el precio ×100.
+- **El slug identifica al comerciante (`lenovo_us`), no a la red.** Aplastar todo bajo "impact" haría incomparables las marcas entre sí.
+
+### Dos supuestos fijos que se volvieron datos
+
+`condition` e `in_stock` estaban **hardcodeados** en el normalizador (`"new"` y `True`) porque ninguna fuente los informaba. Ahora hay una que sí. Guardar un refurbished como nuevo es afirmar algo falso sobre el producto, así que ambos pasaron a leerse del feed — validando `condition` contra el enum en vez de confiar en el string del comerciante.
+
+### El 0 que decía "BAJO"
+
+Aparte, un defecto propio: `ai_score_label_for` devolvía `'BAJO'` cuando `deal_score` era 0. Pero **0 significa "nunca evaluado", no "mala oferta"** — y 2231 de 3100 productos (el 72%) estaban en 0 por la ingesta anterior al arreglo del ciclo. El catálogo se estaba autodescalificando por un defecto de datos.
+
+Ahora devuelve `nil`, y la UI ya trataba la ausencia de etiqueta como "no mostrar señal" (`priceSignal` en `LaptopCard`). Verificado en producción sobre 100 productos: **73 pasaron de `'BAJO'` a `null`, y 0 productos con score 0 conservan etiqueta.**
+
+Es la misma familia de fallo que viene apareciendo toda la semana: un fallback bien intencionado (`rescue → []`, `Cache-Control` inmutable, `onError` de la imagen) convirtiendo la ausencia de dato en una afirmación falsa.
+
+### Los secretos, y por qué dicen `PENDIENTE`
+
+Cloud Run exige que un secreto referenciado tenga **al menos una versión**, así que `IMPACT_ACCOUNT_SID` e `IMPACT_AUTH_TOKEN` se crearon con el valor `PENDIENTE`. El adaptador reconoce esa familia de placeholders como "sin configurar" y se mantiene apagado: sin esto, la cuenta saldría a pedir con un token falso y comería un **401 por corrida**.
+
+Cuando se cargue la credencial real, el próximo ciclo la toma **sin redesplegar nada** (el ref es `:latest` y cada ejecución del Job arranca una instancia nueva).
+
+- `[Nota]`: `.strip()` en las credenciales no es cosmético. Se copian y pegan del panel de Impact y llegan con un salto de línea al final más veces de las que uno querría; con el `\n`, la Basic auth se arma mal y la API responde 401 sin ninguna pista.
+- `[Nota]`: `ImageUrl` tuvo que sumarse a `_CLAVES_IMAGEN`. Impact la escribe en CamelCase y el resto de las redes en minúsculas; sin esa entrada el prewarm no la veía y cada foto se verificaba **serialmente** dentro del bucle — exactamente el cuello de botella de 3,2 min que ya se había corregido una vez.
+- `[Pendiente]`: quedan **2231 productos legacy en `deal_score = 0`**. La cacería diaria solo re-puntúa lo que Rakuten devuelve hoy (~878/corrida), así que no se auto-sanan. Necesitan un backfill dedicado.
+
+53 tests nuevos (248 en total).

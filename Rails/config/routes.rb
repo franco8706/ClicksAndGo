@@ -50,6 +50,14 @@ Rails.application.routes.draw do
       #    Escritura: protegida por InternalApiAuth como el resto de los POST.
       post "products/batch", to: "notebooks#create_batch"
 
+      # 🔢 Backfill de scoring. La cacería diaria solo re-puntúa lo que la red
+      #    devuelve hoy, así que lo ingerido antes de que el ciclo funcionara
+      #    se queda en `deal_score = 0` para siempre si nadie lo va a buscar.
+      #    Ambos protegidos por InternalApiAuth: el listado expone el catálogo
+      #    con sus specs y la escritura toca la base.
+      get  "products/unscored", to: "notebooks#unscored"
+      post "products/scores",   to: "notebooks#update_scores"
+
       # =========================================================
       # 🔔 DESPACHO DE ALERTAS DE PRECIO (system-level)
       # Consumido por el PriceAlertAgent (Python) tras cada ciclo de precios.

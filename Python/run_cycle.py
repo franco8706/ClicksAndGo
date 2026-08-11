@@ -27,6 +27,7 @@ Uso
     python run_cycle.py             # ciclo completo (el diario)
     python run_cycle.py news        # solo el radar de noticias
     python run_cycle.py legal       # solo la auditoría legal
+    python run_cycle.py backfill    # re-puntúa el catálogo sin `deal_score`
 
 Códigos de salida: `0` éxito, `1` fallo. Cloud Run Jobs marca la ejecución como
 fallida con cualquier código distinto de cero, y eso sí se puede alertar.
@@ -58,10 +59,21 @@ def _run_legal() -> None:
     LegalComplianceAgent(orchestrator=MasterOrchestratorAgent()).run_audit()
 
 
+def _run_backfill() -> None:
+    from src.agents import MasterOrchestratorAgent
+    from src.agents.score_backfill import ScoreBackfillAgent
+
+    ScoreBackfillAgent(orchestrator=MasterOrchestratorAgent()).run()
+
+
 TAREAS = {
     "full": _run_full_cycle,
     "news": _run_news,
     "legal": _run_legal,
+    # Puntual, no diaria: repara el catálogo ingerido antes de que el ciclo
+    # funcionara. Es idempotente —solo toca lo que está en `deal_score = 0`—
+    # así que correrla de más no rompe nada.
+    "backfill": _run_backfill,
 }
 
 

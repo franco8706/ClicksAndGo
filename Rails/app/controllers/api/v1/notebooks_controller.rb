@@ -309,6 +309,99 @@ module Api
                status: :internal_server_error
       end
 
+      # =====================================================================
+      # 🔢 BACKFILL DE SCORING — GET /api/v1/products/unscored
+      #
+      # `deal_score` arranca en 0 y solo lo pisa el motor de Rust. La cacería
+      # diaria re-puntúa únicamente lo que la red devuelve HOY (~878 productos
+      # por corrida), así que lo ingerido antes de que el ciclo funcionara se
+      # quedó en 0 para siempre: 2231 de 3100 productos al 2026-08-11.
+      #
+      # Devuelve exactamente los campos que consume el scorer de Rust, con el
+      # `id` como identificador en vez del `sku_original`: el SKU solo es único
+      # por retailer, y dos comerciantes con el mismo SKU se pisarían al
+      # escribir el score de vuelta.
+      # =====================================================================
+      BACKFILL_MAX = 500
+
+      def unscored
+        limite = params[:limit].to_i
+        limite = BACKFILL_MAX if limite <= 0
+        limite = [limite, BACKFILL_MAX].min
+
+        pendientes = Laptop.where('deal_score IS NULL OR deal_score <= 0')
+
+        items = pendientes.includes(:latest_price).limit(limite).map do |laptop|
+          precio = laptop.latest_price
+          specs  = build_specs(laptop)
+
+          {
+            id:            laptop.id,
+            product_type:  product_type_for(laptop),
+            cpu:           laptop.procesador.to_s,
+            gpu:           laptop.tarjeta_video.to_s,
+            ram_gb:        laptop.ram_gb.to_i,
+            specs:         specs.is_a?(Hash) ? specs : {},
+            rating:        specs.is_a?(Hash) ? specs['rating'].to_f : 0.0,
+            reviews:       specs.is_a?(Hash) ? specs['reviews'].to_i : 0,
+            current_price:  precio&.precio_actual.to_f,
+            original_price: precio&.precio_original.to_f,
+            exchange_rate:  precio&.tipo_cambio_aplicado.to_f,
+            currency:       precio&.moneda.presence || 'USD'
+          }
+        end
+
+        render json: { items: items, pending_total: pendientes.count }
+      rescue StandardError => e
+        Rails.logger.error("🚨 [Unscored API] #{e.class}: #{e.message}")
+        render json: { status: 'ERROR', message: 'Fallo al listar productos sin score' },
+               status: :internal_server_error
+      end
+
+      # =====================================================================
+      # 🔢 POST /api/v1/products/scores
+      #
+      # Escribe SOLO la columna `deal_score`. Deliberadamente estrecho: el
+      # camino ancho (`products/batch`) reconstruye el producto entero, y usarlo
+      # para backfill sobrescribiría con defaults campos que ya tienen dato
+      # bueno. Acá no hay forma de perder nada que no sea el score.
+      # =====================================================================
+      def update_scores
+        items = params.to_unsafe_h.deep_symbolize_keys[:items] || []
+
+        unless items.is_a?(Array)
+          return render json: { status: 'ERROR', message: 'items debe ser un array' },
+                        status: :unprocessable_entity
+        end
+
+        actualizados = 0
+        descartados  = 0
+
+        Laptop.transaction do
+          items.each do |item|
+            id    = item[:id].to_i
+            score = item[:deal_score].to_f
+
+            # Un 0 no es un score: es "sin evaluar". Escribirlo dejaría el
+            # producto igual que antes pero marcado como ya procesado.
+            if id <= 0 || score <= 0
+              descartados += 1
+              next
+            end
+
+            actualizados += Laptop.where(id: id)
+                                  .update_all(deal_score: score, updated_at: Time.current)
+          end
+        end
+
+        Rails.logger.info("[scores] #{actualizados} actualizados, #{descartados} descartados")
+        render json: { status: 'SUCCESS', updated: actualizados, skipped: descartados }
+      rescue StandardError => e
+        Rails.logger.error("🚨 [Scores API] #{e.class}: #{e.message}")
+        render json: { status: 'ERROR', message: 'Fallo al actualizar scores' },
+               status: :internal_server_error
+      end
+
       def create
         # 🛠️ Conversión profunda para evitar choques entre Hash de Strings y Símbolos
         payload = params.to_unsafe_h.deep_symbolize_keys
