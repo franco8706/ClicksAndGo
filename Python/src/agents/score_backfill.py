@@ -131,7 +131,9 @@ class ScoreBackfillAgent:
     def _escribir(self, scores: dict) -> int:
         if not scores:
             return 0
-        items = [{"id": int(k), "deal_score": v} for k, v in scores.items()]
+        # El `id` es un UUID: viaja como string de punta a punta. Convertirlo a
+        # entero en cualquiera de las dos puntas rompe el match en silencio.
+        items = [{"id": k, "deal_score": v} for k, v in scores.items()]
         resp = requests.post(
             rails_url(PATH_SCORES),
             json={"items": items},

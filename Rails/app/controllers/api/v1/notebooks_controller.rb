@@ -379,12 +379,15 @@ module Api
 
         Laptop.transaction do
           items.each do |item|
-            id    = item[:id].to_i
+            # ⚠️ `id` es un UUID, no un entero. Un `to_i` acá devolvería 0 para
+            # todos y el `where` no matchearía ninguna fila: el backfill
+            # reportaría éxito habiendo actualizado exactamente nada.
+            id    = item[:id].to_s.strip
             score = item[:deal_score].to_f
 
             # Un 0 no es un score: es "sin evaluar". Escribirlo dejaría el
             # producto igual que antes pero marcado como ya procesado.
-            if id <= 0 || score <= 0
+            if id.blank? || score <= 0
               descartados += 1
               next
             end
