@@ -28,6 +28,11 @@ class MasterOrchestratorAgent:
         # de `Rust/src/models.rs` (500) o Rust responde 413. Se mantiene igual a
         # ese tope: es el punto de mayor rendimiento medido (~5.150 ítems/s).
         self.RUST_BATCH_SIZE = int(os.getenv("RUST_BATCH_SIZE", "500"))
+
+        # 🧠 Lotes semánticos simultáneos contra Gemini. Moderado a propósito:
+        # el trabajo es I/O, pero el servicio tiene cuota y saturarlo cambiaría
+        # un cuello de latencia por uno de rate limit.
+        self.SEMANTIC_WORKERS = int(os.getenv("SEMANTIC_WORKERS", "6"))
         
         # 🌐 Endpoints de Microservicios Internos
         self.rust_batch_url = os.getenv("RUST_API_URL", "http://rust_engine:8080/api/v1/score/batch")
@@ -164,12 +169,26 @@ class MasterOrchestratorAgent:
         deals = forecaster.enrich_batch_with_intelligence(deals)
 
         # 6. 🧠 Enriquecimiento Semántico en Lotes (Gemini SEO/UX)
+        # ⏱️ EN PARALELO. Con Vertex realmente activo (antes caía siempre al
+        # fallback heurístico, que es instantáneo) cada lote de 10 tarda ~30 s
+        # contra Gemini. Medido en el primer ciclo completo: 88 lotes en serie
+        # = **43 de los 50 minutos** del ciclo, contra un techo de Job de 60.
+        # El trabajo es I/O puro, así que paralelizarlo lo baja a ~7 min.
+        #
+        # `SEMANTIC_WORKERS` es deliberadamente moderado: son llamadas a un
+        # servicio con cuota, y saturarlo cambiaría un cuello de latencia por
+        # uno de rate limit. Se conserva el ORDEN original del catálogo.
         semantic_engine = SemanticEngineAgent(orchestrator=self)
         chunk_size = 10
+        lotes = [deals[i:i + chunk_size] for i in range(0, len(deals), chunk_size)]
         enriched_deals = []
-        for i in range(0, len(deals), chunk_size):
-            batch = deals[i:i + chunk_size]
-            enriched_deals.extend(semantic_engine.enrich_batch(batch))
+
+        if lotes:
+            workers = max(1, min(self.SEMANTIC_WORKERS, len(lotes)))
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                # `executor.map` devuelve en el orden de entrada, no de término.
+                for resultado in executor.map(semantic_engine.enrich_batch, lotes):
+                    enriched_deals.extend(resultado)
             
         # 7. 🚀 Evaluación Matemática Masiva (Rust Rayon)
         #
@@ -249,38 +268,44 @@ class MasterOrchestratorAgent:
             for deal in enriched_deals:
                 deal["intelligence"].setdefault("deal_score", 5.0)
 
-        # 8. 🗄️ Persistencia Transaccional (Ataque Paralelo a Rails)
-        success_count = 0
-        rejected_auth = 0
-        headers = {"X-Internal-Key": self.internal_key, "Content-Type": "application/json"}
-        # Disparamos 5 hilos simultáneos apuntando al Puma Server de Rails
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                executor.submit(requests.post, self.rails_api_url, json=deal, headers=headers, timeout=5)
-                for deal in enriched_deals
-            ]
-            for future in as_completed(futures):
-                try:
-                    status = future.result().status_code
-                    if status == 201:
-                        success_count += 1
-                    elif status == 401:
-                        rejected_auth += 1
-                except Exception:
-                    pass
+        # 8. 🗄️ Persistencia Transaccional — POR LOTES
+        #
+        # ⚠️ Antes: un POST por producto con `ThreadPoolExecutor(5)` y
+        # `except Exception: pass`. Medido en el primer ciclo completo
+        # (2026-08-10): de 882 ofertas **solo 35 requests llegaron a Rails** y
+        # 30 se guardaron. Las otras 847 murieron a nivel de conexión en 37
+        # segundos y el `pass` las hizo desaparecer: el log decía "30/882
+        # guardadas" sin una sola línea que explicara el resto.
+        #
+        # `post_products_batch` ya existía —con 26 tests— y NADIE la llamaba.
+        # Trocea en lotes de 50 (el tope de Rails), reintenta con criterio,
+        # distingue el timeout del gateway (donde Rails sí persistió) de un
+        # fallo real, y devuelve cuentas verificables en vez de silencio.
+        # 882 productos pasan de 882 requests a 18.
+        from src.rails_client import post_products_batch
 
-        # Un 401 significa que INTERNAL_API_KEY falta o no coincide con la de
-        # Rails. Silenciarlo dejaría el catálogo congelado sin que nada avise:
-        # el ciclo diario reportaría "0 ofertas guardadas" como si no hubiera
-        # ofertas, cuando en realidad el pipeline está desconectado.
-        if rejected_auth:
+        try:
+            guardados, fallidos = post_products_batch(enriched_deals)
+        except Exception as e:
             self.log_action(
                 "MasterOrchestrator",
-                f"Rails rechazó {rejected_auth} ofertas con 401: INTERNAL_API_KEY ausente o incorrecta.",
+                f"La persistencia por lotes falló entera: {e}",
                 "ERROR",
             )
+            guardados, fallidos = 0, len(enriched_deals)
 
-        self.log_action("MasterOrchestrator", f"Misión completada. {success_count}/{len(enriched_deals)} ofertas guardadas en PostgreSQL.")
+        no_confirmados = len(enriched_deals) - guardados - fallidos
+        nivel = "SUCCESS" if fallidos == 0 and no_confirmados == 0 else "WARNING"
+        self.log_action(
+            "MasterOrchestrator",
+            f"Misión completada. {guardados}/{len(enriched_deals)} ofertas guardadas en PostgreSQL"
+            + (f", {fallidos} fallidas" if fallidos else "")
+            # Ni guardados ni fallidos: el gateway cortó y Rails pudo haber
+            # persistido igual. Decirlo es lo único honesto desde acá.
+            + (f", {no_confirmados} sin confirmar (¿corte del gateway?)" if no_confirmados else "")
+            + ".",
+            nivel,
+        )
 
         # 9. 🔔 Re-engagement: notificar alertas de precio alcanzadas (email vía Resend).
         #    Corre después de persistir los precios nuevos — así compara contra lo más fresco.
