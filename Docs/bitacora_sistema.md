@@ -1105,3 +1105,29 @@ gcloud run jobs execute clicks-cycle --region=us-central1 --project=clicks-and-g
 ```
 
 En los logs, la línea que confirma que funcionó es `[MarketHunter/ImpactRadiusAPI] US: N ofertas`. Si dice `sin resultados`, el adaptador imprime antes el diagnóstico que distingue los dos casos posibles: **0 catálogos visibles** (la asociación con Lenovo todavía no está activa del lado de Impact) contra **catálogos presentes pero 0 productos tras el barrido** (están, pero ningún keyword matcheó).
+
+### Verificación en producción (2026-08-11)
+
+Ciclo completo `clicks-cycle-97k9h` con la quinta red ya registrada:
+
+```
+04:29:12  [MarketHunter]: Capturadas 882 ofertas verificadas.
+04:27:56  [MarketHunter/ImpactRadiusAPI] US: sin resultados (¿API key configurada?)
+04:36:34  [RustEngine]: Scoring: 882/882 productos puntuados en 2 lote(s) de 500
+04:36:57  [MasterOrchestrator]: Misión completada. 882/882 ofertas guardadas.
+          ✅ [Job] 'full' completada en 888s (14.8 min)
+```
+
+La línea de Impact es la que importa: el adaptador está registrado y **degrada limpio** con las credenciales en `PENDIENTE` — reporta y sigue, sin salir a la red, sin 401 y sin tumbar a las otras cuatro redes.
+
+Backfill `clicks-cycle-k6vrk`, **2347/2347 productos puntuados en 24 segundos** (10 vueltas de 250). Pendientes sin score: **0**. El catálogo pasó de 28% a **100% puntuado**.
+
+| Chequeo | Antes | Después |
+|---|---|---|
+| Productos con `deal_score` real | 869 / 3100 (28%) | **3216 / 3216 (100%)** |
+| Productos con etiqueta falsa `BAJO` por score 0 | 2231 | **0** |
+| Redes de afiliación registradas | 4 | **5** |
+| Ofertas persistidas por ciclo | 878/878 | **882/882** |
+| Tests | 195 | **256** |
+
+- `[Pendiente]`: con el catálogo 100% puntuado, el score medio de la muestra es **5,11** y solo el 7% llega a 6,0. No es un defecto del motor: es que el feed de Rakuten no trae descuentos ni ratings, así que casi todo se queda en el 5.0 neutro. **Es exactamente el problema que Lenovo por Impact viene a resolver**, y por eso la integración importa más por la señal que por el volumen.
