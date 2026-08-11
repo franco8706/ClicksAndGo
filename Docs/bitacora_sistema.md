@@ -1084,3 +1084,24 @@ Cuando se cargue la credencial real, el próximo ciclo la toma **sin redesplegar
 - `[Pendiente]`: quedan **2231 productos legacy en `deal_score = 0`**. La cacería diaria solo re-puntúa lo que Rakuten devuelve hoy (~878/corrida), así que no se auto-sanan. Necesitan un backfill dedicado.
 
 53 tests nuevos (248 en total).
+
+#### Cómo activar Lenovo cuando lleguen las credenciales
+
+En `app.impact.com`: menú de la cuenta → **Settings → API Access**. El Account SID y el Auth Token son los mismos para todas las marcas del programa — no hay uno por marca, así que estos dos valores sirven también para la próxima que se sume.
+
+```bash
+printf 'EL_ACCOUNT_SID' | gcloud secrets versions add IMPACT_ACCOUNT_SID \
+  --data-file=- --project=clicks-and-go
+printf 'EL_AUTH_TOKEN'  | gcloud secrets versions add IMPACT_AUTH_TOKEN \
+  --data-file=- --project=clicks-and-go
+```
+
+`printf` y no `echo`: `echo` agrega un `\n` al final y la Basic auth se armaría mal. (El adaptador igual hace `.strip()`, pero no conviene depender de eso.)
+
+No hace falta redesplegar: el ref es `:latest` y cada ejecución del Job arranca una instancia nueva. Para verificar sin esperar al ciclo de las 04:00:
+
+```bash
+gcloud run jobs execute clicks-cycle --region=us-central1 --project=clicks-and-go
+```
+
+En los logs, la línea que confirma que funcionó es `[MarketHunter/ImpactRadiusAPI] US: N ofertas`. Si dice `sin resultados`, el adaptador imprime antes el diagnóstico que distingue los dos casos posibles: **0 catálogos visibles** (la asociación con Lenovo todavía no está activa del lado de Impact) contra **catálogos presentes pero 0 productos tras el barrido** (están, pero ningún keyword matcheó).
