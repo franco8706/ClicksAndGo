@@ -294,3 +294,24 @@ def test_la_hoja_no_se_duplica():
     _, secondary = ImpactRadiusAPI._categorias(
         {"Category": "Computers > Laptops", "SubCategory": "Laptops"})
     assert secondary == "Computers~~Laptops"
+
+
+def test_una_pagina_de_un_solo_item_no_se_pierde(monkeypatch):
+    """La API es XML por debajo y su JSON colapsa la lista de un elemento en
+    un objeto. Sin normalizarlo, esa página se perdía entera y además cortaba
+    el paginado como si no quedaran más productos."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    api = ImpactRadiusAPI()
+
+    llamadas = {"n": 0}
+
+    def fake_get_json(url, params):
+        llamadas["n"] += 1
+        # Objeto suelto en vez de lista — el caso que rompía.
+        return {"Items": item_muestra()} if llamadas["n"] == 1 else {"Items": []}
+
+    monkeypatch.setattr(api, "_get_json", fake_get_json)
+    monkeypatch.setattr("src.agents.market_hunter._human_delay", lambda *a, **k: None)
+
+    assert len(api.fetch_deals("US")) == 1

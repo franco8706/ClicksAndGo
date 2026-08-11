@@ -946,6 +946,12 @@ class ImpactRadiusAPI(RetailerAPI):
                         {"Keyword": kw, "PageSize": self.PAGE_SIZE, "Page": page},
                     )
                     items = datos.get("Items") or []
+                    # La API de Impact es XML por debajo y su serialización a
+                    # JSON colapsa la lista de un solo elemento en un objeto.
+                    # Sin esto, una página con exactamente un producto se
+                    # perdía en silencio (y con ella el corte de paginado).
+                    if isinstance(items, dict):
+                        items = [items]
                     if not isinstance(items, list) or not items:
                         break
 
