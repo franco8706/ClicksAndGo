@@ -42,6 +42,22 @@ def item_muestra(**overrides) -> dict:
     return base
 
 
+def catalogo_muestra(**overrides) -> dict:
+    """Un catálogo con la forma real que devolvió la API (verificado en vivo)."""
+    base = {
+        "Id": "12345",
+        "Name": "Lenovo US Feed",
+        "AdvertiserName": "Lenovo",
+        "AdvertiserLocation": "United States",
+        "CampaignName": "Lenovo US",
+        "NumberOfItems": "335",
+        "Currency": "USD",
+        "ServiceAreas": ["United States"],
+    }
+    base.update(overrides)
+    return base
+
+
 def normalizar(**overrides) -> list:
     return ImpactRadiusAPI()._normalize([item_muestra(**overrides)], "US")
 
@@ -309,9 +325,79 @@ def test_una_pagina_de_un_solo_item_no_se_pierde(monkeypatch):
     def fake_get_json(url, params):
         llamadas["n"] += 1
         # Objeto suelto en vez de lista — el caso que rompía.
-        return {"Items": item_muestra()} if llamadas["n"] == 1 else {"Items": []}
+        return {"Items": item_muestra(CatalogId="12345")} if llamadas["n"] == 1 else {"Items": []}
 
+    api._catalogos_cache = [catalogo_muestra()]
     monkeypatch.setattr(api, "_get_json", fake_get_json)
     monkeypatch.setattr("src.agents.market_hunter._human_delay", lambda *a, **k: None)
 
     assert len(api.fetch_deals("US")) == 1
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# País: el catálogo asociado decide el mercado, no una constante hardcodeada
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("catalogo,esperado", [
+    ({"ServiceAreas": ["Argentina"]},                          {"AR"}),
+    ({"ServiceAreas": ["United States"]},                      {"US"}),
+    ({"ServiceAreas": ["Argentina", "Chile"]},                 {"AR", "CL"}),
+    ({"ServiceAreas": "Argentina"},                            {"AR"}),   # string suelto
+    ({"ServiceAreas": [], "AdvertiserLocation": "Mexico"},     {"MX"}),   # fallback
+    ({"ServiceAreas": ["Narnia"]},                             set()),    # país no soportado
+])
+def test_los_paises_salen_de_lo_que_declara_impact(catalogo, esperado):
+    """Se mapea por `ServiceAreas` y NO se infiere por moneda: un feed en USD
+    puede vender a varios países y la inferencia daría un país equivocado."""
+    assert ImpactRadiusAPI()._paises_del_catalogo(catalogo_muestra(**catalogo)) == esperado
+
+
+def test_sin_catalogo_para_el_pais_no_se_piden_productos(monkeypatch):
+    """El orquestador llama por cada mercado del sitio y hoy solo uno tiene
+    feed. Barrer los otros sería pura latencia contra la API."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    api = ImpactRadiusAPI()
+    api._catalogos_cache = [catalogo_muestra(ServiceAreas=["Argentina"], Id="4491")]
+
+    def explota(*a, **k):
+        raise AssertionError("no debería pedir productos para un país sin catálogo")
+
+    monkeypatch.setattr(api, "_get_json", explota)
+    assert api.fetch_deals("US") == []
+
+
+def test_los_productos_de_otro_catalogo_no_entran_con_el_pais_equivocado(monkeypatch):
+    """`ItemSearch` barre TODOS los catálogos de la cuenta. Sin filtrar por
+    CatalogId, al sumar una segunda marca en otro país sus productos entrarían
+    con el `country_code` y la moneda del mercado equivocado."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    api = ImpactRadiusAPI()
+    api._catalogos_cache = [
+        catalogo_muestra(Id="111", ServiceAreas=["United States"]),
+        catalogo_muestra(Id="222", ServiceAreas=["Argentina"]),
+    ]
+
+    def fake(url, params):
+        if params.get("Page") != 1:
+            return {"Items": []}
+        return {"Items": [
+            item_muestra(Id="a", CatalogId="111", Name="Lenovo ThinkPad US 16GB RAM"),
+            item_muestra(Id="b", CatalogId="222", Name="Lenovo ThinkPad AR 16GB RAM"),
+        ]}
+
+    monkeypatch.setattr(api, "_get_json", fake)
+    monkeypatch.setattr("src.agents.market_hunter._human_delay", lambda *a, **k: None)
+
+    us = api.fetch_deals("US")
+    assert len(us) == 1
+    assert "US" in us[0]["name"]
+
+
+def test_impact_registrado_en_todos_los_mercados_del_sitio():
+    """El adaptador descubre por API qué país sirve cada catálogo, así que
+    registrarlo solo en US dejaría fuera al único feed asociado (Lenovo AR)."""
+    orq = MarketHunterOrchestrator()
+    paises = {c for api, c in orq._tasks if type(api).__name__ == "ImpactRadiusAPI"}
+    assert {"AR", "US", "MX", "ES"} <= paises

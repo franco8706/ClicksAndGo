@@ -3,6 +3,7 @@ import re
 import time
 import base64
 import random
+import threading
 import requests
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -833,10 +834,10 @@ class ImpactRadiusAPI(RetailerAPI):
     # de un default remoto que puede cambiar sin avisar.
     PAGE_SIZE = 100
 
-    # Techo de páginas por keyword. La API corta el paginado en 20.000 registros
-    # totales; 20 páginas × 100 es holgado para un barrido por término y evita
-    # que un catálogo enorme monopolice el presupuesto de tiempo del ciclo.
-    MAX_PAGES = 20
+    # Techo de páginas. La API corta el paginado en 20.000 registros totales;
+    # 60 páginas × 100 cubre un catálogo de 6000 productos sin que uno enorme
+    # monopolice el presupuesto de tiempo del ciclo.
+    MAX_PAGES = 60
 
     # Estados que NO se publican. Se comparan normalizados (sin espacios, en
     # minúsculas) porque el valor lo escribe cada comerciante: se han visto
@@ -851,9 +852,19 @@ class ImpactRadiusAPI(RetailerAPI):
         "openbox": "open_box", "open_box": "open_box",
     }
 
-    COUNTRY_KEYWORDS = {
-        "US": ["laptop", "notebook computer", "desktop computer", "monitor",
-               "keyboard", "mouse", "headset", "webcam", "printer", "toner cartridge"],
+    # Nombre de país que publica Impact → código ISO del catálogo interno.
+    #
+    # Se mapea por país y NO se barre con keywords a propósito. Medido contra
+    # el feed real de Lenovo Argentina (2026-08-11): `Keyword=laptop` devuelve
+    # CERO ítems y `Keyword=notebook` también, porque el catálogo está en
+    # español. Adivinar términos por idioma es frágil y falla en silencio —
+    # sin `Keyword` la API devuelve el catálogo completo paginado, que es
+    # exactamente lo que se quiere y encima cuesta menos requests.
+    PAISES_POR_NOMBRE = {
+        "argentina": "AR", "brazil": "BR", "brasil": "BR", "chile": "CL",
+        "colombia": "CO", "mexico": "MX", "méxico": "MX", "spain": "ES",
+        "españa": "ES", "united states": "US", "united states of america": "US",
+        "usa": "US",
     }
 
     def __init__(self):
@@ -864,6 +875,11 @@ class ImpactRadiusAPI(RetailerAPI):
         # responde 401 en cada corrida sin ninguna pista de por qué.
         self.account_sid = os.getenv("IMPACT_ACCOUNT_SID", "").strip()
         self.auth_token  = os.getenv("IMPACT_AUTH_TOKEN", "").strip()
+        # Los catálogos se piden UNA vez por instancia: el orquestador dispara
+        # `fetch_deals` en paralelo por país y sin caché serían N llamadas
+        # idénticas. El lock evita que dos hilos la pidan a la vez.
+        self._catalogos_cache: list | None = None
+        self._catalogos_lock = threading.Lock()
         if self._is_configured():
             # Basic auth a nivel sesión: el esquema de Impact es
             # `base64(AccountSID:AuthToken)` en el header Authorization, y
@@ -916,75 +932,127 @@ class ImpactRadiusAPI(RetailerAPI):
             return {}
 
     def _catalogos_disponibles(self) -> list:
-        """Lista los catálogos visibles para la cuenta. Solo diagnóstico.
+        """Catálogos visibles para la cuenta, cacheados por instancia.
 
-        Es la diferencia entre "no hay productos" y "no hay catálogos": lo
-        primero puede ser un keyword sin match; lo segundo significa que la
-        asociación con la marca no está activa y ninguna corrida va a traer
-        nada por más que se reintente.
+        Sirve para dos cosas: saber qué países cubrir, y distinguir "no hay
+        productos" de "no hay catálogos". Lo primero puede ser un feed vacío;
+        lo segundo significa que la asociación con la marca no está activa y
+        ninguna corrida va a traer nada por más que se reintente.
         """
-        datos = self._get_json(f"{self.BASE_URL}/{self.account_sid}/Catalogs", {})
-        catalogos = datos.get("Catalogs") or []
-        return catalogos if isinstance(catalogos, list) else []
+        with self._catalogos_lock:
+            if self._catalogos_cache is not None:
+                return self._catalogos_cache
+
+            datos = self._get_json(f"{self.BASE_URL}/{self.account_sid}/Catalogs", {})
+            catalogos = datos.get("Catalogs") or []
+            # Igual que con `Items`: la serialización XML→JSON colapsa la
+            # lista de un solo elemento en un objeto. Con UN solo catálogo
+            # asociado —el caso de hoy— sin esto se perdería entero.
+            if isinstance(catalogos, dict):
+                catalogos = [catalogos]
+            self._catalogos_cache = catalogos if isinstance(catalogos, list) else []
+            return self._catalogos_cache
+
+    def _paises_del_catalogo(self, catalogo: dict) -> set:
+        """Códigos ISO que sirve un catálogo, según lo que declara Impact.
+
+        `ServiceAreas` es la fuente buena (lista explícita de países); si
+        viene vacía se cae a `AdvertiserLocation`, que es de dónde es la
+        marca. No se adivina por moneda: un feed en USD puede vender a
+        varios países y la inferencia daría un país equivocado.
+        """
+        nombres = catalogo.get("ServiceAreas") or []
+        if isinstance(nombres, str):
+            nombres = [nombres]
+        if not nombres and catalogo.get("AdvertiserLocation"):
+            nombres = [catalogo["AdvertiserLocation"]]
+
+        return {
+            iso for n in nombres
+            if (iso := self.PAISES_POR_NOMBRE.get(str(n).strip().lower()))
+        }
+
+    def _catalogos_de(self, country_code: str) -> set:
+        """IDs de catálogo que sirven a este país."""
+        return {
+            str(c.get("Id"))
+            for c in self._catalogos_disponibles()
+            if country_code in self._paises_del_catalogo(c)
+        }
 
     def fetch_deals(self, country_code: str) -> list:
         if not self._is_configured():
             return []
-        keywords = self.COUNTRY_KEYWORDS.get(country_code)
-        if not keywords:
+
+        catalogos = self._catalogos_disponibles()
+        if not catalogos:
+            print(f"⚠️  [Impact] {country_code}: 0 catálogos visibles "
+                  f"(la asociación con la marca no está activa).")
+            return []
+
+        # Sin catálogo para este país no se hace ni una request de productos.
+        # El orquestador llama por cada país del sitio y hoy solo uno tiene
+        # feed: barrer los otros sería pura latencia.
+        ids_del_pais = self._catalogos_de(country_code)
+        if not ids_del_pais:
             return []
 
         vistos: set = set()
         crudos: list = []
 
-        for kw in keywords:
-            for page in range(1, self.MAX_PAGES + 1):
-                try:
-                    _human_delay(0.5, 1.5)
-                    datos = self._get_json(
-                        f"{self.BASE_URL}/{self.account_sid}/Catalogs/ItemSearch",
-                        {"Keyword": kw, "PageSize": self.PAGE_SIZE, "Page": page},
-                    )
-                    items = datos.get("Items") or []
-                    # La API de Impact es XML por debajo y su serialización a
-                    # JSON colapsa la lista de un solo elemento en un objeto.
-                    # Sin esto, una página con exactamente un producto se
-                    # perdía en silencio (y con ella el corte de paginado).
-                    if isinstance(items, dict):
-                        items = [items]
-                    if not isinstance(items, list) or not items:
-                        break
-
-                    for item in items:
-                        if not isinstance(item, dict):
-                            continue
-                        # `Id` combina catálogo + ítem de la marca, así que es
-                        # único entre catálogos; `CatalogItemId` solo lo es
-                        # dentro de uno y colisionaría al sumar marcas.
-                        ident = item.get("Id") or item.get("CatalogItemId") or ""
-                        if ident and ident not in vistos:
-                            vistos.add(ident)
-                            crudos.append(item)
-
-                    # Última página: la API devolvió menos de lo pedido.
-                    if len(items) < self.PAGE_SIZE:
-                        break
-                except Exception as e:
-                    print(f"❌ [Impact] {country_code}/{kw} p{page}: {e}")
+        for page in range(1, self.MAX_PAGES + 1):
+            try:
+                _human_delay(0.3, 0.9)
+                # Sin `Keyword`: la API devuelve el catálogo completo paginado.
+                # Ver la nota en PAISES_POR_NOMBRE — buscar por término en
+                # inglés contra un feed en español devuelve cero y el fallo
+                # sería invisible.
+                datos = self._get_json(
+                    f"{self.BASE_URL}/{self.account_sid}/Catalogs/ItemSearch",
+                    {"PageSize": self.PAGE_SIZE, "Page": page},
+                )
+                items = datos.get("Items") or []
+                # La API de Impact es XML por debajo y su serialización a
+                # JSON colapsa la lista de un solo elemento en un objeto.
+                # Sin esto, una página con exactamente un producto se
+                # perdía en silencio (y con ella el corte de paginado).
+                if isinstance(items, dict):
+                    items = [items]
+                if not isinstance(items, list) or not items:
                     break
 
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    # `ItemSearch` barre TODOS los catálogos de la cuenta, así
+                    # que se filtra por el que corresponde a este país: sin
+                    # esto, al sumar una segunda marca en otro país, sus
+                    # productos entrarían con el `country_code` equivocado y
+                    # con la moneda de otro mercado.
+                    if str(item.get("CatalogId")) not in ids_del_pais:
+                        continue
+                    # `Id` combina catálogo + ítem de la marca, así que es
+                    # único entre catálogos; `CatalogItemId` solo lo es
+                    # dentro de uno y colisionaría al sumar marcas.
+                    ident = item.get("Id") or item.get("CatalogItemId") or ""
+                    if ident and ident not in vistos:
+                        vistos.add(ident)
+                        crudos.append(item)
+
+                # Última página: la API devolvió menos de lo pedido.
+                if len(items) < self.PAGE_SIZE:
+                    break
+            except Exception as e:
+                print(f"❌ [Impact] {country_code} p{page}: {e}")
+                break
+
         if not crudos:
-            catalogos = self._catalogos_disponibles()
-            if not catalogos:
-                print(f"⚠️  [Impact] {country_code}: 0 catálogos visibles "
-                      f"(la asociación con la marca no está activa).")
-            else:
-                resumen = ", ".join(
-                    f"{c.get('AdvertiserName', '?')}({c.get('NumberOfItems', '?')})"
-                    for c in catalogos[:5]
-                )
-                print(f"⚠️  [Impact] {country_code}: 0 productos tras el barrido, "
-                      f"pero hay {len(catalogos)} catálogo(s): {resumen}")
+            resumen = ", ".join(
+                f"{c.get('AdvertiserName', '?')}({c.get('NumberOfItems', '?')})"
+                for c in catalogos[:5]
+            )
+            print(f"⚠️  [Impact] {country_code}: 0 productos tras el barrido, "
+                  f"pero hay {len(catalogos)} catálogo(s): {resumen}")
         return self._normalize(crudos, country_code)
 
     @staticmethod
@@ -1129,7 +1197,12 @@ class MarketHunterOrchestrator:
             [(self.awin_api,    c) for c in ["ES"]]                          +
             [(self.cj_api,      c) for c in ["US"]]                          +
             [(self.rakuten_api, c) for c in ["US"]]                          +
-            [(self.impact_api,  c) for c in ["US"]]
+            # Impact se registra en TODOS los mercados del sitio, no en uno
+            # fijo: el adaptador descubre por API qué países sirve cada
+            # catálogo y descarta el resto sin gastar requests. Hoy el único
+            # feed asociado es Lenovo Argentina (AR); cuando se sume otra
+            # marca en otro país entra sola, sin tocar esta lista.
+            [(self.impact_api,  c) for c in ["AR", "MX", "BR", "CO", "CL", "ES", "US"]]
         )
 
     def _log(self, mensaje: str, status: str = "SUCCESS") -> None:
