@@ -428,3 +428,42 @@ def test_el_log_si_avisa_cuando_falta_la_credencial(monkeypatch, capsys):
 
     orq.hunt_all_markets()
     assert "sin credenciales configuradas" in capsys.readouterr().out
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Hardware: el scorer no puede puntuar lo que no lee
+# ──────────────────────────────────────────────────────────────────────────
+
+DESC_REAL = ('"Color: Grey", "Tipo de pantalla: 14 in", "Procesador: Intel® Core™ '
+             'Ultra 7 355", "Sistema operativo: Windows", "Memoria total: 32 GB", '
+             '"Unidad de disco primaria: 1 TB", "Configura". Todo en un solo dispositivo.')
+
+
+def test_extrae_el_hardware_de_la_descripcion_estructurada():
+    """El normalizador saca las specs del TÍTULO por regex, y los títulos de
+    Lenovo Argentina están en español sin el patrón "16GB RAM 512GB SSD" que
+    traen los de Rakuten. Medido: laptops con 21% de descuento real puntuando
+    4,5 — el scorer afirmando "hardware mediocre" sobre lo que no podía leer."""
+    hw = ImpactRadiusAPI._hardware({"Description": DESC_REAL, "Name": "Lenovo ThinkPad X1"})
+    assert hw["cpu"].startswith("Intel")
+    assert hw["ram_gb"] == 32
+    assert hw["storage_gb"] == 1024   # 1 TB → GB
+
+
+def test_el_hardware_declarado_le_gana_al_regex_del_titulo():
+    """Extremo a extremo: la RAM declarada (32) debe pisar el default de 8."""
+    d = normalizar(Description=DESC_REAL,
+                   Name="Lenovo ThinkPad X1 2-en-1 Gen 11 Aura Edition")[0]
+    assert d["hardware"]["ram_gb"] == 32
+    assert d["hardware"]["storage_gb"] == 1024
+    assert d["hardware"]["cpu"] != "Procesador Estándar"
+
+
+def test_lo_que_no_esta_en_la_descripcion_no_se_inventa():
+    """Sin specs declaradas se cae a la heurística del título, no a un valor
+    fabricado: el título sí trae "16GB RAM 512GB SSD"."""
+    hw = ImpactRadiusAPI._hardware({"Description": "Puro texto de marketing.", "Name": "Lenovo X"})
+    assert hw == {}
+    d = normalizar(Description="Puro texto de marketing.")[0]
+    assert d["hardware"]["ram_gb"] == 16      # del título de la muestra
+    assert d["hardware"]["storage_gb"] == 512

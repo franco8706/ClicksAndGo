@@ -342,6 +342,16 @@ class DataNormalizerAgent:
         )
         ram_gb = int(ram_match.group(1)) if ram_match else 8
 
+        # 🧠 La spec DECLARADA por la red gana sobre el regex del título, que es
+        # una heurística sobre texto libre. Impact publica "Memoria total: 32 GB"
+        # en la descripción estructurada; los títulos en español no siguen el
+        # patrón "16GB RAM" que sí traen los de Rakuten, así que sin esto una
+        # laptop de 32 GB se guardaba con el default de 8 y el scorer la
+        # castigaba por un hardware que nunca pudo leer.
+        ram_declarada = raw_data.get("ram_gb")
+        if isinstance(ram_declarada, (int, float)) and ram_declarada > 0:
+            ram_gb = int(ram_declarada)
+
         # Storage: exige unidad TB o keyword SSD/HDD/NVMe/eMMC.
         # (Antes el sufijo SSD era opcional y tomaba el primer "N GB" del título,
         #  que suele ser la RAM: "16 GB 512 GB SSD" → storage 16. Bug confirmado.)
@@ -356,6 +366,11 @@ class DataNormalizerAgent:
                 storage_gb *= 1024
         else:
             storage_gb = 256
+
+        # Mismo criterio que la RAM: el dato declarado manda sobre el regex.
+        storage_declarado = raw_data.get("storage_gb")
+        if isinstance(storage_declarado, (int, float)) and storage_declarado > 0:
+            storage_gb = int(storage_declarado)
 
         country = self.sanitize_string(raw_data.get("country_code", "US"))[:2].upper()
         

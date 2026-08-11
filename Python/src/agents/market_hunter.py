@@ -1070,6 +1070,43 @@ class ImpactRadiusAPI(RetailerAPI):
         except ValueError:
             return 0.0
 
+    #: Specs que Lenovo publica al principio de `Description` como pares
+    #: `"Clave: valor"`. Verificado sobre el feed real (2026-08-11):
+    #:   "Procesador: Intel® Core™ Ultra 7 355", "Memoria total: 32 GB",
+    #:   "Unidad de disco primaria: 1 TB", "Tipo de pantalla: 14 in"
+    _RE_CPU = re.compile(r'"?Procesador"?\s*:\s*"?([^",;]{3,60})', re.I)
+    _RE_GPU = re.compile(r'"?(?:Tarjeta gr[áa]fica|Gr[áa]ficos|GPU)"?\s*:\s*"?([^",;]{3,60})', re.I)
+    _RE_RAM = re.compile(r'"?Memoria(?:\s+total)?"?\s*:\s*"?(\d+)\s*GB', re.I)
+    _RE_SSD = re.compile(r'"?Unidad de disco[^"]*"?\s*:\s*"?(\d+)\s*(GB|TB)', re.I)
+
+    @classmethod
+    def _hardware(cls, item: dict) -> dict:
+        """Extrae CPU/GPU/RAM/almacenamiento de la descripción estructurada.
+
+        Sin esto, el scorer de hardware no ve NADA: el normalizador saca las
+        specs del título por regex, y los títulos de Lenovo Argentina están en
+        español y no siguen el patrón "16GB RAM 512GB SSD" que sí traen los de
+        Rakuten. El resultado medido eran laptops con 21% de descuento real
+        puntuando 4,5 sobre 10 — el scorer afirmando "hardware mediocre" sobre
+        un hardware que no podía leer.
+
+        Devuelve solo las claves que encontró: lo que no está no se inventa, y
+        el normalizador sigue con su heurística de título para el resto.
+        """
+        texto = f"{item.get('Description') or ''} {item.get('Name') or ''}"
+        hw: dict = {}
+
+        if m := cls._RE_CPU.search(texto):
+            hw["cpu"] = m.group(1).strip()
+        if m := cls._RE_GPU.search(texto):
+            hw["gpu"] = m.group(1).strip()
+        if m := cls._RE_RAM.search(texto):
+            hw["ram_gb"] = int(m.group(1))
+        if m := cls._RE_SSD.search(texto):
+            gb = int(m.group(1))
+            hw["storage_gb"] = gb * 1024 if m.group(2).upper() == "TB" else gb
+        return hw
+
     @staticmethod
     def _categorias(item: dict) -> tuple[str, str]:
         """Traduce la categoría de Impact a la forma que espera la taxonomía.
@@ -1148,6 +1185,9 @@ class ImpactRadiusAPI(RetailerAPI):
                 "condition":     self.CONDICIONES.get(
                     re.sub(r"[\s_-]", "", str(item.get("Condition", ""))).lower(), "new"),
                 "in_stock":      True,
+                # CPU/GPU/RAM/almacenamiento declarados por la marca. Sin esto
+                # el scorer de hardware puntúa a ciegas — ver `_hardware`.
+                **self._hardware(item),
                 "financials": {
                     "original_price": precio_lista,
                     "current_price":  precio_actual,
