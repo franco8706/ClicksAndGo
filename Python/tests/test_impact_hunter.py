@@ -259,3 +259,38 @@ def test_credenciales_con_salto_de_linea_igual_funcionan(monkeypatch):
     api = ImpactRadiusAPI()
     assert api._is_configured() is True
     assert api.session.auth == ("IRxyz", "secreto")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Categorías: el separador cambia según el comerciante
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("categoria,subcategoria", [
+    ("Computers|Laptops",                  ""),
+    ("Electronics > Computers > Laptops",  "Laptops"),
+    ("Computers/Laptops",                  ""),
+    ("Computers~~Laptops",                 ""),
+    ("",                                   "Laptops"),
+])
+def test_la_laptop_entra_con_cualquier_separador(categoria, subcategoria):
+    """`classify_product` NO busca keywords en `primary` —solo en `secondary`
+    y el título—, así que un producto cuya única pista está en `Category` se
+    descartaba entero. Verificado: ('Computers|Laptops', '', 'Lenovo IdeaPad
+    3') devolvía None, o sea que la laptop no entraba al catálogo."""
+    r = normalizar(Category=categoria, SubCategory=subcategoria,
+                   Name="Lenovo IdeaPad 3 8GB RAM 256GB SSD")
+    assert len(r) == 1
+    assert r[0]["product_type"] == "laptop"
+
+
+def test_lo_que_no_es_catalogo_digital_sigue_afuera():
+    """La traducción de categorías no puede ablandar el filtro."""
+    assert normalizar(Category="Home & Garden > Furniture", SubCategory="Chairs",
+                      Name="Lenovo Gaming Chair") == []
+
+
+def test_la_hoja_no_se_duplica():
+    """Si `SubCategory` ya es la hoja de `Category`, no se repite."""
+    _, secondary = ImpactRadiusAPI._categorias(
+        {"Category": "Computers > Laptops", "SubCategory": "Laptops"})
+    assert secondary == "Computers~~Laptops"

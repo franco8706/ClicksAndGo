@@ -996,6 +996,31 @@ class ImpactRadiusAPI(RetailerAPI):
         except ValueError:
             return 0.0
 
+    @staticmethod
+    def _categorias(item: dict) -> tuple[str, str]:
+        """Traduce la categoría de Impact a la forma que espera la taxonomía.
+
+        La taxonomía nació con Rakuten: `primary` plano y `secondary`
+        jerárquico separado por `~~`, y evalúa la HOJA primero porque es el
+        dato más específico. Impact publica `Category` (la jerarquía completa)
+        y `SubCategory` (la hoja), con un separador que además **cambia según
+        el comerciante**: se ven `>`, `|` y `/`.
+
+        Sin esta traducción hay un fallo silencioso: `classify_product` NO usa
+        `primary` para buscar keywords —solo mira `secondary` y el título—, así
+        que un producto cuya única pista está en `Category` se descartaba
+        entero. Medido: `('Computers|Laptops', '', 'Lenovo IdeaPad 3')` daba
+        None, o sea que la laptop no entraba al catálogo.
+        """
+        crudo  = str(item.get("Category") or "")
+        partes = [p.strip() for p in re.split(r"[>|/]|~~", crudo) if p.strip()]
+
+        sub = str(item.get("SubCategory") or "").strip()
+        if sub and (not partes or partes[-1].lower() != sub.lower()):
+            partes.append(sub)
+
+        return (partes[0] if partes else ""), "~~".join(partes)
+
     def _normalize(self, raw_data: list, country_code: str) -> list:
         self._prewarm_images(raw_data)
         normalized = []
@@ -1004,9 +1029,8 @@ class ImpactRadiusAPI(RetailerAPI):
         for item in raw_data:
             name = item.get("Name", "")
 
-            par = classify_product(item.get("Category", ""),
-                                   item.get("SubCategory", ""),
-                                   name)
+            primary, secondary = self._categorias(item)
+            par = classify_product(primary, secondary, name)
             if not par:
                 continue
             product_type = par[1]
