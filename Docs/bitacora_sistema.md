@@ -1131,3 +1131,61 @@ Backfill `clicks-cycle-k6vrk`, **2347/2347 productos puntuados en 24 segundos** 
 | Tests | 195 | **256** |
 
 - `[Pendiente]`: con el catálogo 100% puntuado, el score medio de la muestra es **5,11** y solo el 7% llega a 6,0. No es un defecto del motor: es que el feed de Rakuten no trae descuentos ni ratings, así que casi todo se queda en el 5.0 neutro. **Es exactamente el problema que Lenovo por Impact viene a resolver**, y por eso la integración importa más por la señal que por el volumen.
+
+---
+
+## 🇦🇷 2026-08-11 (cont.) · Lenovo activo: tres supuestos míos que la API en vivo desmintió
+
+Llegaron las credenciales reales y la verificación contra la API desmontó tres cosas que yo había escrito **de memoria y no de medición**. Juntas habrían devuelto cero productos, sin un solo error — porque "0 productos" es una respuesta válida.
+
+### 1. El catálogo es de Argentina, no de EE.UU.
+
+```json
+{"Id": "4491", "Name": "Lenovo Argentina Feed", "AdvertiserName": "Lenovo Latin America",
+ "NumberOfItems": "335", "Currency": "ARS", "ServiceAreas": ["Argentina"]}
+```
+
+Yo había hardcodeado `COUNTRY_KEYWORDS = {"US": [...]}` asumiendo que Lenovo entraría por el mismo mercado que Rakuten. **El único catálogo asociado sirve a Argentina.**
+
+Se reemplazó por descubrimiento: el adaptador lee `ServiceAreas` de cada catálogo y lo mapea al ISO. Se registra en los siete mercados del sitio y descarta los que no tienen feed **sin gastar una sola request**. Cuando se sume otra marca en otro país, entra sola.
+
+Se filtra por `CatalogId` al normalizar porque `ItemSearch` barre TODOS los catálogos de la cuenta: sin eso, la segunda marca entraría con el país y la moneda del mercado equivocado.
+
+### 2. Los keywords en inglés devuelven cero contra un feed en español
+
+Medido: `Keyword=laptop` → **0 ítems**. `Keyword=notebook` → **0**. `Keyword=portátil` → 3.
+
+Adivinar términos por idioma es frágil y falla en silencio. Sin `Keyword`, la API devuelve el catálogo completo paginado — que es lo que se quiere y encima cuesta menos requests.
+
+### 3. El scorer de hardware puntuaba laptops que no podía leer
+
+Este apareció recién **con productos reales adentro**: laptops con 21% de descuento puntuando 4,5 sobre 10. No era el descuento — a las laptops las puntúa el scorer de hardware (CPU/GPU/RAM), no el genérico.
+
+El normalizador saca las specs del título por regex, y los títulos de Lenovo Argentina están en español sin el patrón `"16GB RAM 512GB SSD"` que sí traen los de Rakuten. Las 206 laptops entraban con los defaults —`"Procesador Estándar"`, 8 GB— y el scorer las castigaba por un hardware que nunca pudo leer.
+
+**Es la cuarta vez esta semana que el sistema afirma algo sin evidencia.** Impact publica las specs al principio de `Description` como pares `"Clave: valor"`, así que se extraen y el normalizador ahora prefiere la spec DECLARADA sobre su heurística de título — mismo criterio que ya se aplicó a `condition` e `in_stock`. Lo que no está no se inventa: se cae a la heurística.
+
+### 4. El log culpaba a la credencial cuando el problema era otro
+
+Con Impact asociado solo a Argentina, seis mercados devuelven 0 por diseño, y el mensaje era siempre `sin resultados (¿API key configurada?)`: seis WARNING por corrida señalando una credencial perfecta.
+
+El test que escribí para el arreglo **encontró un bug en el propio arreglo**: `hunt_all_markets` guardaba solo el NOMBRE de la clase en el dict de futures, así que preguntarle al adaptador si estaba configurado lanzaba `NameError` en cada red sin resultados — justo el camino que venía a mejorar.
+
+### Verificación en producción
+
+| Métrica | Antes de Lenovo | Después |
+|---|---|---|
+| Ofertas por ciclo | 882 | **1146** (882 Rakuten + 264 Lenovo AR) |
+| Mercados con catálogo | 1 (US) | **2** (US + AR) |
+| Productos AR con descuento real | — | **96 / 100** |
+| Laptops AR con CPU real | 0 / 74 | **74 / 74** |
+| Score medio del catálogo AR | 4,5 | **6,33** |
+| Etiquetas AR | 69 BAJO · 2 ÓPTIMO | **10 BUENO · 3 ÓPTIMO · 57 REGULAR** |
+| Ofertas persistidas | 1146/1146 | ✅ exit 0 |
+
+Las 3 mejores ofertas del catálogo argentino hoy: MacBook Pro 14" (9,5), Legion 5i Gen 10 con i9-14900HX y 24% off (9,0), OMEN 16 (9,0).
+
+- `[Nota]`: el ciclo tardó 3,4 min en vez de 14,8 porque tres corridas en una hora agotaron `AI_DAILY_LIMIT=500` y la semántica cayó a la heurística Antigravity. Es el comportamiento diseñado, no un fallo — pero conviene no leer ese número como "el ciclo ahora es 4× más rápido".
+- `[Pendiente]`: los productos argentinos solo se ven eligiendo Argentina en el selector de país; el sitio abre en US por defecto.
+
+15 tests más (**270 en total**).
