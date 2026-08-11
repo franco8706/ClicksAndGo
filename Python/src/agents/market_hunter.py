@@ -1219,19 +1219,33 @@ class MarketHunterOrchestrator:
         all_deals = []
 
         with ThreadPoolExecutor(max_workers=8) as executor:
+            # Se guarda el adaptador y no solo su nombre: al reportar 0 ofertas
+            # hay que preguntarle si estaba configurado, y con el nombre suelto
+            # no había forma de saberlo.
             futures = {
-                executor.submit(api.fetch_deals, country): (type(api).__name__, country)
+                executor.submit(api.fetch_deals, country): (api, country)
                 for api, country in self._tasks
             }
             for future in as_completed(futures):
-                api_name, country = futures[future]
+                api, country = futures[future]
+                api_name = type(api).__name__
                 try:
                     deals = future.result()
                     all_deals.extend(deals)
                     if deals:
                         self._log(f"✅ [MarketHunter/{api_name}] {country}: {len(deals)} ofertas.")
+                    # Sin resultados hay DOS causas distintas y confundirlas
+                    # cuesta caro. El mensaje viejo decía siempre "¿API key
+                    # configurada?": con Impact asociado solo a Argentina eso
+                    # eran 6 WARNING por corrida culpando a una credencial que
+                    # estaba perfecta. Se reporta el hecho, no una conjetura.
+                    elif not getattr(api, "_is_configured", lambda: True)():
+                        self._log(f"⚠️  [MarketHunter/{api_name}] {country}: "
+                                  f"sin credenciales configuradas.", "WARNING")
                     else:
-                        self._log(f"⚠️  [MarketHunter/{api_name}] {country}: sin resultados (¿API key configurada?).", "WARNING")
+                        self._log(f"ℹ️  [MarketHunter/{api_name}] {country}: "
+                                  f"0 ofertas (la red respondió, no hay feed "
+                                  f"para este mercado).")
                 except Exception as e:
                     self._log(f"🚨 [MarketHunter/{api_name}] {country}: {e}", "ERROR")
 

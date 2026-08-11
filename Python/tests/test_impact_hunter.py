@@ -401,3 +401,30 @@ def test_impact_registrado_en_todos_los_mercados_del_sitio():
     orq = MarketHunterOrchestrator()
     paises = {c for api, c in orq._tasks if type(api).__name__ == "ImpactRadiusAPI"}
     assert {"AR", "US", "MX", "ES"} <= paises
+
+
+def test_el_log_no_culpa_a_la_credencial_cuando_esta_bien(monkeypatch, capsys):
+    """Con Impact asociado solo a Argentina, seis mercados devuelven 0 por
+    diseño. El mensaje viejo decía siempre "¿API key configurada?" y eran seis
+    WARNING por corrida culpando a una credencial que estaba perfecta."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    orq = MarketHunterOrchestrator()
+    orq._tasks = [(orq.impact_api, "MX")]
+    monkeypatch.setattr(orq.impact_api, "_catalogos_disponibles",
+                        lambda: [catalogo_muestra(ServiceAreas=["Argentina"])])
+
+    orq.hunt_all_markets()
+    salida = capsys.readouterr().out
+    assert "API key" not in salida
+    assert "no hay feed" in salida
+
+
+def test_el_log_si_avisa_cuando_falta_la_credencial(monkeypatch, capsys):
+    for var in ("IMPACT_ACCOUNT_SID", "IMPACT_AUTH_TOKEN"):
+        monkeypatch.delenv(var, raising=False)
+    orq = MarketHunterOrchestrator()
+    orq._tasks = [(orq.impact_api, "AR")]
+
+    orq.hunt_all_markets()
+    assert "sin credenciales configuradas" in capsys.readouterr().out
