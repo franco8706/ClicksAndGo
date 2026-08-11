@@ -1,0 +1,261 @@
+"""Tests del adaptador de Impact.com (Partner Catalogs API v16).
+
+Impact es la primera red del proyecto que publica SEÑAL DE OFERTA real
+—`OriginalPrice`, `DiscountPercentage`, `StockAvailability`, `Condition`—, así
+que estos tests cubren sobre todo el riesgo nuevo: que esa señal se lea mal y
+termine afirmando algo falso sobre un producto (un descuento que no existe, un
+refurbished vendido como nuevo, o una ficha agotada recibiendo tráfico pago).
+
+Corren OFFLINE: ninguno toca la red (ver `conftest.py`).
+"""
+
+import pytest
+
+from src.agents.market_hunter import (
+    ImpactRadiusAPI,
+    MarketHunterOrchestrator,
+    RetailerAPI,
+)
+
+
+def item_muestra(**overrides) -> dict:
+    """Un ítem con la forma exacta del esquema OpenAPI v16 de Impact."""
+    base = {
+        "Id": "12345-LEN-X1C-G12",
+        "CatalogItemId": "LEN-X1C-G12",
+        "CatalogId": "12345",
+        "CampaignName": "Lenovo US",
+        "Name": "Lenovo ThinkPad X1 Carbon Gen 12 16GB RAM 512GB SSD",
+        "Manufacturer": "Lenovo",
+        "Category": "Computers",
+        "SubCategory": "Laptops",
+        "CurrentPrice": "1299.00",
+        "OriginalPrice": "1899.00",
+        "DiscountPercentage": "31",
+        "Currency": "USD",
+        "StockAvailability": "InStock",
+        "Condition": "New",
+        "ImageUrl": "https://p1-ofp.static.pub/thinkpad-x1.png",
+        "Url": "https://lenovo.pxf.io/c/1234567/89012/3456?u=https%3A%2F%2Fwww.lenovo.com",
+    }
+    base.update(overrides)
+    return base
+
+
+def normalizar(**overrides) -> list:
+    return ImpactRadiusAPI()._normalize([item_muestra(**overrides)], "US")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Precios: el campo llega como STRING y lo llena cada comerciante
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("crudo,esperado", [
+    ("1299.00",   1299.0),
+    ("$1,299.00", 1299.0),   # símbolo y separador de miles
+    ("1299",      1299.0),
+    ("",          0.0),
+    (None,        0.0),
+    ("N/A",       0.0),      # texto libre: no puede explotar
+    (".",         0.0),
+    ("-",         0.0),
+])
+def test_precio_tolera_lo_que_manda_el_comerciante(crudo, esperado):
+    assert ImpactRadiusAPI._precio(crudo) == esperado
+
+
+def test_sin_precio_actual_no_entra_al_catalogo():
+    """Un producto sin precio no es una oferta comparable."""
+    assert normalizar(CurrentPrice="") == []
+    assert normalizar(CurrentPrice="0") == []
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Descuento — la señal que el feed de Rakuten no tiene
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_descuento_real_llega_al_scoring():
+    """El caso que justifica toda la integración: 1299 sobre 1899 es un 31%.
+
+    Con Rakuten esto valía score genérico 5.0 por falta de evidencia.
+    """
+    fin = normalizar()[0]["financials"]
+    assert fin["current_price"] == 1299.0
+    assert fin["original_price"] == 1899.0
+    assert fin["discount_pct"] == 31
+
+
+def test_reconstruye_el_precio_de_referencia_desde_el_porcentaje():
+    """Si falta `OriginalPrice` pero la marca declara el %, se deriva.
+
+    Es aritmética sobre un dato afirmado por el comerciante, no un descuento
+    inventado: 800 con 20% off implica un precio de lista de 1000.
+    """
+    fin = normalizar(OriginalPrice="", CurrentPrice="800", DiscountPercentage="20")[0]["financials"]
+    assert fin["original_price"] == 1000.0
+    assert fin["discount_pct"] == 20
+
+
+def test_sin_descuento_no_se_inventa_uno():
+    """Sin `OriginalPrice` ni porcentaje, el precio de lista NO se fabrica."""
+    fin = normalizar(OriginalPrice="", DiscountPercentage="0")[0]["financials"]
+    assert fin["discount_pct"] == 0
+    assert fin["original_price"] <= fin["current_price"]
+
+
+@pytest.mark.parametrize("pct", ["95", "99", "100", "150"])
+def test_porcentaje_absurdo_no_reconstruye_precio(pct):
+    """Un 100% haría división por cero y un 99% inflaría el precio ×100.
+
+    Ante un valor imposible se prefiere no tener precio de referencia antes
+    que publicar uno delirante.
+    """
+    fin = normalizar(OriginalPrice="", CurrentPrice="800", DiscountPercentage=pct)[0]["financials"]
+    assert fin["original_price"] <= fin["current_price"]
+    assert fin["discount_pct"] == 0
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Stock: no mandar tráfico afiliado a una ficha que no se puede comprar
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("estado", [
+    "OutOfStock", "out of stock", "OUT_OF_STOCK", "out-of-stock",
+    "Discontinued", "SoldOut", "Unavailable",
+])
+def test_agotado_no_se_publica(estado):
+    """El valor lo escribe cada comerciante: se compara normalizado."""
+    assert normalizar(StockAvailability=estado) == []
+
+
+@pytest.mark.parametrize("estado", ["InStock", "in stock", "PreOrder", ""])
+def test_disponible_o_desconocido_si_se_publica(estado):
+    """Ausencia de dato no es ausencia de stock: solo se descarta lo negativo."""
+    assert len(normalizar(StockAvailability=estado)) == 1
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Condición: un refurbished guardado como nuevo es una afirmación falsa
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("crudo,esperado", [
+    ("New",          "new"),
+    ("Refurbished",  "refurbished"),
+    ("Renewed",      "refurbished"),
+    ("Used",         "refurbished"),
+    ("Open Box",     "open_box"),
+    ("OpenBox",      "open_box"),
+    ("",             "new"),
+    ("vaya a saber", "new"),
+])
+def test_condicion_se_mapea_al_enum(crudo, esperado):
+    assert normalizar(Condition=crudo)[0]["condition"] == esperado
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Atribución: el enlace ya viene firmado — tocarlo rompe la comisión
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_el_enlace_de_tracking_no_se_reescribe():
+    url = "https://lenovo.pxf.io/c/1234567/89012/3456?u=https%3A%2F%2Fwww.lenovo.com"
+    assert normalizar()[0]["urls"]["affiliate_raw"] == url
+
+
+def test_la_marca_declarada_gana_sobre_el_regex_del_titulo():
+    """`Manufacturer` lo declara el comerciante; `extract_brand` lo adivina."""
+    assert normalizar()[0]["brand"] == "Lenovo"
+
+
+def test_sin_manufacturer_cae_al_titulo():
+    assert normalizar(Manufacturer="")[0]["brand"].lower() == "lenovo"
+
+
+def test_el_slug_identifica_al_comerciante_no_a_la_red():
+    """Aplastar todo bajo "impact" haría incomparables las marcas entre sí."""
+    assert normalizar()[0]["retailer_slug"] == "lenovo_us"
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Configuración: una red sin credenciales no puede tumbar a las otras cuatro
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_sin_credenciales_no_hace_red(monkeypatch):
+    for var in ("IMPACT_ACCOUNT_SID", "IMPACT_AUTH_TOKEN"):
+        monkeypatch.delenv(var, raising=False)
+    api = ImpactRadiusAPI()
+    assert api._is_configured() is False
+    assert api.fetch_deals("US") == []
+
+
+def test_credencial_a_medias_no_alcanza(monkeypatch):
+    """Con SID pero sin token la llamada daría 401 en cada corrida."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.delenv("IMPACT_AUTH_TOKEN", raising=False)
+    assert ImpactRadiusAPI()._is_configured() is False
+
+
+def test_pais_no_mapeado_no_consulta(monkeypatch):
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    assert ImpactRadiusAPI().fetch_deals("AR") == []
+
+
+def test_basic_auth_queda_armada(monkeypatch):
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "secreto")
+    assert ImpactRadiusAPI().session.auth == ("IRxyz", "secreto")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Integración con el resto del cazador
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_impact_esta_registrado_en_el_orquestador():
+    """Sin esto el adaptador existe pero nunca corre — el fallo más silencioso
+    posible: cero errores, cero productos, y nada que lo explique."""
+    orq = MarketHunterOrchestrator()
+    apis = {type(api).__name__ for api, _ in orq._tasks}
+    assert "ImpactRadiusAPI" in apis
+    assert ("US" in [c for api, c in orq._tasks if type(api).__name__ == "ImpactRadiusAPI"])
+
+
+def test_la_clave_de_imagen_de_impact_esta_en_el_prewarm():
+    """Impact escribe `ImageUrl` en CamelCase. Sin esta entrada el prewarm no
+    la ve y cada foto se verifica serialmente dentro del bucle — el cuello de
+    botella de 3,2 min por corrida que ya se corrigió una vez."""
+    assert "ImageUrl" in RetailerAPI._CLAVES_IMAGEN
+
+
+def test_paginado_dentro_de_los_limites_de_la_api():
+    """El paginado de la API corta a los 20.000 registros totales."""
+    assert ImpactRadiusAPI.PAGE_SIZE <= 100
+    assert ImpactRadiusAPI.PAGE_SIZE * ImpactRadiusAPI.MAX_PAGES <= 20_000
+
+
+def test_dedupe_por_id_entre_catalogos():
+    """`CatalogItemId` solo es único DENTRO de un catálogo; `Id` lo es entre
+    catálogos. Al sumar marcas, deduplicar por el primero las colisionaría."""
+    api = ImpactRadiusAPI()
+    a = item_muestra(Id="111-SKU", CatalogItemId="SKU")
+    b = item_muestra(Id="222-SKU", CatalogItemId="SKU", Name="Lenovo ThinkVision 27 Monitor",
+                     Category="Electronics", SubCategory="Monitors")
+    assert len(api._normalize([a, b], "US")) == 2
+
+
+@pytest.mark.parametrize("valor", ["PENDIENTE", "pendiente", "unset", "changeme", ""])
+def test_el_placeholder_del_secreto_mantiene_la_red_apagada(monkeypatch, valor):
+    """Cloud Run exige que un secreto referenciado tenga al menos una versión,
+    así que se crean con `PENDIENTE`. Si eso contara como configurado, la
+    cuenta comería un 401 por corrida sin traer nada."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", valor)
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", valor)
+    assert ImpactRadiusAPI()._is_configured() is False
+
+
+def test_credenciales_con_salto_de_linea_igual_funcionan(monkeypatch):
+    """Se copian y pegan del panel: llegan con `\\n` más veces de las deseadas."""
+    monkeypatch.setenv("IMPACT_ACCOUNT_SID", "IRxyz\n")
+    monkeypatch.setenv("IMPACT_AUTH_TOKEN", "  secreto  ")
+    api = ImpactRadiusAPI()
+    assert api._is_configured() is True
+    assert api.session.auth == ("IRxyz", "secreto")

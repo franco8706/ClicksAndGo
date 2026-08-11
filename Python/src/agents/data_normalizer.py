@@ -387,7 +387,15 @@ class DataNormalizerAgent:
             "currency": currency,
             "brand": self.sanitize_string(raw_data.get("brand", "Genérica")),
             "name": title[:150],
-            "condition": "new",
+            # 📦 Condición real cuando la red la declara. Estaba fijada en "new"
+            # porque ninguna fuente la publicaba; Impact sí manda `Condition`, y
+            # guardar un refurbished como nuevo es afirmar algo falso sobre el
+            # producto. Se valida contra el enum en vez de confiar en el feed:
+            # un valor desconocido cae a "new", que es el default histórico.
+            "condition": (
+                cond if (cond := self.sanitize_string(raw_data.get("condition", "")).lower())
+                in ("new", "refurbished", "open_box") else "new"
+            ),
             # 📂 `product_type` ES la subcategoría de la taxonomía v8 (56
             # valores). La categoría macro NO viaja acá: se resuelve por JOIN
             # con `product_categories.family`, que es la única fuente. Mandar
@@ -406,7 +414,12 @@ class DataNormalizerAgent:
                 "current_price": current_price,
                 "discount_pct": discount_pct,
                 "applied_exchange_rate": applied_rate,
-                "in_stock": True
+                # Igual que `condition`: era un `True` fijo porque no había de
+                # dónde sacarlo. Impact publica `StockAvailability`, así que el
+                # adaptador ya descarta lo agotado y lo que llega acá es lo
+                # publicable. Las redes que no lo informan siguen en True — es
+                # el supuesto que el sistema ya venía haciendo, ahora explícito.
+                "in_stock": bool(raw_data.get("in_stock", True))
             },
             "urls": {
                 # 🖼️ Solo la foto real del producto (ver clean_image_url arriba).

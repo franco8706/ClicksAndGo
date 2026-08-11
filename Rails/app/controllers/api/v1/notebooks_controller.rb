@@ -482,7 +482,19 @@ module Api
       end
 
       # 🏷️ Etiqueta semántica derivada del score (escala estricta 1.0 - 10.0)
+      # 🏷️ Etiqueta de oferta. `nil` cuando NO hay nada que etiquetar.
+      #
+      # `deal_score` arranca en 0 y solo lo pisa el motor de Rust cuando puntúa
+      # de verdad. Un 0 significa "nunca evaluado", no "mala oferta" — pero caía
+      # al fallback y salía como 'BAJO', que es una afirmación sobre el producto
+      # que nadie calculó. Medido el 2026-08-11: 2231 de 3100 productos de la
+      # ingesta anterior al arreglo del ciclo diario estaban en 0, o sea que el
+      # 72% del catálogo se estaba autodescalificando por un defecto de datos.
+      #
+      # Devolver nil es correcto de punta a punta: el serializer emite null y
+      # `LaptopCard` ya trata la ausencia de etiqueta como "no mostrar señal".
       def ai_score_label_for(score)
+        return nil       if score.to_f <= 0
         return 'ÓPTIMO'  if score >= 9.0
         return 'BUENO'   if score >= 7.5
         return 'REGULAR' if score >= 6.0

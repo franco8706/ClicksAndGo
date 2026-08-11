@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import base64
 import random
@@ -256,8 +257,12 @@ class RetailerAPI(ABC):
 
     #: Claves donde cada red publica la foto. Son distintas por API y no hay
     #: forma de adivinarlas: Awin usa `merchant_image_url`, CJ `image-url`,
-    #: Rakuten `imageurl` y MercadoLibre `image`.
-    _CLAVES_IMAGEN = ("image", "merchant_image_url", "image-url", "imageurl", "thumbnail")
+    #: Rakuten `imageurl`, MercadoLibre `image` e Impact `ImageUrl`.
+    #: ⚠️ Impact la escribe en CamelCase — sin esta entrada el prewarm no la
+    #: veía y cada foto de Lenovo se verificaba serialmente dentro del bucle,
+    #: que es exactamente el cuello de botella que costó 3,2 min por corrida.
+    _CLAVES_IMAGEN = ("image", "merchant_image_url", "image-url", "imageurl",
+                      "thumbnail", "ImageUrl")
 
     def _prewarm_images(self, raw_data: list) -> None:
         """Verifica en paralelo las imágenes del lote antes de normalizar.
@@ -789,8 +794,285 @@ class RakutenNetworkAPI(RetailerAPI):
 
 
 # ==============================================================================
+# 5. IMPACT.COM (ex Impact Radius) — Partner Catalogs API (US)
+#
+# Afiliación de Lenovo aceptada 2026-08-11. Es la red más rica en señal de todo
+# el proyecto, y eso importa más que el volumen: el feed de Rakuten/Newegg trae
+# `price` y `saleprice` y nada más, así que el 97% del catálogo terminaba con
+# score genérico 5.0 por ausencia de evidencia, no por ser malas ofertas.
+#
+# Impact sí publica lo que faltaba, con nombres verificados contra el esquema
+# OpenAPI v16 de la Partner Catalogs API:
+#   • `OriginalPrice` + `CurrentPrice` + `DiscountPercentage` → descuento REAL.
+#   • `StockAvailability` → deja de publicarse lo que no se puede comprar.
+#   • `Condition` → un refurbished deja de guardarse como nuevo.
+#   • `Manufacturer` → marca declarada por el comerciante, no adivinada del
+#     título por regex (`extract_brand` acierta menos de lo que parece).
+#   • `Promotions[]` → cupones vigentes con código y fecha de expiración.
+#
+# ⚠️ `Url` YA viene firmada con el ID de partner de la cuenta ("Tracking URL
+# for the product page, unique to your partner account" — dixit el esquema).
+# No se reescribe ni se le concatena nada, igual que el `linkurl` de Rakuten,
+# o se rompe la atribución de la comisión.
+#
+# Se usa `Catalogs/ItemSearch` y no `Catalogs/{id}/Items` a propósito: busca
+# sobre TODOS los catálogos disponibles en una sola llamada y está paginado.
+# Así, cuando se sume otra marca en Impact (el modelo de negocio es sumar
+# marcas), entra sola sin tocar código ni configuración.
+#
+# Cómo obtener las credenciales:
+#   1. app.impact.com → arriba a la derecha, el menú de la cuenta → Settings
+#   2. API Access (o "Technical Settings") → mostrar el Account SID y el Auth Token
+#   3. Son las MISMAS para todas las marcas del programa: no hay una por marca.
+# Variables requeridas: IMPACT_ACCOUNT_SID, IMPACT_AUTH_TOKEN
+# ==============================================================================
+class ImpactRadiusAPI(RetailerAPI):
+    BASE_URL = "https://api.impact.com/Mediapartners"
+
+    # Documentado como default de la API; se declara explícito para no depender
+    # de un default remoto que puede cambiar sin avisar.
+    PAGE_SIZE = 100
+
+    # Techo de páginas por keyword. La API corta el paginado en 20.000 registros
+    # totales; 20 páginas × 100 es holgado para un barrido por término y evita
+    # que un catálogo enorme monopolice el presupuesto de tiempo del ciclo.
+    MAX_PAGES = 20
+
+    # Estados que NO se publican. Se comparan normalizados (sin espacios, en
+    # minúsculas) porque el valor lo escribe cada comerciante: se han visto
+    # "OutOfStock", "out of stock" y "OUT_OF_STOCK" para lo mismo.
+    STOCK_NO_PUBLICABLE = {"outofstock", "discontinued", "unavailable", "soldout"}
+
+    # Mapeo al enum de `ProductCondition` (new | refurbished | open_box). Lo que
+    # no matchee cae a "new", que es el default histórico del normalizador.
+    CONDICIONES = {
+        "new": "new", "brandnew": "new",
+        "refurbished": "refurbished", "renewed": "refurbished", "used": "refurbished",
+        "openbox": "open_box", "open_box": "open_box",
+    }
+
+    COUNTRY_KEYWORDS = {
+        "US": ["laptop", "notebook computer", "desktop computer", "monitor",
+               "keyboard", "mouse", "headset", "webcam", "printer", "toner cartridge"],
+    }
+
+    def __init__(self):
+        super().__init__()
+        # `.strip()` no es cosmético: estas credenciales se copian y pegan del
+        # panel de Impact y llegan con un salto de línea al final más veces de
+        # las que uno querría. Con el salto, la Basic auth se arma mal y la API
+        # responde 401 en cada corrida sin ninguna pista de por qué.
+        self.account_sid = os.getenv("IMPACT_ACCOUNT_SID", "").strip()
+        self.auth_token  = os.getenv("IMPACT_AUTH_TOKEN", "").strip()
+        if self._is_configured():
+            # Basic auth a nivel sesión: el esquema de Impact es
+            # `base64(AccountSID:AuthToken)` en el header Authorization, y
+            # requests lo arma solo a partir de la tupla.
+            self.session.auth = (self.account_sid, self.auth_token)
+
+    #: Valores que significan "el secreto existe pero todavía no tiene la
+    #: credencial real". Cloud Run exige que un secreto referenciado tenga al
+    #: menos una versión, así que se crean con `PENDIENTE` y el adaptador se
+    #: mantiene apagado hasta que se cargue el valor de verdad. Sin esto, la
+    #: cuenta saldría a pedir con un token falso y comería un 401 por corrida.
+    _PLACEHOLDERS = {"", "pendiente", "unset", "changeme", "todo", "placeholder"}
+
+    def _is_configured(self) -> bool:
+        return not (
+            self.account_sid.lower() in self._PLACEHOLDERS
+            or self.auth_token.lower() in self._PLACEHOLDERS
+        )
+
+    def _get_json(self, url: str, params: dict) -> dict:
+        """GET autenticado que devuelve dict, o {} ante cualquier fallo.
+
+        El `Accept` va explícito: la API responde XML cuando no se lo pide en
+        JSON, y el parseo fallaría en silencio devolviendo cero productos —
+        indistinguible de "el catálogo está vacío".
+        """
+        resp = _retry_get(
+            self.session, url, params=params,
+            headers={"Accept": "application/json"}, timeout=30,
+        )
+        if resp is None:
+            print("❌ [Impact] sin respuesta tras reintentos")
+            return {}
+        if resp.status_code == 401:
+            print("❌ [Impact] 401: Account SID o Auth Token inválidos.")
+            return {}
+        if resp.status_code == 403:
+            # El 403 acá NO es "credenciales mal": es el token sin el permiso
+            # de catálogos, o la marca todavía sin aprobar la asociación.
+            print("❌ [Impact] 403: el token no tiene acceso a Catalogs "
+                  "(¿la marca aprobó la asociación?).")
+            return {}
+        if resp.status_code != 200:
+            print(f"❌ [Impact] HTTP {resp.status_code}: {resp.text[:200]}")
+            return {}
+        try:
+            return resp.json()
+        except ValueError:
+            print(f"❌ [Impact] respuesta no-JSON: {resp.text[:200]}")
+            return {}
+
+    def _catalogos_disponibles(self) -> list:
+        """Lista los catálogos visibles para la cuenta. Solo diagnóstico.
+
+        Es la diferencia entre "no hay productos" y "no hay catálogos": lo
+        primero puede ser un keyword sin match; lo segundo significa que la
+        asociación con la marca no está activa y ninguna corrida va a traer
+        nada por más que se reintente.
+        """
+        datos = self._get_json(f"{self.BASE_URL}/{self.account_sid}/Catalogs", {})
+        catalogos = datos.get("Catalogs") or []
+        return catalogos if isinstance(catalogos, list) else []
+
+    def fetch_deals(self, country_code: str) -> list:
+        if not self._is_configured():
+            return []
+        keywords = self.COUNTRY_KEYWORDS.get(country_code)
+        if not keywords:
+            return []
+
+        vistos: set = set()
+        crudos: list = []
+
+        for kw in keywords:
+            for page in range(1, self.MAX_PAGES + 1):
+                try:
+                    _human_delay(0.5, 1.5)
+                    datos = self._get_json(
+                        f"{self.BASE_URL}/{self.account_sid}/Catalogs/ItemSearch",
+                        {"Keyword": kw, "PageSize": self.PAGE_SIZE, "Page": page},
+                    )
+                    items = datos.get("Items") or []
+                    if not isinstance(items, list) or not items:
+                        break
+
+                    for item in items:
+                        if not isinstance(item, dict):
+                            continue
+                        # `Id` combina catálogo + ítem de la marca, así que es
+                        # único entre catálogos; `CatalogItemId` solo lo es
+                        # dentro de uno y colisionaría al sumar marcas.
+                        ident = item.get("Id") or item.get("CatalogItemId") or ""
+                        if ident and ident not in vistos:
+                            vistos.add(ident)
+                            crudos.append(item)
+
+                    # Última página: la API devolvió menos de lo pedido.
+                    if len(items) < self.PAGE_SIZE:
+                        break
+                except Exception as e:
+                    print(f"❌ [Impact] {country_code}/{kw} p{page}: {e}")
+                    break
+
+        if not crudos:
+            catalogos = self._catalogos_disponibles()
+            if not catalogos:
+                print(f"⚠️  [Impact] {country_code}: 0 catálogos visibles "
+                      f"(la asociación con la marca no está activa).")
+            else:
+                resumen = ", ".join(
+                    f"{c.get('AdvertiserName', '?')}({c.get('NumberOfItems', '?')})"
+                    for c in catalogos[:5]
+                )
+                print(f"⚠️  [Impact] {country_code}: 0 productos tras el barrido, "
+                      f"pero hay {len(catalogos)} catálogo(s): {resumen}")
+        return self._normalize(crudos, country_code)
+
+    @staticmethod
+    def _precio(valor) -> float:
+        """Convierte el precio (string en el esquema) a float.
+
+        Se limpia el símbolo de moneda y los separadores de miles porque el
+        campo lo llena cada comerciante: se ven "1299.00", "$1,299.00" y "".
+        """
+        if valor in (None, ""):
+            return 0.0
+        texto = re.sub(r"[^\d.\-]", "", str(valor))
+        try:
+            return float(texto) if texto not in ("", "-", ".") else 0.0
+        except ValueError:
+            return 0.0
+
+    def _normalize(self, raw_data: list, country_code: str) -> list:
+        self._prewarm_images(raw_data)
+        normalized = []
+        descartados_stock = 0
+
+        for item in raw_data:
+            name = item.get("Name", "")
+
+            par = classify_product(item.get("Category", ""),
+                                   item.get("SubCategory", ""),
+                                   name)
+            if not par:
+                continue
+            product_type = par[1]
+
+            # 📦 Stock: es el dato que Rakuten no da y que evita mandar tráfico
+            # afiliado a una ficha agotada — un clic que no puede convertir.
+            estado = re.sub(r"[\s_-]", "", str(item.get("StockAvailability", ""))).lower()
+            if estado in self.STOCK_NO_PUBLICABLE:
+                descartados_stock += 1
+                continue
+
+            precio_actual = self._precio(item.get("CurrentPrice"))
+            precio_lista  = self._precio(item.get("OriginalPrice"))
+            if precio_actual <= 0:
+                continue  # sin precio no hay oferta que comparar
+
+            # 💰 Descuento declarado por el comerciante. Si no vino
+            # `OriginalPrice` pero sí el porcentaje, se reconstruye el precio de
+            # referencia: es aritmética sobre un dato que la marca afirma, no un
+            # descuento inventado. El tope del 95% descarta valores absurdos
+            # (un 100% haría division-by-zero y un 99% inflaría el precio ×100).
+            descuento = self._precio(item.get("DiscountPercentage"))
+            if precio_lista <= precio_actual and 0 < descuento < 95:
+                precio_lista = round(precio_actual / (1 - descuento / 100), 2)
+
+            raw_deal = {
+                "sku_original":  str(item.get("CatalogItemId") or item.get("Id") or ""),
+                # El slug identifica al COMERCIANTE, no a la red: así "lenovo"
+                # queda comparable con lo que llegue de otras redes en vez de
+                # quedar todo aplastado bajo "impact".
+                "retailer_slug": str(item.get("CampaignName")
+                                     or item.get("Manufacturer")
+                                     or "impact").lower().replace(" ", "_"),
+                "country_code":  country_code,
+                "currency":      item.get("Currency") or "",
+                # `Manufacturer` es la marca declarada; `extract_brand` es un
+                # regex sobre el título y solo se usa si la marca no vino.
+                "brand":         item.get("Manufacturer") or extract_brand(name),
+                "name":          name,
+                "product_type":  product_type,
+                "condition":     self.CONDICIONES.get(
+                    re.sub(r"[\s_-]", "", str(item.get("Condition", ""))).lower(), "new"),
+                "in_stock":      True,
+                "financials": {
+                    "original_price": precio_lista,
+                    "current_price":  precio_actual,
+                },
+                "urls": {
+                    "image": item.get("ImageUrl", ""),
+                    # Ya firmada con el ID de partner — no tocar.
+                    "affiliate_raw": item.get("Url", ""),
+                },
+            }
+            result = self.normalizer.normalize_laptop_data(raw_deal)
+            if result:
+                normalized.append(result)
+
+        if descartados_stock:
+            print(f"ℹ️  [Impact] {country_code}: {descartados_stock} productos "
+                  f"descartados por estar sin stock.")
+        return normalized
+
+
+# ==============================================================================
 # ORCHESTRATOR PRINCIPAL
-# Países → API: LATAM → MercadoLibre | ES → Awin | US → CJ + Rakuten
+# Países → API: LATAM → MercadoLibre | ES → Awin | US → CJ + Rakuten + Impact
 # ==============================================================================
 class MarketHunterOrchestrator:
     def __init__(self, orchestrator=None):
@@ -806,6 +1088,7 @@ class MarketHunterOrchestrator:
         self.awin_api    = AwinNetworkAPI()
         self.cj_api      = CJAffiliateAPI()
         self.rakuten_api = RakutenNetworkAPI()
+        self.impact_api  = ImpactRadiusAPI()
 
         # Mapeo explícito: qué API maneja qué país. US queda cubierto por dos
         # redes a propósito — es el único mercado con afiliación viva hoy, y
@@ -815,7 +1098,8 @@ class MarketHunterOrchestrator:
             [(self.ml_api,      c) for c in ["AR", "MX", "BR", "CO", "CL"]] +
             [(self.awin_api,    c) for c in ["ES"]]                          +
             [(self.cj_api,      c) for c in ["US"]]                          +
-            [(self.rakuten_api, c) for c in ["US"]]
+            [(self.rakuten_api, c) for c in ["US"]]                          +
+            [(self.impact_api,  c) for c in ["US"]]
         )
 
     def _log(self, mensaje: str, status: str = "SUCCESS") -> None:

@@ -87,7 +87,10 @@ export interface Laptop {
 
   readonly intelligence: {
     readonly deal_score: number;
-    readonly ai_score_label: AIScoreLabel;
+    // `null` cuando el producto todavía no fue puntuado por el motor. No es
+    // lo mismo que una oferta mala: es la ausencia de evaluación, y la UI la
+    // trata como "sin señal que mostrar" (ver `priceSignal` en LaptopCard).
+    readonly ai_score_label: AIScoreLabel | null;
     readonly ai_reasoning?: string;
     readonly price_trend: PriceTrend;
     readonly category: LaptopCategory;
