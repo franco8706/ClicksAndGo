@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import Link from "next/link";
+import { headers, cookies } from "next/headers";
 import "../globals.css";
 
 import Navbar from "@/components/Navbar";
@@ -9,6 +10,7 @@ import ScrollProgress from "@/components/ScrollProgress";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Cpu, Mail, ShieldCheck, MessageSquare, Briefcase, Code2 } from "lucide-react";
 import { auth } from "@/auth";
+import { COUNTRY_COOKIE, isSupportedCountry } from "@/lib/countries";
 
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
@@ -96,6 +98,26 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
   const session = await auth().catch(() => null);
 
+  // 🌎 País inicial del selector — MISMA prioridad que `page.tsx` calcula para
+  // el catálogo (cookie del visitante > cabecera de IP > "US"), así el
+  // `<select>` nace mostrando lo que la página realmente está sirviendo.
+  //
+  // La cabecera `x-country-code` la inyecta `proxy.ts` a partir de
+  // `x-vercel-ip-country`/`cf-ipcountry` — cabeceras que solo ponen Vercel o
+  // Cloudflare. Este sitio corre en Cloud Run servido directo por Google
+  // Frontend, sin ninguno de los dos por delante, así que esa cabecera NUNCA
+  // llega y el fallback a "US" se aplicaba siempre, para cualquier visitante,
+  // en cualquier país. Verificado en producción (2026-08-11): con
+  // `cf-ipcountry: AR` simulado por curl el catálogo mostraba 274 menciones
+  // de Lenovo; sin la cabecera —lo que recibe un visitante real—, 3. La
+  // cookie es la vía que sí funciona hoy: no depende de infraestructura que
+  // el sitio no tiene delante.
+  const headersList = await headers();
+  const cookieStore = await cookies();
+  const ipCountry = headersList.get("x-country-code") || "US";
+  const cookieCountry = cookieStore.get(COUNTRY_COOKIE)?.value?.toUpperCase();
+  const initialCountry = isSupportedCountry(cookieCountry) ? cookieCountry : ipCountry;
+
   // ♿ `<html>` va SIN la clase `scroll-smooth` de Tailwind. Es redundante
   // —`html { scroll-behavior: smooth }` ya está en @layer base— y además
   // rompía la accesibilidad: al ser una clase (especificidad 0,1,0) le ganaba
@@ -118,7 +140,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
               del navbar (z-50). */}
           <ScrollProgress />
 
-          <Navbar dict={dict} currentLocale={locale} session={session} />
+          <Navbar dict={dict} currentLocale={locale} session={session} initialCountry={initialCountry} />
 
           <main className="flex-grow flex flex-col">
             {children}

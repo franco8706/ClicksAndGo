@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, LayoutDashboard } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
+import CountrySelector from "./CountrySelector";
 import type { Dict } from "@/types/dictionary";
 
 interface UserSession {
@@ -19,9 +20,10 @@ interface NavbarProps {
   readonly dict: Dict;
   readonly currentLocale?: string;
   readonly session?: UserSession | null;
+  readonly initialCountry: string;
 }
 
-export default function Navbar({ dict, currentLocale: forcedLocale, session }: NavbarProps) {
+export default function Navbar({ dict, currentLocale: forcedLocale, session, initialCountry }: NavbarProps) {
   const pathname = usePathname();
   const currentLocale = forcedLocale || pathname?.split("/")[1] || "es";
 
@@ -66,6 +68,7 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
 
           {/* Auth buttons + language — desktop */}
           <div className="hidden md:flex items-center gap-4">
+            <CountrySelector initialCountry={initialCountry} />
             <LanguageSelector />
 
             {session?.user ? (
@@ -97,7 +100,8 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session }: N
           </div>
 
           {/* Mobile: language + auth */}
-          <div className="md:hidden flex items-center gap-3">
+          <div className="md:hidden flex items-center gap-2">
+            <CountrySelector initialCountry={initialCountry} compact />
             <LanguageSelector />
             {session?.user ? (
               <Link
