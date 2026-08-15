@@ -54,20 +54,32 @@ const ALLOWED_OUT_DOMAINS = [
   'amazon.com', 'amazon.es', 'amazon.it', 'amazon.com.mx', 'amazon.com.br',
   // Redirectores de redes de afiliados (Awin / CJ)
   'awin1.com', 'anrdoezrs.net', 'jdoqocy.com', 'tkqlhce.com', 'dpbolvw.net',
+  // 🔴 Rakuten Advertising (ex LinkShare). `click.linksynergy.com` es el
+  // redirector de TODOS sus deeplinks — el `linkurl` que devuelve la Product
+  // Search API. Faltaba desde que se integró Rakuten (2026-08-06): las ~880
+  // ofertas que trae cada ciclo tenían el botón de compra muerto, devolviendo
+  // al visitante al home en vez de a Newegg. Medido el 2026-08-15 con el link
+  // real: 307 → clicks-and-go.com/es. Cero comisiones posibles.
+  'linksynergy.com',
   // Redirectores de Impact.com (MSI, Lenovo US/ES/IT/BR). Impact genera el
   // link con el ID de tracking YA embebido, así que /out lo deja pasar sin
   // tocarlo (solo Amazon recibe inyección de tag).
-  // ⚠️ Impact también emite links por anunciante con el patrón
-  // `imp.i{advertiserID}.net` — ese host es específico de cada marca y hay
-  // que agregarlo acá cuando se genere el primer link real del programa.
-  'sjv.io', 'pxf.io', 'ojrq.net', '7eer.net', 'evyy.net',
+  //
+  // 🔴 `5nfc.net` es el host que Impact emite para Lenovo Argentina
+  // (`lenovo-argentina.5nfc.net`). La nota previa anticipaba el patrón
+  // `imp.i{advertiserID}.net`, pero el link REAL del programa usa otro
+  // dominio — verificado contra el feed en vivo. Los 264 productos de Lenovo
+  // tenían el botón muerto por esto.
+  'sjv.io', 'pxf.io', 'ojrq.net', '7eer.net', 'evyy.net', '5nfc.net',
   // Tiendas oficiales de marca (programa retailer directo)
   'lenovo.com', 'hp.com', 'dell.com', 'asus.com', 'acer.com',
   'apple.com', 'msi.com', 'razer.com', 'samsung.com',
 ];
 
 // Coincidencia exacta o de subdominio (store.lenovo.com ✔, evil-lenovo.com ✘)
-function isAllowedOutUrl(raw: string): boolean {
+// Exportada para poder testear el allowlist sin levantar el proxy entero: es
+// la función de la que depende que un clic genere comisión o se pierda.
+export function isAllowedOutUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
@@ -175,6 +187,15 @@ export function proxy(request: NextRequest) {
 
     // Guard 1: URL absoluta y válida. Guard 2: SOLO dominios verificados (anti open-redirect)
     if (!targetUrl || targetUrl === '#' || !targetUrl.startsWith('http') || !isAllowedOutUrl(targetUrl)) {
+      // 🔊 Rechazo RUIDOSO. Devolver al home es correcto ante un intento de
+      // open-redirect, pero es indistinguible de un dominio legítimo que
+      // nadie agregó al allowlist — y ese caso cuesta plata en silencio:
+      // Rakuten y Lenovo estuvieron con el botón de compra muerto sin una
+      // sola línea de log que lo dijera. Si aparece en Cloud Run, es una
+      // venta que no se pudo concretar, no un ataque.
+      console.error(
+        `[out] URL rechazada (¿falta el dominio en ALLOWED_OUT_DOMAINS?): ${targetUrl ?? '(vacía)'}`
+      );
       return publicRedirect(request, `/${getLocale(request)}`);
     }
 
@@ -223,6 +244,12 @@ export function proxy(request: NextRequest) {
 
     // Revalidar tras la traducción de dominio/tags (defensa en profundidad)
     if (!isAllowedOutUrl(monetizedUrl)) {
+      // Distinto del rechazo de arriba: acá la URL ENTRÓ válida y la dejó
+      // inválida nuestra propia reescritura de dominio/tag. Es un bug
+      // nuestro, no un dominio faltante, y conviene poder distinguirlos.
+      console.error(
+        `[out] La reescritura invalidó una URL que entró permitida: ${targetUrl} → ${monetizedUrl}`
+      );
       return publicRedirect(request, `/${getLocale(request)}`);
     }
 
