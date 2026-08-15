@@ -183,10 +183,12 @@ export async function proxy(request: NextRequest) {
   // estuvieran donde estuvieran. El catálogo argentino era inalcanzable.
   //
   // Ahora: cabecera de plataforma → cookie ya resuelta → geolocalización por
-  // IP → región del Accept-Language → "US". Ver `lib/geo.ts`.
+  // IP contra una tabla EMPOTRADA en el bundle → "US". Sin red y sin terceros:
+  // esto decide qué catálogo y qué moneda ve el visitante, así que no puede
+  // depender de un servicio externo. Ver `lib/geo.ts` y `lib/geoip.ts`.
   // =====================================================================
   const { country: countryCode, source: geoSource, shouldPersist } =
-    await resolveCountry(request.headers, request.cookies.get(COUNTRY_COOKIE)?.value ?? null);
+    resolveCountry(request.headers, request.cookies.get(COUNTRY_COOKIE)?.value ?? null);
 
   // =====================================================================
   // 🛒 PASARELA DE AFILIACIÓN INTELIGENTE (/out)

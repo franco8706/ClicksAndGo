@@ -20,7 +20,8 @@
  *   2. Cookie ya resuelta — el resultado de una búsqueda anterior. Hace que el
  *      paso 3 ocurra UNA vez por visitante y no una vez por request.
  *   3. Geolocalización por IP — la señal real de DÓNDE ESTÁ el visitante.
- *      Cuesta una llamada externa, así que va cacheada y con timeout corto.
+ *      Se resuelve contra una tabla de rangos EMPOTRADA en el bundle
+ *      (`geoip.ts`): sin red, sin terceros, sin nada que pueda fallar.
  *   4. "US" — el catálogo más grande, mejor que una página vacía.
  *
  * ⚠️ El IDIOMA NO participa de esta cascada, a propósito.
@@ -36,11 +37,12 @@
  * US→en), y el visitante puede cambiarlo después sin que eso mueva su país.
  *
  * Ninguna capa puede bloquear el renderizado: cualquier fallo cae a la
- * siguiente y, en el peor caso, a "US".
+ * siguiente y, en el peor caso, a "US". Ninguna sale a la red.
  */
 
 /** Países con catálogo — espejo de `SUPPORTED_COUNTRIES` en `countries.ts`. */
 import { SUPPORTED_COUNTRIES, COUNTRY_COOKIE } from "./countries";
+import { countryForIp } from "./geoip";
 
 const SOPORTADOS: readonly string[] = SUPPORTED_COUNTRIES;
 
@@ -51,26 +53,6 @@ const GEO_HEADERS = [
   "x-client-geo-location", // Google Cloud LB (formato "US,California")
   "x-appengine-country",   // App Engine
 ] as const;
-
-/** Timeout de la consulta de geo. Corto a propósito: es mejor caer al
- *  `Accept-Language` que hacer esperar al visitante por una API de terceros. */
-const GEO_TIMEOUT_MS = 1500;
-
-/** Caché en memoria de IP → país. Vive lo que viva la instancia de Cloud Run;
- *  no necesita TTL porque la IP de un visitante no cambia de país. El tope
- *  evita que una instancia de larga vida acumule memoria sin límite. */
-const CACHE_MAX = 5_000;
-const cacheIp = new Map<string, string>();
-
-function recordarIp(ip: string, pais: string): void {
-  if (cacheIp.size >= CACHE_MAX) {
-    // FIFO simple: borra la entrada más vieja. No hace falta un LRU real para
-    // un mapa de este tamaño y este patrón de acceso.
-    const primera = cacheIp.keys().next().value;
-    if (primera !== undefined) cacheIp.delete(primera);
-  }
-  cacheIp.set(ip, pais);
-}
 
 function normalizar(valor: string | null | undefined): string | null {
   if (!valor) return null;
@@ -108,41 +90,19 @@ function esIpPublica(ip: string): boolean {
 }
 
 /**
- * Capa 3 — geolocalización por IP contra un servicio externo.
+ * Capa 3 — geolocalización por IP, LOCAL.
  *
- * Se usa `ipwho.is`: HTTPS, sin API key y sin cuota diaria dura. La llamada
- * ocurre UNA vez por visitante (después manda la cookie) y una vez por IP por
- * instancia (después manda la caché en memoria).
+ * La tabla de rangos viaja compilada dentro del bundle (ver `geoip.ts`): no
+ * hay llamada de red, ni timeout, ni cuota, ni servicio de terceros que pueda
+ * estar caído. Es la pieza que decide qué catálogo y qué moneda ve el
+ * visitante, así que no puede depender de nadie más.
  *
- * Cualquier fallo devuelve `null` en silencio — es una mejora de precisión,
- * no un requisito: el llamador tiene `Accept-Language` y "US" detrás.
+ * Devuelve `null` para IPs privadas, malformadas o de países sin catálogo
+ * propio — incluido EE.UU., que es el fallback del llamador.
  */
-export async function countryFromIp(ip: string): Promise<string | null> {
+export function countryFromIp(ip: string): string | null {
   if (!esIpPublica(ip)) return null;
-
-  const cacheado = cacheIp.get(ip);
-  if (cacheado) return cacheado;
-
-  try {
-    const res = await fetch(
-      `https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code`,
-      { signal: AbortSignal.timeout(GEO_TIMEOUT_MS), cache: "no-store" },
-    );
-    if (!res.ok) return null;
-
-    const data = (await res.json()) as { success?: boolean; country_code?: string };
-    if (!data?.success) return null;
-
-    const pais = normalizar(data.country_code);
-    // Solo se cachean los países SOPORTADOS. Un visitante de un país sin
-    // catálogo debe seguir cayendo al fallback, no quedar fijado a un valor
-    // que después el resto del sistema no sabe interpretar.
-    if (pais) recordarIp(ip, pais);
-    return pais;
-  } catch {
-    // Timeout, DNS, servicio caído, JSON roto: todo cae a la capa siguiente.
-    return null;
-  }
+  return normalizar(countryForIp(ip));
 }
 
 export interface CountryResolution {
@@ -160,10 +120,10 @@ export interface CountryResolution {
  * `cookieCountry` se pasa como argumento en vez de leerlo acá para que la
  * función sea pura respecto del transporte y testeable sin un Request.
  */
-export async function resolveCountry(
+export function resolveCountry(
   headers: Headers,
   cookieCountry: string | null,
-): Promise<CountryResolution> {
+): CountryResolution {
   const porCabecera = countryFromHeaders(headers);
   if (porCabecera) {
     return { country: porCabecera, source: "header", shouldPersist: false };
@@ -176,7 +136,7 @@ export async function resolveCountry(
 
   const ip = clientIp(headers);
   if (ip) {
-    const porIp = await countryFromIp(ip);
+    const porIp = countryFromIp(ip);
     if (porIp) {
       return { country: porIp, source: "ip", shouldPersist: true };
     }

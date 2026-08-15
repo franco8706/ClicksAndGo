@@ -1,11 +1,7 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { countryFromHeaders, clientIp, resolveCountry } from "../geo";
 
 const h = (obj: Record<string, string>) => new Headers(obj);
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("countryFromHeaders — capa 1 (plataforma de borde)", () => {
   it("lee las cabeceras de Vercel y Cloudflare", () => {
@@ -45,107 +41,84 @@ describe("clientIp", () => {
 describe("El IDIOMA no puede mover el país", () => {
   // Los dos casos que Franco pidió explícitamente que funcionaran.
 
-  it("alguien en Argentina con el navegador en inglés ve el catálogo argentino", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, country_code: "AR" }) }),
-    );
-    const r = await resolveCountry(
+  it("alguien en Argentina con el navegador en inglés ve el catálogo argentino", () => {
+    const r = resolveCountry(
       h({ "x-forwarded-for": "181.45.2.10", "accept-language": "en-US,en;q=0.9" }),
       null,
     );
     expect(r.country).toBe("AR");
+    expect(r.source).toBe("ip");
   });
 
-  it("alguien en EE.UU. con el navegador en español ve el catálogo de EE.UU.", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, country_code: "US" }) }),
-    );
-    const r = await resolveCountry(
+  it("alguien en EE.UU. con el navegador en español ve el catálogo de EE.UU.", () => {
+    const r = resolveCountry(
       h({ "x-forwarded-for": "72.229.28.185", "accept-language": "es-AR,es;q=0.9" }),
       null,
     );
     expect(r.country).toBe("US");
   });
 
-  it('sin señal de ubicación cae a "US" y NO adivina por el idioma', async () => {
+  it("sin señal de ubicación NO se adivina por el idioma", () => {
     // Adivinar AR por un navegador en español le mostraría a alguien de
     // cualquier parte del mundo precios en pesos y una tienda que no le sirve.
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("geo caída")));
-    const r = await resolveCountry(h({ "accept-language": "es-AR,es;q=0.9" }), null);
+    const r = resolveCountry(h({ "accept-language": "es-AR,es;q=0.9" }), null);
     expect(r).toEqual({ country: "US", source: "default", shouldPersist: false });
   });
 });
 
 describe("resolveCountry — la cascada completa", () => {
-  it("la cabecera de plataforma gana sobre todo y no consulta la red", async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-
-    const r = await resolveCountry(
+  it("la cabecera de plataforma gana sobre la cookie y sobre la IP", () => {
+    const r = resolveCountry(
       h({ "cf-ipcountry": "ES", "x-forwarded-for": "181.45.2.10" }),
       "MX",
     );
     expect(r).toEqual({ country: "ES", source: "header", shouldPersist: false });
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("la cookie evita la llamada a la API de geo", async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-
-    const r = await resolveCountry(h({ "x-forwarded-for": "181.45.2.10" }), "AR");
-    expect(r).toEqual({ country: "AR", source: "cookie", shouldPersist: false });
-    expect(fetchSpy).not.toHaveBeenCalled();
+  it("la cookie gana sobre la IP — evita repetir la búsqueda", () => {
+    const r = resolveCountry(h({ "x-forwarded-for": "181.45.2.10" }), "CL");
+    expect(r).toEqual({ country: "CL", source: "cookie", shouldPersist: false });
   });
 
-  it("geolocaliza por IP y pide persistir el resultado", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, country_code: "CL" }) }),
-    );
-    const r = await resolveCountry(h({ "x-forwarded-for": "190.98.1.5" }), null);
+  it("geolocaliza por IP y pide persistir el resultado", () => {
+    const r = resolveCountry(h({ "x-forwarded-for": "200.75.1.1" }), null);
     expect(r).toEqual({ country: "CL", source: "ip", shouldPersist: true });
   });
 
-  it("una API caída no rompe el render", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
-    const r = await resolveCountry(h({ "x-forwarded-for": "200.1.2.3" }), null);
-    expect(r.country).toBe("US");
-    expect(r.source).toBe("default");
+  it("no geolocaliza IPs privadas (dev local, health checks internos)", () => {
+    expect(resolveCountry(h({ "x-forwarded-for": "10.0.0.5" }), null).source).toBe("default");
+    expect(resolveCountry(h({ "x-forwarded-for": "127.0.0.1" }), null).source).toBe("default");
   });
 
-  it("no geolocaliza IPs privadas (dev local, health checks internos)", async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-
-    const r = await resolveCountry(h({ "x-forwarded-for": "10.0.0.5" }), null);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(r.source).toBe("default");
+  it("una cookie manipulada a un país sin catálogo no se respeta", () => {
+    expect(resolveCountry(h({}), "XX").country).toBe("US");
   });
 
-  it("una cookie manipulada a un país sin catálogo no se respeta", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("nope")));
-    expect((await resolveCountry(h({}), "XX")).country).toBe("US");
-  });
-
-  it("un país no soportado devuelto por la API no se adopta", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, country_code: "JP" }) }),
-    );
-    const r = await resolveCountry(h({ "x-forwarded-for": "203.0.113.7" }), null);
+  it("una IP de un país sin catálogo cae al default", () => {
+    // Japón no tiene catálogo: se sirve US, igual que cualquier otro país
+    // fuera de los 8 soportados.
+    const r = resolveCountry(h({ "x-forwarded-for": "133.11.1.1" }), null);
     expect(r.country).toBe("US");
     expect(r.shouldPersist).toBe(false);
   });
 
-  it("respeta success:false de la API en vez de leer basura", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: false, message: "reserved range" }) }),
-    );
-    const r = await resolveCountry(h({ "x-forwarded-for": "203.0.113.9" }), null);
-    expect(r.country).toBe("US");
+  it("NO sale a la red — la tabla está empotrada en el bundle", () => {
+    // La detección decide qué catálogo y qué moneda ve el visitante. Si esto
+    // llamara a un tercero, un servicio caído le mostraría el país equivocado.
+    const original = globalThis.fetch;
+    globalThis.fetch = (() => {
+      throw new Error("resolveCountry no puede hacer llamadas de red");
+    }) as typeof fetch;
+    try {
+      expect(resolveCountry(h({ "x-forwarded-for": "181.45.2.10" }), null).country).toBe("AR");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("nunca lanza, cualquiera sea la cabecera", () => {
+    for (const xff of ["", "basura", "999.999.999.999", "::", ",,,"]) {
+      expect(() => resolveCountry(h({ "x-forwarded-for": xff }), null)).not.toThrow();
+    }
   });
 });
