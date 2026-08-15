@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
+import { resolveCountry, COUNTRY_COOKIE } from '@/lib/geo';
+import { LOCALE_COOKIE } from '@/lib/countries';
 
 const locales = ['es', 'en', 'pt', 'it'];
 const defaultLocale = 'es';
@@ -33,7 +35,13 @@ const AFFILIATE_TAGS: Record<string, Record<string, string>> = {
 };
 
 // 🌍 Idioma sugerido según el país (redirección acorde a la ubicación)
-const COUNTRY_LOCALE_MAP: Record<string, string> = {
+// El país detectado fija el idioma con el que CARGA la página. El visitante
+// puede cambiarlo después y su elección manda (cookie `preferred_locale`),
+// sin que eso mueva su país: sigue viendo el catálogo y los precios de donde
+// está. Exportado para poder testear que ningún país soportado quede sin
+// idioma — si eso pasara, caería a la negociación del navegador y alguien en
+// Brasil con el navegador en inglés vería el sitio en inglés.
+export const COUNTRY_LOCALE_MAP: Record<string, string> = {
   BR: 'pt',
   US: 'en',
   IT: 'it',
@@ -162,21 +170,23 @@ function getLocale(request: NextRequest): string {
  * `config.matcher` sigue igual, pero la config de segmento de ruta (`runtime`)
  * ya no se admite acá.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Extracción del código de país por IP (Vercel, Cloudflare o Fallback a US)
-  const rawCountry = request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry') || 'US';
-  let countryCode = rawCountry.toUpperCase().trim().substring(0, 2);
-
   // =====================================================================
-  // ⚡ ANTIGRAVITY UX: Fallback de catálogo vacío
-  // Si la IP del usuario pertenece a un país no soportado, lo redirigimos
-  // al catálogo con mayor probabilidad de envío internacional (US)
+  // 🌎 PAÍS DEL VISITANTE — resuelto por capas, 100% del lado del servidor.
+  //
+  // Antes se leía SOLO de `x-vercel-ip-country` / `cf-ipcountry`, cabeceras
+  // que únicamente inyectan Vercel o Cloudflare. Este sitio corre en Cloud Run
+  // servido directo por Google Frontend, sin ninguno de los dos delante: esas
+  // cabeceras nunca llegaban y el país caía a "US" para TODOS los visitantes,
+  // estuvieran donde estuvieran. El catálogo argentino era inalcanzable.
+  //
+  // Ahora: cabecera de plataforma → cookie ya resuelta → geolocalización por
+  // IP → región del Accept-Language → "US". Ver `lib/geo.ts`.
   // =====================================================================
-  if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
-    countryCode = 'US';
-  }
+  const { country: countryCode, source: geoSource, shouldPersist } =
+    await resolveCountry(request.headers, request.cookies.get(COUNTRY_COOKIE)?.value ?? null);
 
   // =====================================================================
   // 🛒 PASARELA DE AFILIACIÓN INTELIGENTE (/out)
@@ -281,13 +291,56 @@ export function proxy(request: NextRequest) {
       request: { headers: requestHeaders }
     });
 
+    // 🍪 Se persiste SOLO lo recién resuelto por IP, para que la próxima
+    // request no vuelva a salir a la API de geo. La conjetura por
+    // `Accept-Language` no se guarda: fijarla impediría que un acierto
+    // posterior de la geolocalización la corrija.
+    if (shouldPersist) {
+      response.cookies.set(COUNTRY_COOKIE, countryCode, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30,   // 30 días: si el visitante viaja, se re-resuelve
+        sameSite: 'lax',
+        // Legible por el cliente a propósito: no es un dato sensible y deja
+        // la puerta abierta a un override desde el navegador si hiciera falta.
+        httpOnly: false,
+      });
+    }
+
+    // 🔎 De dónde salió el país. Sin esto, un catálogo equivocado en
+    // producción solo se puede depurar adivinando.
+    response.headers.set('x-geo-source', geoSource);
+
+    // ⚠️ El catálogo AHORA depende del país, y el país sale de una cookie.
+    // `next.config.ts` declara `public, s-maxage=60` para estas rutas: sin
+    // incluir Cookie en el Vary, una caché compartida podría servirle a un
+    // visitante de EE.UU. la página que se generó para uno de Argentina.
+    // Hoy no hay CDN delante (Cloud Run directo), así que es preventivo —
+    // pero el día que se ponga uno, el fallo sería silencioso y carísimo.
+    response.headers.set('Vary', 'Cookie, Accept-Encoding');
+
     return applySecurityHeaders(response);
   }
 
-  // Si no tiene locale, elegimos idioma acorde a la UBICACIÓN del usuario (geo-first)
-  // y caemos al idioma negociado por el navegador para países no mapeados.
+  // =====================================================================
+  // 🗣️ IDIOMA — derivado del PAÍS, pero siempre superable por el visitante.
+  //
+  // Prioridad:
+  //   1. Lo que el visitante eligió a mano (cookie que escribe
+  //      `LanguageSelector`). Alguien en Brasil que prefiere leer en español
+  //      debe seguir viendo español al volver, y eso NO cambia su país: sigue
+  //      viendo el catálogo y los precios de Brasil.
+  //   2. El idioma del país detectado: BR→pt, AR/CL/MX/CO/ES→es, IT→it, US→en.
+  //   3. La negociación del navegador, solo para países fuera del mapa.
+  //
+  // El sentido de la relación importa: el país fija el idioma, nunca al revés.
+  // Ver la nota en `lib/geo.ts` sobre por qué `Accept-Language` no se usa para
+  // deducir ubicación.
+  // =====================================================================
+  const localeElegido = request.cookies.get(LOCALE_COOKIE)?.value;
   const geoLocale = COUNTRY_LOCALE_MAP[countryCode];
-  const detectedLocale = geoLocale && locales.includes(geoLocale) ? geoLocale : getLocale(request);
+  const detectedLocale =
+    (localeElegido && locales.includes(localeElegido) && localeElegido) ||
+    (geoLocale && locales.includes(geoLocale) ? geoLocale : getLocale(request));
   // En la raíz, pathname === '/', así que `/${locale}${pathname}` daría `/en/`
   // (barra final) → Next hace 308 a `/en` → doble salto. Lo evitamos: para la
   // raíz redirigimos directo a `/en` (un solo salto, mejor para SEO).

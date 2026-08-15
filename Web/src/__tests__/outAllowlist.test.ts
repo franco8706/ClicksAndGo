@@ -47,3 +47,26 @@ describe('/out — allowlist de dominios de salida', () => {
     });
   });
 });
+
+describe('País → idioma inicial', () => {
+  it('cada país con catálogo carga en su idioma, sin depender del navegador', async () => {
+    const { COUNTRY_LOCALE_MAP } = await import('../proxy');
+    const { SUPPORTED_COUNTRIES } = await import('../lib/countries');
+
+    // Si un país queda sin idioma, cae a la negociación del navegador y
+    // alguien en Brasil con el sistema en inglés vería el sitio en inglés.
+    for (const code of SUPPORTED_COUNTRIES) {
+      expect(COUNTRY_LOCALE_MAP[code], `falta el idioma de ${code}`).toBeTruthy();
+    }
+  });
+
+  it('mapea los idiomas que pidió el negocio', async () => {
+    const { COUNTRY_LOCALE_MAP: m } = await import('../proxy');
+    expect(m.BR).toBe('pt');
+    expect(m.IT).toBe('it');
+    expect(m.US).toBe('en');
+    for (const hispano of ['AR', 'CL', 'MX', 'CO', 'ES']) {
+      expect(m[hispano], `${hispano} debería cargar en español`).toBe('es');
+    }
+  });
+});

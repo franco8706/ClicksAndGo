@@ -7,6 +7,7 @@ import {
   seoTitle,
   isIndexableProduct,
   buildMetaDescription,
+  cardTitle,
 } from "../productSeo";
 import type { Laptop } from "@/types/laptop";
 
@@ -237,5 +238,62 @@ describe("splitTitle", () => {
 
   it("no corta una palabra que solo empieza igual que la marca", () => {
     expect(splitTitle("LG", "LGA1700 Cooler")).toEqual({ brand: "LG", rest: "LGA1700 Cooler" });
+  });
+});
+
+describe("cardTitle", () => {
+  // Nombres REALES del catálogo en producción (2026-08-15).
+  it("corta la ficha técnica que Lenovo mete dentro del nombre", () => {
+    const real =
+      'Lenovo ThinkPad X1 2-in-1 Gen 11 Aura Edition (14" Intel) ¡Personalizable! ' +
+      "Procesador Intel® Core™ Ultra 5 325 (núcleos LPE de hasta 3,40 GHz núcleos ";
+    expect(cardTitle("Lenovo", real)).toBe(
+      'Lenovo ThinkPad X1 2-in-1 Gen 11 Aura Edition (14" Intel)',
+    );
+  });
+
+  it("corta en 'Procesador' aunque no haya '¡Personalizable!'", () => {
+    const real =
+      'Lenovo ThinkBook 14 Gen 9 (14" AMD) Procesador AMD Ryzen™ 7 250 ' +
+      "(3,30 GHz hasta 5,10 GHz)/Windows 11 Pro 64/512 GB SSD M.2 2242 PCIe Gen4 QLC";
+    expect(cardTitle("Lenovo", real)).toBe('Lenovo ThinkBook 14 Gen 9 (14" AMD)');
+  });
+
+  it("corta en 'Processor' — los feeds en inglés traen el mismo patrón", () => {
+    const real =
+      "Dell Pro Micro QCM1250 Desktop -Intel Core Ultra 5 235T Processor " +
+      "-32 GB DDR5 RAM,512 GB SSD -Wired Keyboard & Mouse -Win 11 Pro -Black";
+    expect(cardTitle("Dell", real)).toBe(
+      "Dell Pro Micro QCM1250 Desktop -Intel Core Ultra 5 235T",
+    );
+  });
+
+  it("limpia el separador colgando que deja el feed de Lenovo", () => {
+    expect(cardTitle("Lenovo", "Lenovo Auriculares Wireless VoIP Headset (Teams) //")).toBe(
+      "Lenovo Auriculares Wireless VoIP Headset (Teams)",
+    );
+  });
+
+  it("deja intacto un nombre corto", () => {
+    expect(cardTitle("Apple", 'MacBook Pro 14"')).toBe('Apple MacBook Pro 14"');
+  });
+
+  it("trunca por palabra cuando no hay marcador de specs (feed de Newegg)", () => {
+    const real =
+      "ViewSonic VX1655 15.6 Inch 1080p FHD Portable LED Monitor with 2 Way " +
+      "Powered 60W USB C, Mini HDMI, IPS, Dual Speakers, and Built in Stand with...";
+    const r = cardTitle("ViewSonic", real);
+    expect(r.length).toBeLessThanOrEqual(70);
+    expect(r.startsWith("ViewSonic VX1655 15.6 Inch")).toBe(true);
+    expect(r.endsWith("...")).toBe(false); // no encadena el truncado del feed
+  });
+
+  it("nunca deja la tarjeta sin título aunque el nombre sea SOLO ficha técnica", () => {
+    // Degradar a un `<h3>` vacío sería peor que mostrar el nombre truncado.
+    expect(cardTitle("Lenovo", "Procesador Intel Core i7 de 12va generación")).not.toBe("");
+  });
+
+  it("no duplica la marca cuando el nombre ya la trae", () => {
+    expect(cardTitle("Lenovo", "Lenovo ThinkPad T14")).toBe("Lenovo ThinkPad T14");
   });
 });

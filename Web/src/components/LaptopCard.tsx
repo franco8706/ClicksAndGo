@@ -5,7 +5,7 @@ import ProductImage from "@/components/ProductImage";
 import { ShoppingCart, ChevronDown, ChevronUp, Star, Heart } from "lucide-react";
 import { formatCurrencyString } from "@/lib/currency";
 import { recordSignal } from "@/lib/affinity";
-import { normalizeBrand, displayTitle } from "@/lib/productSeo";
+import { normalizeBrand, displayTitle, cardTitle } from "@/lib/productSeo";
 import { isPromoExpired } from "@/components/EventBanner";
 import type { Laptop, AIScoreLabel } from "@/types/laptop";
 import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
@@ -277,9 +277,18 @@ export default function LaptopCard({
       {/* ── Card body ── */}
       <div className="p-5 flex flex-col flex-1">
 
-        {/* Nombre */}
-        <h3 className="text-sm font-medium line-clamp-2 min-h-[2.8rem] mb-4 text-[#0a0e14] group-hover:text-blue-600 transition-colors leading-snug">
-          {laptop.name}
+        {/* Nombre — MODELO, sin ficha técnica.
+            El feed de Lenovo mete la hoja de specs entera en el nombre
+            ("…¡Personalizable! Procesador Intel® Core™ Ultra 5 325 (núcleos
+            LPE de hasta 3,40 GHz…"), que en la tarjeta ocupaba tres líneas
+            cortadas a la mitad de una palabra. Lo que decide la compra acá es
+            el modelo; la ficha completa está a un clic en "Ver descripción".
+            El `title` conserva el nombre completo para quien pase el mouse. */}
+        <h3
+          title={tituloCompleto}
+          className="text-sm font-medium line-clamp-2 min-h-[2.8rem] mb-4 text-[#0a0e14] group-hover:text-blue-600 transition-colors leading-snug"
+        >
+          {cardTitle(laptop.brand, laptop.name)}
         </h3>
 
         {/* ── Precio (sin claim de descuento — ver nota legal arriba) ── */}

@@ -138,6 +138,58 @@ export function displayTitle(brand?: string | null, name?: string | null): strin
 }
 
 /**
+ * Marcadores donde arranca la ficha técnica dentro del NOMBRE del producto.
+ *
+ * El feed de Lenovo (Impact) mete la hoja de specs entera en `Name`, topada
+ * en 150 caracteres por el normalizador:
+ *
+ *   "Lenovo ThinkPad X1 2-in-1 Gen 11 Aura Edition (14" Intel) ¡Personalizable!
+ *    Procesador Intel® Core™ Ultra 5 325 (núcleos LPE de hasta 3,40 GHz núcleos"
+ *
+ * En la tarjeta eso ocupa tres líneas y se corta a la mitad de una palabra,
+ * cuando lo único que el visitante necesita para decidir es el MODELO. La
+ * ficha completa ya está a un clic en "Ver descripción".
+ *
+ * Se corta por marcador y no solo por longitud porque el corte queda en el
+ * lugar semánticamente correcto: justo donde el nombre deja de nombrar y
+ * empieza a especificar.
+ */
+const SPEC_TAIL_MARKERS: readonly RegExp[] = [
+  /\s*¡?Personalizable!?.*$/i,        // relleno de marketing de Lenovo
+  /\s*\bProcesador\b.*$/i,            // ES — arranque del volcado de specs
+  /\s*\bProcessor\b.*$/i,             // EN — mismo patrón en feeds en inglés
+];
+
+/**
+ * Nombre corto para la tarjeta del catálogo: modelo, sin ficha técnica.
+ *
+ * `max` por defecto en 70 ≈ dos líneas del `line-clamp-2` de `LaptopCard`
+ * al ancho de la grilla. Nunca inventa ni reordena: solo recorta.
+ */
+export function cardTitle(
+  brand?: string | null,
+  name?: string | null,
+  max = 70,
+): string {
+  let titulo = displayTitle(brand, name);
+
+  for (const marcador of SPEC_TAIL_MARKERS) {
+    titulo = titulo.replace(marcador, "");
+  }
+
+  // Separadores que quedan colgando cuando el nombre venía partido: el feed
+  // de Lenovo cierra varios títulos con " //" y el corte de specs deja "/".
+  titulo = titulo.replace(/[\s/|,;:–-]+$/, "").trim();
+
+  // Si el recorte se comió el nombre entero (un producto que se llamara solo
+  // "Procesador…"), es preferible el nombre original truncado que una tarjeta
+  // sin título.
+  if (!titulo) return truncateWords((name ?? "").trim(), max);
+
+  return truncateWords(titulo, max);
+}
+
+/**
  * Parte el título en marca + resto, para el H1 de dos líneas de la ficha.
  *
  * El H1 renderiza la marca arriba y el nombre abajo. Con el nombre del feed —

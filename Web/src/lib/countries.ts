@@ -38,5 +38,14 @@ export const COUNTRY_LABELS_COMPACT: Record<SupportedCountry, string> = {
   IT: "🇮🇹 IT",
 };
 
-/** Nombre de la cookie donde el visitante anónimo guarda su elección. */
+/** Cookie donde se guarda el país RESUELTO por geolocalización, para no
+ *  repetir la consulta por IP en cada request. La escribe el proxy. */
 export const COUNTRY_COOKIE = "preferred_country";
+
+/** Cookie donde se guarda el idioma que el visitante eligió A MANO.
+ *
+ *  Sin esto, el idioma manual solo vive en la URL: alguien en Brasil que pasa
+ *  el sitio a español vuelve a ver portugués apenas entra de nuevo por la raíz,
+ *  porque el proxy lo re-deriva del país. La cookie hace que la elección
+ *  sobreviva a la navegación sin fijar tampoco el país. */
+export const LOCALE_COOKIE = "preferred_locale";

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, LayoutDashboard } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
-import CountrySelector from "./CountrySelector";
 import type { Dict } from "@/types/dictionary";
 
 interface UserSession {
@@ -20,10 +19,9 @@ interface NavbarProps {
   readonly dict: Dict;
   readonly currentLocale?: string;
   readonly session?: UserSession | null;
-  readonly initialCountry: string;
 }
 
-export default function Navbar({ dict, currentLocale: forcedLocale, session, initialCountry }: NavbarProps) {
+export default function Navbar({ dict, currentLocale: forcedLocale, session }: NavbarProps) {
   const pathname = usePathname();
   const currentLocale = forcedLocale || pathname?.split("/")[1] || "es";
 
@@ -67,8 +65,12 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session, ini
           </Link>
 
           {/* Auth buttons + language — desktop */}
+          {/* El país NO se elige acá: se detecta solo por IP en el proxy
+              (ver `lib/geo.ts`). Toda esa ingeniería corre por detrás para no
+              cargar el navbar con una decisión que el visitante no debería
+              tener que tomar. Un usuario registrado igual puede fijarlo desde
+              su perfil, que es donde vive una preferencia persistente. */}
           <div className="hidden md:flex items-center gap-4">
-            <CountrySelector initialCountry={initialCountry} />
             <LanguageSelector />
 
             {session?.user ? (
@@ -100,8 +102,7 @@ export default function Navbar({ dict, currentLocale: forcedLocale, session, ini
           </div>
 
           {/* Mobile: language + auth */}
-          <div className="md:hidden flex items-center gap-2">
-            <CountrySelector initialCountry={initialCountry} compact />
+          <div className="md:hidden flex items-center gap-3">
             <LanguageSelector />
             {session?.user ? (
               <Link

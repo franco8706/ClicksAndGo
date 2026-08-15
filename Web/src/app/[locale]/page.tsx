@@ -1,5 +1,5 @@
 import React from "react";
-import { headers, cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CheckCircle, Tag, ShieldCheck, Star } from "lucide-react";
@@ -19,7 +19,6 @@ import EventBanner from "@/components/EventBanner";
 import ForYouRail from "@/components/ForYouRail";
 import Reveal from "@/components/Reveal";
 
-import { COUNTRY_COOKIE, isSupportedCountry } from "@/lib/countries";
 
 import esDict from "@/dictionaries/es.json";
 import enDict from "@/dictionaries/en.json";
@@ -107,31 +106,20 @@ export default async function HomePage({
   const paginaActual = Math.max(1, Number.parseInt(sp?.page || "1", 10) || 1);
   const dict = locale === "en" ? enDict : locale === "pt" ? ptDict : locale === "it" ? itDict : esDict;
 
+  // 🌎 El país lo resuelve el PROXY y llega ya listo en `x-country-code`
+  // (cabecera de plataforma → cookie → geolocalización por IP → idioma → US;
+  // ver `lib/geo.ts`). Acá no se vuelve a deducir: tener la misma cascada en
+  // dos lugares es la forma segura de que se desincronicen.
   const headersList = await headers();
-  const ipCountry = headersList.get("x-country-code") || "US";
-
-  // 🌎 Elección explícita del visitante vía `CountrySelector` (cookie), leída
-  // ANTES del perfil a propósito: `x-country-code` depende de
-  // `x-vercel-ip-country`/`cf-ipcountry`, cabeceras que solo inyectan Vercel o
-  // Cloudflare. Este sitio corre en Cloud Run detrás de Google Frontend, sin
-  // ninguno de los dos por delante — la cabecera nunca llega y `ipCountry`
-  // vale "US" para el 100% de los visitantes, sea cual sea su ubicación real.
-  // Verificado en producción (2026-08-11): sin la cabecera, el catálogo
-  // mostraba 3 menciones de "Lenovo"; simulándola con `cf-ipcountry: AR` por
-  // curl, 274. La cookie es hoy la única señal de país que funciona de verdad
-  // para un visitante anónimo.
-  const cookieStore = await cookies();
-  const cookieCountryRaw = cookieStore.get(COUNTRY_COOKIE)?.value?.toUpperCase();
-  const cookieCountry = isSupportedCountry(cookieCountryRaw) ? cookieCountryRaw : null;
+  const detectedCountry = headersList.get("x-country-code") || "US";
 
   /* ── 👤 Sesión + personalización geo ──────────────────────────────
-     Prioridad: perfil de cuenta (la más deliberada y persistente) >
-     cookie del selector (elección explícita de esta sesión/dispositivo) >
-     IP (hoy siempre "US" — ver nota arriba, se deja como último resorte
-     por si el sitio alguna vez queda detrás de un edge con geo real).
-     Visitante anónimo sin cookie: catálogo por IP, cero llamadas a Rails
-     de perfil. Todo pasa por Rails REST (Postgres es su frontera exclusiva,
-     Next.js nunca lo toca directo salvo el adapter de NextAuth). ── */
+     El país detectado se usa salvo que el usuario tenga uno FIJADO en su
+     perfil: esa es una elección deliberada y persistente, y gana sobre
+     cualquier detección automática. Visitante anónimo: catálogo por
+     ubicación detectada, cero llamadas de perfil a Rails. Todo pasa por
+     Rails REST (Postgres es su frontera exclusiva, Next.js nunca lo toca
+     directo salvo el adapter de NextAuth). ── */
   const session = await auth().catch(() => null);
   let favoriteIds: string[] = [];
   let preferredCountry: string | null = null;
@@ -145,7 +133,7 @@ export default async function HomePage({
     favoriteIds = favs;
   }
 
-  const countryCode = preferredCountry || cookieCountry || ipCountry;
+  const countryCode = preferredCountry || detectedCountry;
   const isLoggedIn = !!session?.user?.id;
 
   /* ── Server Action: toggle de favorito desde el catálogo ── */

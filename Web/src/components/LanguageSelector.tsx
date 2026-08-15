@@ -3,6 +3,7 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Globe, ChevronDown } from "lucide-react";
+import { LOCALE_COOKIE } from "@/lib/countries";
 
 export default function LanguageSelector() {
   const pathname = usePathname();
@@ -12,6 +13,14 @@ export default function LanguageSelector() {
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLocale = e.target.value;
+
+    // 🍪 La elección tiene que sobrevivir a la navegación. Sin esto vive solo
+    // en la URL: alguien en Brasil que pasa el sitio a español vuelve a ver
+    // portugués apenas entra de nuevo por la raíz, porque el proxy re-deriva
+    // el idioma del país. Guardarlo NO toca el país — sigue viendo el
+    // catálogo y los precios de Brasil, solo que en español.
+    document.cookie = `${LOCALE_COOKIE}=${newLocale}; path=/; max-age=31536000; samesite=lax`;
+
     if (!pathname || pathname === "/" || pathname === `/${currentLocale}`) {
       router.push(`/${newLocale}`);
       return;
