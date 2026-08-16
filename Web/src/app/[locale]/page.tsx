@@ -230,8 +230,11 @@ export default async function HomePage({
         </Reveal>
       </div>
 
-      {/* 3. Escaparate de categorías (acceso rápido estilo MercadoLibre) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-16">
+      {/* 3. Escaparate de categorías (acceso rápido estilo MercadoLibre).
+          `py-10` y no `py-16`: el encabezado de la sección se eliminó y ese
+          padding, pensado para acompañar un título, dejaba un hueco vacío del
+          alto de media pantalla entre la tira y el catálogo. */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 py-10">
         <Reveal>
           <CategoryShowcase laptops={laptops} dict={dict} />
         </Reveal>
@@ -239,7 +242,7 @@ export default async function HomePage({
 
       {/* 3b. Rail personalizado por actividad local del visitante —
           invisible para visitantes nuevos (sin historial). */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 pb-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 pb-8">
         <ForYouRail laptops={laptops} dict={dict} />
       </section>
 
