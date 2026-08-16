@@ -12,7 +12,8 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import ProductImage from "@/components/ProductImage";
-import { ShoppingCart, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, Sparkles } from "lucide-react";
+import CarouselArrows from "./CarouselArrows";
 import { Laptop } from "@/types/laptop";
 import { formatCurrencyString } from "@/lib/currency";
 import { displayTitle } from "@/lib/productSeo";
@@ -195,28 +196,20 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
             {dict.deals?.subtitle || "Seleccionadas para tu región hoy"}
           </p>
         </div>
-        {topDeals.length > 1 && (
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => goTo(active - 1, topDeals.length)}
-              className="carousel-arrow"
-              aria-label="Oferta anterior"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => goTo(active + 1, topDeals.length)}
-              className="carousel-arrow"
-              aria-label="Oferta siguiente"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Escenario — key remonta el stage por deal (estado de imagen fresco) */}
-      <div className="bg-white border border-[#e6e8ec] rounded-md card-bloom p-6 sm:p-10 mb-6">
+      {/* Escenario — key remonta el stage por deal (estado de imagen fresco).
+          Las flechas van SUPERPUESTAS y centradas a la altura de la imagen:
+          antes vivían arriba a la derecha, lejos de lo que mueven. */}
+      <div className="relative bg-white border border-[#e6e8ec] rounded-md card-bloom p-6 sm:p-10 mb-6">
+        {topDeals.length > 1 && (
+          <CarouselArrows
+            onPrev={() => goTo(active - 1, topDeals.length)}
+            onNext={() => goTo(active + 1, topDeals.length)}
+            prevLabel="Oferta anterior"
+            nextLabel="Oferta siguiente"
+          />
+        )}
         <DealStage key={current.id} laptop={current} countryCode={countryCode} dict={dict} />
       </div>
 

@@ -13,8 +13,9 @@ class NewsRadarAgent:
         # POSTeaba a un 404 desde el 2026-06-09 (ver src/rails_client.py).
         self.rails_api_url = rails_url(NEWS_PATH)
 
-        # Fuentes RSS especializadas en hardware, laptops y tech — globales + latam
+        # Fuentes RSS de hardware, laptops y tech, agrupadas por IDIOMA.
         self.rss_feeds = {
+            # ── Inglés ────────────────────────────────────────────────────
             "Toms_Hardware":    "https://www.tomshardware.com/feeds/all",
             "The_Verge_Tech":   "https://www.theverge.com/rss/index.xml",
             "Ars_Technica":     "https://feeds.arstechnica.com/arstechnica/technology-lab",
@@ -22,18 +23,51 @@ class NewsRadarAgent:
             "TechRadar_Laptops":"https://www.techradar.com/rss",
             "CNET_Tech":        "https://www.cnet.com/rss/news/",
             "Wired":            "https://www.wired.com/feed/rss",
-            "Xataka_ES":        "https://www.xataka.com/feedburner.xml",
             "NotebookCheck":    "https://www.notebookcheck.net/News.255.0.html",
             "Digital_Trends":   "https://www.digitaltrends.com/feed/",
             "Laptop_Mag":       "https://www.laptopmag.com/feeds/all",
+            # ── Español ───────────────────────────────────────────────────
+            "Xataka_ES":        "https://www.xataka.com/feedburner.xml",
+            "Genbeta_ES":       "https://www.genbeta.com/feedburner.xml",
+            "Hipertextual_ES":  "https://hipertextual.com/feed/",
+            "ComputerHoy_ES":   "https://computerhoy.20minutos.es/rss/",
+            # ── Portugués ─────────────────────────────────────────────────
+            "Tecnoblog_BR":     "https://tecnoblog.net/feed/",
+            "Canaltech_BR":     "https://canaltech.com.br/rss/",
+            "OlharDigital_BR":  "https://olhardigital.com.br/feed/",
+            # ── Italiano ──────────────────────────────────────────────────
+            "HDblog_IT":        "https://www.hdblog.it/feed/",
+            "TomsHardware_IT":  "https://www.tomshw.it/feed",
+            "PuntoInformatico_IT": "https://www.punto-informatico.it/feed/",
         }
 
-        # 🌍 País del feed (ISO alpha-2). Los que no figuran son globales
-        # (country_code NULL → Rails los sirve a todos los países). Un feed
-        # regional se muestra SOLO a los visitantes de su país — el ticker
-        # del hero ya se pide por país detectado por IP.
+        # 🌍 Marca de IDIOMA de cada feed, guardada en `country_code`.
+        #
+        # El valor NO significa "solo para este país": es el representante del
+        # GRUPO LINGÜÍSTICO. Rails expande el país del visitante a su grupo
+        # (`NEWS_LANG_PEERS` en notebooks_controller), así que un argentino
+        # recibe lo marcado "ES" porque está en su idioma, aunque el medio sea
+        # español.
+        #
+        # No se emite una fila por país a propósito: `save_news_batch` hace
+        # `find_or_initialize_by(title:)`, o sea que deduplica por título — las
+        # cinco copias de un artículo en español colapsarían en una sola y
+        # ganaría el último país procesado. La expansión tiene que vivir del
+        # lado de la lectura, no de la escritura.
+        #
+        # El diseño anterior ataba Xataka a "ES" literal y nada más, así que un
+        # argentino recibía 20 noticias EN INGLÉS y ni siquiera veía la única
+        # fuente en su idioma. Medido el 2026-08-15: AR, US, BR y ES devolvían
+        # exactamente el mismo titular en inglés.
+        #
+        # Los feeds en inglés quedan como GLOBAL (None): son el relleno de
+        # cualquier país sin cobertura propia, y Rails los ordena después de
+        # las noticias en el idioma del visitante.
         self.feed_country = {
-            "Xataka_ES": "ES",
+            "Xataka_ES": "ES", "Genbeta_ES": "ES",
+            "Hipertextual_ES": "ES", "ComputerHoy_ES": "ES",
+            "Tecnoblog_BR": "BR", "Canaltech_BR": "BR", "OlharDigital_BR": "BR",
+            "HDblog_IT": "IT", "TomsHardware_IT": "IT", "PuntoInformatico_IT": "IT",
         }
 
         # Palabras clave para filtrar solo artículos relevantes a hardware/tech

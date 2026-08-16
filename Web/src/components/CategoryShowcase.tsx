@@ -12,13 +12,15 @@
 import React, { useMemo, useRef } from "react";
 import {
   Laptop, Monitor, MonitorSmartphone, Keyboard, Mouse,
-  Headphones, Webcam, Printer, Droplet, ChevronLeft, ChevronRight,
+  Headphones, Webcam, Printer, Droplet,
   Package,
 } from "lucide-react";
 import type { Laptop as Product } from "@/types/laptop";
 import { PRODUCT_TYPES, type ProductType } from "@/types/product";
 import { recordSignal } from "@/lib/affinity";
 import type { Dict } from "@/types/dictionary";
+import CarouselArrows from "./CarouselArrows";
+import { useDragScroll } from "@/lib/useDragScroll";
 
 const TYPE_ICON: Partial<Record<ProductType, React.ComponentType<{ size?: number; className?: string }>>> = {
   laptop: Laptop,
@@ -59,6 +61,8 @@ export default function CategoryShowcase({ laptops, dict }: CategoryShowcaseProp
       ? dict.common?.productSingular || "producto"
       : dict.common?.products || "productos";
 
+  const { dragProps } = useDragScroll(stripRef);
+
   const scrollBy = (dir: 1 | -1) => {
     stripRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
@@ -74,31 +78,20 @@ export default function CategoryShowcase({ laptops, dict }: CategoryShowcaseProp
   if (entries.length === 0) return null;
 
   return (
-    <div>
-      {/* Header de sección: eyebrow + título izquierda, flechas derecha (NVIDIA) */}
-      <div className="flex items-end justify-between mb-6 gap-4">
-        <div>
-          <span className="text-blue-600 text-[10px] font-black uppercase tracking-widest block mb-2">
-            {dict.showcase?.eyebrow || "Catálogo digital"}
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#0a0e14] tracking-tight">
-            {dict.showcase?.title || "Explorá por categoría"}
-          </h2>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <button onClick={() => scrollBy(-1)} className="carousel-arrow" aria-label="Anteriores">
-            <ChevronLeft size={18} />
-          </button>
-          <button onClick={() => scrollBy(1)} className="carousel-arrow" aria-label="Siguientes">
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
+    // El encabezado ("Catálogo digital / Explorá por categoría") se quitó: las
+    // tarjetas ya dicen qué son y el título solo empujaba el contenido hacia
+    // abajo. Las flechas pasaron a flotar sobre la tira, a la altura de las
+    // imágenes, en vez de vivir en una fila de título que ya no existe.
+    <div className="relative">
+      <CarouselArrows onPrev={() => scrollBy(-1)} onNext={() => scrollBy(1)} />
 
-      {/* Tira horizontal de cards (scroll-snap, cascada de entrada) */}
+      {/* Tira horizontal de cards (scroll-snap, cascada de entrada).
+          Arrastrable con el mouse: el cursor de mano sobre las tarjetas ahora
+          también sirve para desplazar. */}
       <div
         ref={stripRef}
-        className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2 stagger-children"
+        {...dragProps}
+        className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2 stagger-children drag-strip"
       >
         {entries.map(({ type, count }) => {
           // Respaldo obligatorio: `TYPE_ICON` es Partial desde que la

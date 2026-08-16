@@ -557,6 +557,41 @@
   &:disabled { background-color: var(--color-line-strong); cursor: not-allowed; }
 }
 
+/* Flecha flotante sobre la tira, centrada a la altura de las imágenes.
+   Fondo sólido y sombra marcada porque queda encima de fotos de producto:
+   una flecha translúcida sobre un portátil oscuro deja de verse. Al pasar el
+   mouse se agranda y se tiñe de marca, así se lee como control y no como
+   parte de la foto. */
+@utility carousel-arrow-float {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.92);
+  color: var(--color-brand-primary);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 4px 14px rgba(10, 14, 20, 0.18);
+  cursor: pointer;
+  transition: background-color 0.18s ease-out, transform 0.18s ease-out,
+              color 0.18s ease-out, box-shadow 0.18s ease-out;
+
+  &:hover {
+    background-color: var(--color-brand-primary);
+    color: #ffffff;
+    transform: scale(1.08);
+    box-shadow: 0 6px 18px rgba(10, 14, 20, 0.26);
+  }
+  &:active { transform: scale(0.96); }
+}
+
+/* La tira arrastrable: el cursor anuncia que se puede agarrar. */
+@utility drag-strip {
+  cursor: grab;
+  &:active { cursor: grabbing; }
+}
+
 /* Reveal-on-scroll: estado inicial + entrada al viewport.
    Con reduced-motion el contenido se muestra sin animación. */
 @utility reveal-init {

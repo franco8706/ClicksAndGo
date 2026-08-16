@@ -14,7 +14,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import ProductImage from "@/components/ProductImage";
-import { Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import CarouselArrows from "./CarouselArrows";
+import { useDragScroll } from "@/lib/useDragScroll";
 import type { Laptop } from "@/types/laptop";
 import type { Dict } from "@/types/dictionary";
 import { rankByAffinity } from "@/lib/affinity";
@@ -30,6 +31,9 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
   // el server siempre renderiza null y el cliente lo puebla al hidratar.
   const [picks, setPicks] = useState<Laptop[]>([]);
   const stripRef = useRef<HTMLDivElement>(null);
+  // Antes del `return null` de abajo: los hooks no pueden quedar detrás de una
+  // salida temprana o cambia su orden entre renders.
+  const { dragProps } = useDragScroll(stripRef);
 
   const refresh = useCallback(() => {
     setPicks(rankByAffinity(laptops, 8));
@@ -53,32 +57,17 @@ export default function ForYouRail({ laptops, dict }: ForYouRailProps) {
     stripRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
 
   return (
-    <div className="animate-hero-entry">
-      {/* Header: eyebrow + título + flechas (layout NVIDIA) */}
-      <div className="flex items-end justify-between mb-6 gap-4">
-        <div>
-          <span className="inline-flex items-center gap-1.5 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-2">
-            <Sparkles size={12} />
-            {dict.forYou?.eyebrow || "Según tu actividad"}
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#0a0e14] tracking-tight">
-            {dict.forYou?.title || "Elegidos para vos"}
-          </h2>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <button onClick={() => scrollBy(-1)} className="carousel-arrow" aria-label="Anteriores">
-            <ChevronLeft size={18} />
-          </button>
-          <button onClick={() => scrollBy(1)} className="carousel-arrow" aria-label="Siguientes">
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
+    // Sin encabezado ("Según tu actividad / Elegidos para vos"): los productos
+    // hablan solos y el título solo empujaba la tira fuera de la vista. Las
+    // flechas quedan flotando a la altura de las imágenes.
+    <div className="animate-hero-entry relative">
+      <CarouselArrows onPrev={() => scrollBy(-1)} onNext={() => scrollBy(1)} />
 
-      {/* Tira horizontal de mini-cards (patrón carrusel de ML) */}
+      {/* Tira horizontal de mini-cards, arrastrable con el mouse. */}
       <div
         ref={stripRef}
-        className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2"
+        {...dragProps}
+        className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2 drag-strip"
       >
         {picks.map((p) => {
           const price = p.financials?.current_price || 0;

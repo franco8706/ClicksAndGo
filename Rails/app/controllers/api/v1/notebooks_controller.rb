@@ -212,19 +212,54 @@ module Api
       # =========================================================
       # 📡 ENDPOINT: GET /api/v1/notebooks/hardware_news
       # =========================================================
+      # 🌍 Grupo lingüístico de cada país: qué marcas de `country_code` acepta.
+      #
+      # `NewsRadar` guarda en `country_code` el REPRESENTANTE del idioma del
+      # feed, no su nacionalidad ("ES" para todo el español, "BR" para el
+      # portugués, "IT" para el italiano; los feeds en inglés van NULL como
+      # global). Acá se expande el país del visitante a las marcas que le
+      # sirven, porque lo que hace útil una noticia es que esté en su idioma:
+      # a un argentino le sirve Xataka aunque sea un medio español.
+      #
+      # Antes la consulta comparaba `country_code = 'AR'` literal. Como ningún
+      # feed estaba marcado "AR", un visitante argentino caía siempre en la
+      # rama `IS NULL` y recibía 20 noticias en inglés. Medido el 2026-08-15:
+      # AR, US, BR y ES devolvían el mismo titular.
+      NEWS_LANG_PEERS = {
+        'AR' => %w[AR ES], 'CL' => %w[CL ES], 'CO' => %w[CO ES],
+        'MX' => %w[MX ES], 'ES' => %w[ES],
+        'BR' => %w[BR], 'IT' => %w[IT], 'US' => %w[US]
+      }.freeze
+
+      NEWS_LIMIT = 20
+
       def hardware_news
         country_raw = params[:country].to_s.upcase[0, 2].presence || 'US'
-        cache_key   = "hardware_news/#{country_raw}"
+        cache_key   = "hardware_news/v2/#{country_raw}"
 
         result = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
-          country = ActiveRecord::Base.connection.quote(country_raw)
-          sql = <<-SQL
-            SELECT category, title, summary, impact_score AS "impactScore", recorded_at AS "recordedAt", source_url AS "sourceUrl"
-            FROM hardware_news
-            WHERE country_code = #{country} OR country_code IS NULL
-            ORDER BY recorded_at DESC LIMIT 20
-          SQL
-          ActiveRecord::Base.connection.execute(sql).to_a
+          peers = NEWS_LANG_PEERS.fetch(country_raw, [country_raw])
+
+          # 📰 Las noticias en el idioma del visitante van PRIMERO; las
+          # globales (inglés) solo rellenan lo que falte hasta el límite. Sin
+          # este orden, los 10 feeds en inglés —que publican mucho más seguido
+          # que los 4 en español— copaban las 20 posiciones por fecha y el
+          # visitante hispanohablante no veía una sola noticia en su idioma.
+          HardwareNews
+            .where(country_code: peers + [nil])
+            .order(Arel.sql('CASE WHEN country_code IS NULL THEN 1 ELSE 0 END ASC'))
+            .order(recorded_at: :desc)
+            .limit(NEWS_LIMIT)
+            .map do |n|
+              {
+                category:    n.category,
+                title:       n.title,
+                summary:     n.summary,
+                impactScore: n.impact_score,
+                recordedAt:  n.recorded_at,
+                sourceUrl:   n.source_url
+              }
+            end
         end
 
         render json: result, status: :ok
