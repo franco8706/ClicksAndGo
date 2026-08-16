@@ -17,6 +17,7 @@ import CarouselArrows from "./CarouselArrows";
 import { Laptop } from "@/types/laptop";
 import { formatCurrencyString } from "@/lib/currency";
 import { displayTitle } from "@/lib/productSeo";
+import { isRealProductImage } from "@/lib/productImage";
 import type { Dict } from "@/types/dictionary";
 
 const SLIDE_MS = 7000; // firma NVIDIA: 7s por slide, avance linear
@@ -137,8 +138,26 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
   // matemática de negocio — es elegir qué mostrar primero).
   const topDeals = useMemo(() => {
     if (!Array.isArray(laptops)) return [];
+
+    // 🖼️ Tener foto pesa MÁS que el score en este slot concreto.
+    //
+    // Es el escaparate del sitio: una ficha a pantalla completa con el
+    // placeholder genérico en vez del producto se ve rota, por más que sea la
+    // mejor oferta del catálogo. Pasó de verdad — el MacBook Pro 14" (score
+    // 9,5) encabezaba la sección con el ícono gris.
+    //
+    // No se inventa una imagen ni se oculta el producto: se prefiere para el
+    // escaparate uno que SÍ tenga foto, y el resto sigue disponible en el
+    // catálogo. Si ninguno tiene, se cae al orden por score y al menos se
+    // muestra algo.
+    const conFoto = (l: Laptop) => (isRealProductImage(l.urls?.image) ? 1 : 0);
+
     return [...laptops]
-      .sort((a, b) => (b.intelligence?.deal_score ?? 0) - (a.intelligence?.deal_score ?? 0))
+      .sort((a, b) => {
+        const foto = conFoto(b) - conFoto(a);
+        if (foto !== 0) return foto;
+        return (b.intelligence?.deal_score ?? 0) - (a.intelligence?.deal_score ?? 0);
+      })
       .slice(0, 3);
   }, [laptops]);
 
@@ -208,6 +227,7 @@ export default function AIDealsSection({ laptops, countryCode = "AR", dict }: AI
             onNext={() => goTo(active + 1, topDeals.length)}
             prevLabel="Oferta anterior"
             nextLabel="Oferta siguiente"
+            edge="straddle"
           />
         )}
         <DealStage key={current.id} laptop={current} countryCode={countryCode} dict={dict} />

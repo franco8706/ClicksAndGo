@@ -9,6 +9,17 @@ interface CarouselArrowsProps {
   /** Etiquetas accesibles — el carrusel no dice por sí solo qué desplaza. */
   readonly prevLabel?: string;
   readonly nextLabel?: string;
+  /**
+   * Dónde se apoyan las flechas.
+   *
+   * `inside` (por defecto) sirve para una tira de tarjetas: la flecha se monta
+   * sobre el borde de la primera y la última, que es lo esperable.
+   *
+   * `straddle` las corre hacia afuera, a caballo del borde del contenedor.
+   * Es lo que necesita una ficha con texto pegado al margen: adentro, la
+   * flecha izquierda se montaba encima del precio y lo tapaba.
+   */
+  readonly edge?: "inside" | "straddle";
 }
 
 /**
@@ -29,9 +40,15 @@ export default function CarouselArrows({
   onNext,
   prevLabel = "Anteriores",
   nextLabel = "Siguientes",
+  edge = "inside",
 }: CarouselArrowsProps) {
+  const posicion =
+    edge === "straddle" ? "-left-5 -right-5 px-0" : "left-0 right-0 px-1";
+
   return (
-    <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden sm:flex items-center justify-between px-1">
+    <div
+      className={`pointer-events-none absolute inset-y-0 z-20 hidden sm:flex items-center justify-between ${posicion}`}
+    >
       <button
         onClick={onPrev}
         aria-label={prevLabel}
