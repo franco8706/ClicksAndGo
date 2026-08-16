@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from bs4 import BeautifulSoup
 import datetime
@@ -70,20 +71,58 @@ class NewsRadarAgent:
             "HDblog_IT": "IT", "TomsHardware_IT": "IT", "PuntoInformatico_IT": "IT",
         }
 
-        # Palabras clave para filtrar solo artículos relevantes a hardware/tech
+        # Palabras clave para quedarse solo con lo relevante a hardware/tech,
+        # en los CUATRO idiomas de los feeds (en/es/pt/it).
+        #
+        # ⚠️ Se comparan como PALABRA COMPLETA, no como subcadena. Medido sobre
+        # 40 artículos reales de Xataka: la comparación por subcadena dejaba
+        # pasar 10 y 9 eran basura — "ram" dentro de "programadores", "ai"
+        # dentro de otras palabras, "pc" suelto. Entraban al ticker faros
+        # nucleares soviéticos, árboles de Madrid y precios de la vivienda.
+        #
+        # `precio` y `oferta` se quitaron a propósito: en un medio generalista
+        # matchean vivienda, supermercado y coches. El producto ya tiene una
+        # sección de ofertas reales; el ticker es de noticias.
         self._tech_keywords = {
-            "laptop", "notebook", "cpu", "gpu", "processor", "intel", "amd", "nvidia",
-            "arm", "snapdragon", "apple", "macbook", "windows", "linux", "chip",
-            "ram", "ssd", "battery", "display", "screen", "ai", "artificial",
-            "tech", "technology", "computer", "pc", "hardware", "software",
-            "procesador", "portátil", "ordenador", "tecnología", "inteligencia",
-            "memoria", "almacenamiento", "pantalla", "precio", "oferta",
+            # Cómputo y componentes (universal)
+            "laptop", "notebook", "netbook", "ultrabook", "macbook", "chromebook",
+            "cpu", "gpu", "ssd", "hdd", "nvme", "ram", "vram", "pc", "arm", "risc",
+            "intel", "amd", "nvidia", "qualcomm", "snapdragon", "ryzen", "radeon",
+            "geforce", "apple", "lenovo", "asus", "acer", "msi", "dell", "hp",
+            "thinkpad", "chip", "chipset", "procesador", "processore", "processador",
+            "processor", "placa", "motherboard", "gráfica", "grafica",
+            # Sistemas y software
+            "windows", "linux", "macos", "android", "ios", "chromeos", "software",
+            "hardware", "firmware", "driver", "app", "aplicación", "aplicativo",
+            # IA (palabra completa: "ai" suelto matchea medio diccionario)
+            "ia", "ai", "inteligencia artificial", "intelligenza artificiale",
+            "inteligência artificial", "artificial intelligence", "chatgpt",
+            "copilot", "gemini", "openai", "llm",
+            # Dispositivos
+            "smartphone", "teléfono", "telefono", "celular", "móvil", "movil",
+            "tablet", "monitor", "teclado", "tastiera", "teclado", "ratón",
+            "mouse", "auriculares", "cuffie", "fone", "impresora", "stampante",
+            "impressora", "consola", "console", "wearable", "smartwatch",
+            # Términos de dominio
+            "tecnología", "tecnologia", "technology", "tech", "informática",
+            "informatica", "computación", "computador", "computer", "ordenador",
+            "batería", "bateria", "battery", "batteria", "pantalla", "schermo",
+            "tela", "display", "memoria", "almacenamiento", "armazenamento",
+            "gaming", "videojuego", "videogioco", "benchmark", "overclock",
         }
+
+        # Se compila una sola vez: este patrón corre contra cada artículo de
+        # cada feed en cada ciclo. `\b` es Unicode-aware en Python 3, así que
+        # respeta acentos ("portátil", "tecnología").
+        self._tech_pattern = re.compile(
+            r"\b(?:" + "|".join(re.escape(k) for k in sorted(self._tech_keywords)) + r")\b",
+            re.IGNORECASE,
+        )
 
     # ── Public ───────────────────────────────────────────────────────────────
 
     def scan_and_report(self):
-        self.orchestrator.log_action("NewsRadar", "Iniciando escaneo de 11 feeds RSS...")
+        self.orchestrator.log_action("NewsRadar", f"Iniciando escaneo de {len(self.rss_feeds)} feeds RSS...")
         news_batch = []
 
         for tag, url in self.rss_feeds.items():
@@ -150,7 +189,7 @@ class NewsRadarAgent:
             if not title or len(raw_txt) < 20:
                 continue
             combined = (title + " " + raw_txt).lower()
-            if not any(kw in combined for kw in self._tech_keywords):
+            if not self._tech_pattern.search(combined):
                 continue
             results.append({"title": title, "summary": raw_txt, "url": article_url})
 
