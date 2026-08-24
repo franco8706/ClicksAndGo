@@ -125,9 +125,10 @@ module Api
       # 🗺️ ENDPOINT: GET /api/v1/notebooks/sitemap
       #
       # Índice mínimo del catálogo para `Web/src/app/sitemap.ts`. Devuelve
-      # SOLO `{slug, updated_at}` — no el DTO completo — porque el sitemap no
-      # necesita precios ni specs y el payload liviano permite traer todo el
-      # catálogo de una sin paginar.
+      # `{slug, updated_at, product_type, name}` — no el DTO completo — porque
+      # el sitemap no necesita precios ni specs y el payload liviano permite
+      # traer todo el catálogo de una sin paginar. (Los dos últimos campos son
+      # para `isIndexableProduct`; el porqué está en el cuerpo de la acción.)
       #
       # Por qué un endpoint propio y no reusar `index`:
       #   · `index` filtra por país (`country_code`) y el sitemap necesita el
@@ -275,8 +276,23 @@ module Api
         payload = params.to_unsafe_h.deep_symbolize_keys
         news_batch = payload[:news] || []
         
-        PersistenceOrchestrator.save_news_batch(news_batch)
-        render json: { status: 'SUCCESS', message: "#{news_batch.length} noticias procesadas" }, status: :created
+        # ⚠️ Se informa lo GUARDADO, no lo recibido. El mensaje anterior decía
+        # "#{news_batch.length} noticias procesadas" con el total que entró por
+        # el request, así que un lote donde Postgres rechazara la mitad
+        # respondía igual de exitoso y el radar de Python lo daba por bueno.
+        # `save_news_batch` aísla cada noticia en su transacción y devuelve
+        # cuántas sobrevivieron: si el número no coincide, se dice.
+        recibidas = news_batch.length
+        guardadas = PersistenceOrchestrator.save_news_batch(news_batch).to_i
+        descartadas = recibidas - guardadas
+
+        render json: {
+          status: descartadas.zero? ? 'SUCCESS' : 'PARTIAL',
+          received: recibidas,
+          saved: guardadas,
+          discarded: descartadas,
+          message: "#{guardadas}/#{recibidas} noticias guardadas"
+        }, status: :created
       rescue => e
         Rails.logger.error("🚨 [Create News API] Fallo crítico: #{e.message}")
         render json: { status: 'ERROR', message: 'Fallo al guardar noticias' }, status: :internal_server_error

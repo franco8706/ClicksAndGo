@@ -27,7 +27,10 @@ spec:
         # (log "Starting new instance. Reason: AUTOSCALING" + HTTP 200) → vuelto
         # a 0. Si reaparece el 429 tras un corte de billing, subir a 1 y esperar.
         autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "20"
+        # 🔌 maxScale NO es una perilla de tráfico: es el reparto de las
+        # conexiones de Postgres. Ver el bloque "PRESUPUESTO DE CONEXIONES"
+        # más abajo antes de subirlo.
+        autoscaling.knative.dev/maxScale: "4"
         # 💰 CPU facturada solo durante requests (Rails no hace trabajo de fondo).
         run.googleapis.com/cpu-throttling: "true"
         # Conexión a Cloud SQL vía socket unix (Auth Proxy embebido, sin IP pública)
@@ -35,7 +38,12 @@ spec:
     spec:
       # Service account con permisos de Cloud SQL Client + Secret Manager
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
-      containerConcurrency: 80
+      # Requests en vuelo por instancia. Estaba en 80 contra 10 hilos reales:
+      # las 70 restantes hacían cola contra el timeout de 30s en vez de
+      # disparar el escalado, así que la instancia se ahogaba sin que Cloud Run
+      # se enterara. 8 deja una cola corta (respuestas cacheadas, ~50 ms) antes
+      # de pagar un cold-start.
+      containerConcurrency: 8
       timeoutSeconds: 30
       containers:
       - image: us-central1-docker.pkg.dev/clicks-and-go/clicks-and-go/rails:latest
@@ -49,10 +57,28 @@ spec:
         env:
         - name: RAILS_ENV
           value: production
+        # ═══ PRESUPUESTO DE CONEXIONES A POSTGRES ═══════════════════════
+        # `clicks-db2` es db-f1-micro: max_connections = 25, de las cuales 3
+        # quedan reservadas al superusuario y ~2 las usa el agente de Cloud SQL.
+        # Quedan ~20 para la app, y Rails es el ÚNICO servicio que habla con
+        # Postgres (Python y Next.js entran por su API).
+        #
+        #     conexiones máximas = maxScale × WEB_CONCURRENCY × RAILS_MAX_THREADS
+        #                        =    4     ×       1         ×        4        = 16
+        #
+        # Antes: 20 × 2 × 5 = 200 contra un techo de 20. Con tráfico bajo nunca
+        # se notaba; bastaban 3 instancias simultáneas para que Postgres
+        # empezara a rechazar conexiones y el sitio devolviera 500 entero.
+        #
+        # Un worker en vez de dos: el contenedor tiene 1 vCPU y 512Mi. Dos
+        # procesos Puma con `preload_app!` se pisan en CPU y rozan el techo de
+        # memoria; en Cloud Run la unidad de escalado es la INSTANCIA, no el
+        # worker. Si hace falta más concurrencia, lo que se sube es el tier de
+        # Cloud SQL — estos tres números son el reparto de un presupuesto fijo.
         - name: WEB_CONCURRENCY
-          value: "2"
+          value: "1"
         - name: RAILS_MAX_THREADS
-          value: "5"
+          value: "4"
         # 🗄️ Cache en memoria (Redis eliminado por costo — ver cache_store.rb).
         # Al no definir REDIS_URL, Rails usa :memory_store automáticamente.
         # Secretos inyectados desde Secret Manager (nunca hardcodeados)

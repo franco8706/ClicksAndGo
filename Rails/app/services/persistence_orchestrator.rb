@@ -1,24 +1,21 @@
 class PersistenceOrchestrator
   # 🛡️ Orquestador Transaccional Zero-Trust
 
+  # Tokens que van en MAYÚSCULA al derivar el nombre visible de una tienda:
+  # siglas de marca (hp, msi, lg) y códigos de país (us, ar, br). El corte por
+  # longitud ≤ 3 los cubre a todos sin mantener una lista que se desactualice.
+  RETAILER_SIGLA_MAX = 3
+
   # =========================================================
   # 🛒 PERSISTENCIA DE CATÁLOGO (Amazon, Lenovo, Mercadolibre...)
   # =========================================================
   def self.save_raw_offer(data)
-    
-    # 1. 🚀 FIX ARQUITECTÓNICO (Race Condition Shield):
-    # Asegura la creación concurrente del Retailer. Si varios hilos de Python 
-    # insertan a la vez, se captura la excepción de PostgreSQL y se reintenta el SELECT.
-    begin
-      retailer = Retailer.find_or_create_by!(
-        slug: data[:retailer_slug] || 'generic', 
-        country_code: data[:country_code] || 'US'
-      ) do |r|
-        r.name = data[:brand] || "Tienda #{data[:retailer_slug]}"
-      end
-    rescue ActiveRecord::RecordNotUnique
-      retry
-    end
+    # 1. 🏪 Alta/-búsqueda de la TIENDA. Es la puerta por donde entra cada
+    #    afiliado nuevo, así que no puede fallar por un choque de nombres.
+    retailer = find_or_create_retailer!(
+      raw_slug: data[:retailer_slug],
+      raw_country: data[:country_code]
+    )
 
     # 2. Extracción de nodos del JSON de Python
     hardware = data[:hardware] || {}
@@ -132,35 +129,141 @@ class PersistenceOrchestrator
   end
 
   # =========================================================
+  # 🏪 ALTA DE TIENDAS — la puerta de entrada de cada afiliado nuevo
+  # =========================================================
+  #
+  # `retailers` tiene DOS constraints únicas en Postgres: (slug, country) y
+  # (name, country). El alta anterior solo contemplaba la primera y nombraba
+  # la tienda con `data[:brand]` — la marca del PRIMER producto que entrara.
+  # De ahí salió que en producción `newegg`/US se llame "Genérica".
+  #
+  # El daño no era cosmético. "Genérica" es el fallback de marca de
+  # market_hunter.py, así que toda tienda nueva de US cuyo primer producto no
+  # matcheara una marca conocida proponía ese mismo nombre y chocaba con la
+  # constraint. Y el `rescue RecordNotUnique; retry` no llegaba a correr:
+  # Rails 7.1 atrapa ese error dentro de `find_or_create_by!` y reintenta un
+  # `find_by!` por slug+country — que no es donde chocó — así que sale
+  # RecordNotFound, el controlador responde 422 y el producto se descarta.
+  # Como el nombre choca para TODOS los productos de esa tienda, se perdía el
+  # afiliado entero sin un solo error visible.
+  #
+  # Ahora el nombre se deriva del SLUG, que es la identidad real de la tienda,
+  # y las colisiones se resuelven desambiguando con una lista FINITA de
+  # candidatos. Nunca se reintenta a ciegas: colgarse con una conexión de
+  # Postgres tomada es peor que fallar (la instancia tiene 25 en total).
+  def self.find_or_create_retailer!(raw_slug:, raw_country:)
+    country = raw_country.to_s.upcase.strip.presence || 'US'
+    slug    = normalize_retailer_slug(raw_slug)
+
+    # Caso mayoritario: la tienda ya existe y esto es un re-scrapeo.
+    existing = Retailer.find_by(slug: slug, country_code: country)
+    return existing if existing
+
+    Retailer.create!(name: available_retailer_name(slug, country), slug: slug, country_code: country)
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+    # Carrera real: el MasterOrchestrator postea con 5 hilos y dos pueden
+    # traer la primera oferta de la misma tienda. La fila que creó el que ganó
+    # sirve igual. Un solo reintento — si tampoco está, el problema no es la
+    # carrera y hay que verlo, no enmascararlo.
+    Retailer.find_by(slug: slug, country_code: country) || raise(e)
+  end
+
+  # `merchantname` / `advertiser-name` / `CampaignName` llegan crudos de la red
+  # de afiliados ("Best Buy US", "Lenovo  Argentina"). Sin normalizar, la misma
+  # tienda entra dos veces con slugs distintos y el catálogo se fragmenta.
+  def self.normalize_retailer_slug(raw)
+    slug = raw.to_s.downcase.strip.gsub(/[^a-z0-9]+/, '_').gsub(/\A_+|_+\z/, '')
+    slug.presence&.slice(0, 50) || 'generic'
+  end
+
+  # lenovo_argentina → "Lenovo Argentina"; best_buy_us → "Best Buy US".
+  def self.retailer_display_name(slug)
+    slug.split('_').reject(&:blank?).map { |token|
+      token.length <= RETAILER_SIGLA_MAX ? token.upcase : token.capitalize
+    }.join(' ').presence&.slice(0, 50) || 'Tienda'
+  end
+
+  # Primer nombre libre para el país. La lista es corta y termina: el sufijo
+  # aleatorio garantiza salida sin depender de que el SELECT haya acertado.
+  def self.available_retailer_name(slug, country)
+    base = retailer_display_name(slug)
+    [base, "#{base[0, 38]} (#{slug})"[0, 50]].find { |candidato|
+      !Retailer.exists?(name: candidato, country_code: country)
+    } || "#{base[0, 40]} #{SecureRandom.hex(3)}"[0, 50]
+  end
+
+  # =========================================================
   # 📰 PERSISTENCIA DE NOTICIAS DE HARDWARE (Radar IA)
   # =========================================================
+  # Anchos reales de las columnas en Postgres. Recortar acá y no confiar en
+  # que la fuente se porte bien: `category` la escribe Gemini como texto libre
+  # ("tag descriptivo en español", ver news_radar.py) y `title` viene crudo del
+  # RSS. Ninguna de las dos tiene un largo garantizado.
+  NEWS_CATEGORY_MAX = 50
+  NEWS_TITLE_MAX    = 255
+
   def self.save_news_batch(news_array)
     return unless news_array.is_a?(Array)
-    
-    ActiveRecord::Base.transaction do
-      news_array.each do |item|
-        # Patrón Upsert: Si el título ya existe, lo actualiza (evita errores UNIQUE en BD)
-        news = HardwareNews.find_or_initialize_by(title: item[:title])
-        news.category = item[:category] || 'Global Tech'
-        news.summary = item[:summary] || 'Sin resumen disponible.'
-        
-        # Validación defensiva del Enum de PostgreSQL
-        valid_scores = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
-        impact = item[:impact_score].to_s.upcase
-        news.impact_score = valid_scores.include?(impact) ? impact : 'MEDIUM'
-        
-        news.recorded_at = item[:recorded_at] || Time.current
-        news.source_url  = item[:source_url] if item[:source_url].present?
-        # 🌍 Geo: feed regional → visible solo en su país (NULL = global).
-        # Defensivo con has_attribute? por entornos sin la columna.
-        if news.has_attribute?(:country_code) && item[:country_code].present?
-          news.country_code = item[:country_code].to_s.upcase[0, 2]
+
+    # 🔒 UNA TRANSACCIÓN POR NOTICIA, no una por lote.
+    #
+    # El 2026-08-17 producción registró
+    #   PG::StringDataRightTruncation: value too long for type character varying(50)
+    # y como el lote entero iba en una sola transacción, ese error se llevó las
+    # ~40 noticias del ciclo, no solo la larga. El ticker quedó con contenido
+    # viejo hasta el ciclo siguiente sin que nada lo indicara en el sitio.
+    #
+    # Las noticias son independientes entre sí: no hay ninguna invariante que
+    # exija guardarlas todas o ninguna. Aislarlas convierte "se perdió el
+    # ciclo" en "se perdió una".
+    guardadas = 0
+    fallidas  = []
+
+    news_array.each do |item|
+      titulo = item[:title].to_s.strip[0, NEWS_TITLE_MAX]
+      # Sin título no hay clave de upsert posible: se descarta esa sola.
+      if titulo.blank?
+        fallidas << 'noticia sin título'
+        next
+      end
+
+      begin
+        ActiveRecord::Base.transaction do
+          # Patrón Upsert: si el título ya existe, lo actualiza (evita UNIQUE).
+          news = HardwareNews.find_or_initialize_by(title: titulo)
+          news.category = item[:category].to_s.strip.presence&.slice(0, NEWS_CATEGORY_MAX) || 'Global Tech'
+          news.summary  = item[:summary].presence || 'Sin resumen disponible.'
+
+          # Validación defensiva del Enum de PostgreSQL
+          valid_scores = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+          impact = item[:impact_score].to_s.upcase
+          news.impact_score = valid_scores.include?(impact) ? impact : 'MEDIUM'
+
+          news.recorded_at = item[:recorded_at] || Time.current
+          news.source_url  = item[:source_url] if item[:source_url].present?
+          # 🌍 Geo: feed regional → visible solo en su país (NULL = global).
+          # Defensivo con has_attribute? por entornos sin la columna.
+          if news.has_attribute?(:country_code) && item[:country_code].present?
+            news.country_code = item[:country_code].to_s.upcase[0, 2]
+          end
+          news.save!
         end
-        news.save!
+        guardadas += 1
+      rescue => e
+        # Se registra con el título para poder rastrear la fuente, y se sigue.
+        fallidas << "#{titulo[0, 60]} → #{e.class}: #{e.message[0, 120]}"
       end
     end
-  rescue => e
-    Rails.logger.error("🚨 [Persistence Error] Fallo al guardar noticias: #{e.message}")
-    raise e
+
+    if fallidas.any?
+      Rails.logger.error(
+        "🚨 [Persistence] #{guardadas}/#{news_array.size} noticias guardadas. " \
+        "Descartadas #{fallidas.size}: #{fallidas.join(' | ')}"
+      )
+    else
+      Rails.logger.info("📰 [Persistence] #{guardadas} noticias guardadas.")
+    end
+
+    guardadas
   end
 end

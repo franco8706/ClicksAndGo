@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 from src.providers import TASK_NEWS_EVAL
-from src.rails_client import NEWS_PATH, post_json, rails_url
+from src.rails_client import NEWS_PATH, post_json_detail, rails_url
 
 class NewsRadarAgent:
     def __init__(self, orchestrator):
@@ -246,14 +246,29 @@ class NewsRadarAgent:
         }
 
     def _send_to_rails(self, news_batch: list[dict]):
-        # `post_json` autentica, verifica el status y loguea el modo de fallo.
+        # `post_json_detail` autentica, verifica el status, loguea el modo de
+        # fallo y devuelve el cuerpo con el conteo REAL de lo persistido.
         # Antes esto informaba el status code dentro de un mensaje [SUCCESS]:
         # un 404 se leía como éxito y las noticias quedaron 51 días congeladas.
-        ok, status = post_json(NEWS_PATH, {"news": news_batch})
+        ok, status, cuerpo = post_json_detail(NEWS_PATH, {"news": news_batch})
         if ok:
-            self.orchestrator.log_action(
-                "NewsRadar", f"{len(news_batch)} artículos guardados en Rails."
-            )
+            # 🔍 El conteo lo dice RAILS, no nosotros. Un 201 significa que
+            # aceptó el request; cuántos artículos sobrevivieron a Postgres es
+            # otra cosa (una `category` más larga que varchar(50) descarta ese
+            # artículo). Repetir `len(news_batch)` sería inventar un éxito.
+            guardados = cuerpo.get("saved", len(news_batch))
+            descartados = cuerpo.get("discarded", 0)
+            if descartados:
+                self.orchestrator.log_action(
+                    "NewsRadar",
+                    f"Rails guardó {guardados}/{len(news_batch)} artículos; "
+                    f"descartó {descartados} (ver el detalle en los logs de Rails).",
+                    "WARNING",
+                )
+            else:
+                self.orchestrator.log_action(
+                    "NewsRadar", f"{guardados} artículos guardados en Rails."
+                )
         else:
             self.orchestrator.log_action(
                 "NewsRadar",

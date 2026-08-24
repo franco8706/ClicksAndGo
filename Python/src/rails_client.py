@@ -118,6 +118,24 @@ def post_json(path: str, payload: dict, timeout: int = POST_TIMEOUT_S) -> tuple[
     repetirlo da el mismo resultado y solo agrega ruido— y un 5xx podría
     haber persistido a medias, así que reintentarlo arriesga duplicar.
     """
+    ok, status, _ = post_json_detail(path, payload, timeout=timeout)
+    return ok, status
+
+
+def post_json_detail(
+    path: str, payload: dict, timeout: int = POST_TIMEOUT_S
+) -> tuple[bool, int, dict]:
+    """Igual que `post_json`, pero además devuelve el cuerpo JSON de Rails.
+
+    Por qué hace falta: un 2xx dice que Rails ACEPTÓ el request, no que haya
+    guardado todo lo que le mandamos. El endpoint de noticias persiste cada
+    artículo en su propia transacción y responde `{saved, discarded}`; sin
+    leer el cuerpo, quien llama solo puede repetir el número que envió — que
+    es exactamente cómo un 404 se leyó como éxito y las noticias quedaron 51
+    días congeladas.
+
+    El tercer elemento es `{}` si la respuesta no traía JSON válido.
+    """
     url = rails_url(path)
     ultimo_error = None
 
@@ -137,11 +155,18 @@ def post_json(path: str, payload: dict, timeout: int = POST_TIMEOUT_S) -> tuple[
     else:
         logger.error("POST %s falló sin respuesta tras %s intentos: %s",
                      url, POST_MAX_INTENTOS, ultimo_error)
-        return False, 0
+        return False, 0, {}
 
     status = resp.status_code
+    try:
+        cuerpo = resp.json()
+        if not isinstance(cuerpo, dict):
+            cuerpo = {}
+    except Exception:
+        cuerpo = {}
+
     if 200 <= status < 300:
-        return True, status
+        return True, status, cuerpo
 
     if status == 401:
         logger.error("POST %s → 401: INTERNAL_API_KEY ausente o incorrecta.", url)
@@ -149,7 +174,7 @@ def post_json(path: str, payload: dict, timeout: int = POST_TIMEOUT_S) -> tuple[
         logger.error("POST %s → 404: la ruta no existe (¿path duplicado en RAILS_API_URL?).", url)
     else:
         logger.error("POST %s → %s: %s", url, status, resp.text[:200])
-    return False, status
+    return False, status, cuerpo
 
 
 def post_products_batch(productos: list, timeout: int = 120) -> tuple[int, int]:

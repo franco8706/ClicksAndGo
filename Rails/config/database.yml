@@ -5,18 +5,38 @@ default: &default
   adapter: postgresql
   encoding: unicode
   
-  # 🚀 AUTO-ESCALADO DEL POOL DE CONEXIONES
-  # Sincronizado estrictamente con los hilos de Puma.
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 10 } %>
-  
+  # 🚀 POOL DE CONEXIONES — sincronizado con los hilos de Puma.
+  #
+  # ⚠️ PRESUPUESTO DURO: la instancia Cloud SQL `clicks-db2` (db-f1-micro)
+  # tiene `max_connections = 25`, de las cuales 3 quedan reservadas para el
+  # superusuario y ~2 las toma el agente de Cloud SQL. Quedan ~20 para la app.
+  #
+  # El máximo teórico de Rails es  maxScale × WEB_CONCURRENCY × pool.
+  # Con los valores originales (20 × 2 × 5 = 200) bastaba con que escalaran
+  # 3 instancias a la vez para que Postgres empezara a rechazar conexiones
+  # ("remaining connection slots are reserved") y el sitio entero devolviera
+  # 500 — sin ningún aviso previo, porque con tráfico bajo nunca se llega.
+  #
+  # Hoy el producto de esos tres números se mantiene por debajo de 20 (el
+  # reparto vive en `Infra/cloud/cloudrun-rails.yaml`, bloque "PRESUPUESTO DE
+  # CONEXIONES"). Si hace falta más concurrencia, lo que se sube es el TIER de
+  # Cloud SQL —no estos números—: son el reparto de un presupuesto fijo.
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
   # ⏱️ TOLERANCIA A LATENCIA (Zero-Trust)
   # Tiempo máximo (5s) que un hilo esperará por una conexión libre antes de abortar.
   timeout: 5000
-  
+
   # 🧹 RECOLECTOR DE BASURA (Reaping Frequency)
-  # Cada 10 segundos, Rails matará cualquier conexión a BD que se haya 
+  # Cada 10 segundos, Rails matará cualquier conexión a BD que se haya
   # quedado "zombie" si un hilo crashea. Evita el colapso del servidor.
   reaping_frequency: 10
+
+  # 💤 DEVOLUCIÓN DE CONEXIONES OCIOSAS
+  # Con un presupuesto de ~20 conexiones, una instancia tibia que retiene 4
+  # sin usarlas le está negando el acceso a otra que sí tiene tráfico. A los
+  # 60s de ociosa, el reaper la cierra y la libera para el resto de la flota.
+  idle_timeout: 60
 
   # 👁️ OBSERVABILIDAD DE INFRAESTRUCTURA
   # Firma las queries. Si hay un cuello de botella, el DBA sabrá que viene de este microservicio.

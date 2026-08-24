@@ -135,6 +135,59 @@ def test_post_json_manda_la_clave_y_pega_en_la_url_correcta():
     assert m.call_args.kwargs["timeout"] > 0  # nunca sin timeout
 
 
+# ── post_json_detail: un 2xx no dice CUÁNTO se guardó ────────────────────────
+
+def _mock_response_json(status: int, cuerpo):
+    resp = MagicMock()
+    resp.status_code = status
+    resp.text = ""
+    resp.json.return_value = cuerpo
+    return resp
+
+
+def test_post_json_detail_devuelve_el_conteo_que_informa_rails():
+    """Rails responde {saved, discarded}: es el único conteo confiable."""
+    rc = _fresh("http://rails_backend:3000")
+    cuerpo = {"status": "PARTIAL", "received": 40, "saved": 39, "discarded": 1}
+    with patch.object(rc.requests, "post", return_value=_mock_response_json(201, cuerpo)):
+        ok, status, body = rc.post_json_detail("/x", {})
+
+    assert ok is True
+    assert status == 201
+    assert body["saved"] == 39
+    assert body["discarded"] == 1
+
+
+@pytest.mark.parametrize("basura", [None, "texto plano", [1, 2, 3], 42])
+def test_post_json_detail_degrada_a_dict_vacio_si_el_cuerpo_no_es_json(basura):
+    """Nunca debe lanzar por un cuerpo raro: quien llama ya tiene el status."""
+    rc = _fresh("http://rails_backend:3000")
+    with patch.object(rc.requests, "post", return_value=_mock_response_json(201, basura)):
+        ok, _, body = rc.post_json_detail("/x", {})
+    assert ok is True
+    assert body == {}
+
+
+def test_post_json_detail_no_lanza_si_json_explota():
+    rc = _fresh("http://rails_backend:3000")
+    resp = MagicMock()
+    resp.status_code = 201
+    resp.text = "<html>"
+    resp.json.side_effect = ValueError("no es JSON")
+    with patch.object(rc.requests, "post", return_value=resp):
+        ok, status, body = rc.post_json_detail("/x", {})
+    assert (ok, status, body) == (True, 201, {})
+
+
+def test_post_json_sigue_devolviendo_dos_valores():
+    """`post_json` delega en `post_json_detail` sin cambiar su contrato."""
+    rc = _fresh("http://rails_backend:3000")
+    with patch.object(rc.requests, "post", return_value=_mock_response_json(201, {"saved": 1})):
+        resultado = rc.post_json("/x", {})
+    assert len(resultado) == 2
+    assert resultado == (True, 201)
+
+
 def test_post_json_loguea_error_en_401_y_404(caplog):
     """Los dos fallos silenciosos deben quedar registrados como ERROR."""
     import logging

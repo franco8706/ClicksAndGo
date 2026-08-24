@@ -125,7 +125,9 @@ class NotebooksControllerTest < ActionDispatch::IntegrationTest
 
     cuerpo = JSON.parse(response.body)
     assert_equal Laptop.count, cuerpo.length, "el sitemap no debe filtrar por país"
-    assert_equal %w[slug updated_at].sort, cuerpo.first.keys.sort
+    # `product_type` y `name` viajan para que `isIndexableProduct` (TypeScript)
+    # sea el ÚNICO dueño del criterio de indexación. Ver la nota en la acción.
+    assert_equal %w[name product_type slug updated_at], cuerpo.first.keys.sort
     assert cuerpo.all? { |r| r["slug"].present? }
   end
 
