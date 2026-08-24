@@ -82,6 +82,12 @@ const ALLOWED_OUT_DOMAINS = [
   // Tiendas oficiales de marca (programa retailer directo)
   'lenovo.com', 'hp.com', 'dell.com', 'asus.com', 'acer.com',
   'apple.com', 'msi.com', 'razer.com', 'samsung.com',
+  // 🔴 Best Buy US. Tercer caso del mismo olvido (después de `linksynergy.com`
+  // y `5nfc.net`): el retailer estaba en la tabla y con productos publicados,
+  // pero su dominio nunca entró acá, así que sus 5 fichas mandaban al
+  // visitante de vuelta al home. Lo detectó `outAllowlistCatalogo.test.ts`,
+  // que ahora compara el allowlist contra los hosts reales del catálogo.
+  'bestbuy.com',
 ];
 
 // Coincidencia exacta o de subdominio (store.lenovo.com ✔, evil-lenovo.com ✘)

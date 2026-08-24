@@ -28,7 +28,25 @@ spec:
         # a 0. Si reaparece el 429 tras un corte de billing, subir a 1 y esperar.
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "5"
-        run.googleapis.com/cpu-throttling: "true"
+        # 🔴 CPU SIEMPRE ASIGNADA — obligatorio, no una optimización.
+        #
+        # Los tres endpoints que dispara Cloud Scheduler (`full-cycle`,
+        # `news-radar`, `legal/audit`) responden 202 al instante y hacen el
+        # trabajo real en un `BackgroundTasks` de FastAPI. Con throttling en
+        # "true", Cloud Run corta la CPU en cuanto sale la respuesta: la caza
+        # y la auditoría quedan corriendo con CPU casi nula, los handshakes
+        # TLS expiran y la instancia termina recibiendo SIGTERM a mitad del
+        # trabajo.
+        #
+        # El síntoma medido: ~61 errores diarios sostenidos de
+        # `SSL: UNEXPECTED_EOF_WHILE_READING` contra TODOS los destinos por
+        # igual —clicks-rails, clicks-rust, hp.com, cj.com—, que es la firma
+        # de que el que se corta es el cliente y no los servidores. Cada uno
+        # es un lote de noticias o una alerta legal que no se guardó.
+        #
+        # 💰 Con minScale=0 se sigue pagando solo mientras hay instancia viva,
+        # o sea durante los 4 ciclos diarios y su ventana de apagado.
+        run.googleapis.com/cpu-throttling: "false"
     spec:
       serviceAccountName: clicks-sa@clicks-and-go.iam.gserviceaccount.com
       # El orquestador corre tareas pesadas — 1 request a la vez por instancia es suficiente
