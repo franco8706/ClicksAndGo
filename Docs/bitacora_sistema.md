@@ -1189,3 +1189,116 @@ Las 3 mejores ofertas del catálogo argentino hoy: MacBook Pro 14" (9,5), Legion
 - `[Pendiente]`: los productos argentinos solo se ven eligiendo Argentina en el selector de país; el sitio abre en US por defecto.
 
 15 tests más (**270 en total**).
+
+## 2026-08-24 (cont.) · ❌ CJ Affiliate: 4 de las 5 aplicaciones rechazadas
+
+- `[Confirmado por el titular vía email]`: **Dell Home & Home Office** (US, rechazada 21-Ago-2026), **Dell Technologies Brazil** (rechazada 05-Ago-2026), **HP US** (Advertiser 6870053, rechazada 30-Jul-2026), **ASUS ES** (Advertiser 5260673, rechazada 28-Jul-2026). Las cuatro seguían en `PENDING` en la bitácora del 2026-07-24 — ya tienen resolución y es negativa.
+- `[HP LATAM — la que importaba de verdad]`: **estado sin confirmar todavía**. Es la aplicación que cubre AR/BR/CL/CO/MX (Advertiser 6870054) y la única vía identificada para monetizar LATAM sin chocar con el bloqueo fiscal de MercadoLibre (ver 2026-07-24). Si también viene rechazada, CJ queda en cero para expansión de mercado — solo Impact (Lenovo AR, ya produciendo) y las aplicaciones de Impact aún pendientes (Lenovo US/ES/IT/BR) seguirían como vía real.
+- `[Impacto]`: de las 5 aplicaciones de CJ del 24/07, ninguna generó cobertura nueva confirmada hasta ahora. `Schema/retailers.json` ya reflejaba `cj_us` como `is_active: false / SIN CREDENCIALES` porque nunca hubo `CJ_API_KEY`/`CJ_WEBSITE_ID` en Secret Manager — el rechazo de programa es una segunda razón independiente para que esa red siga sin producir, no depende de las credenciales.
+
+## 2026-08-24 (cont.) · ❌ CJ Affiliate: HP LATAM también rechazada — CJ en cero
+
+- `[Confirmado por el titular]`: **HP LATAM** (Advertiser 6870054) rechazada. Con esto, **las 5 aplicaciones de CJ del 24/07 quedan rechazadas** (HP US, HP LATAM, Dell US, Dell Brasil, ASUS ES). CJ no aporta ninguna cobertura real hoy — ni EE.UU. ni LATAM ni España. `Schema/retailers.json` ya lo reflejaba como `is_active: false`; queda confirmado que además del problema de credenciales, el programa mismo rechazó al publisher.
+- `[Decisión del titular]`: foco explícito en fortalecer 3 frentes — región (AR/LATAM), España, EE.UU. Impact.com (Lenovo AR vivo) y Rakuten (Newegg, US) siguen siendo las únicas redes con productos reales en catálogo.
+
+## 2026-08-24 (cont.) · ❌ Lenovo USA rechazada en Impact (27-Ago-2026)
+
+- `[Confirmado por el titular — panel de notificaciones de Impact]`: **Lenovo USA declinó la aplicación** (27-Ago-2026). De las 4 aplicaciones de Lenovo del 24/07 (US/ES/IT/BR), queda **1 rechazada** (US) y **1 confirmada aún pendiente** (Brasil, ver entrada anterior — muestra términos reales 4%/3%, EPC $1.79, sin resolución). ES e IT: estado sin confirmar todavía, pendiente de revisar en el panel de Impact (el panel de notificaciones solo muestra "Today"/"Yesterday", así que una resolución más vieja no aparecería ahí — hay que chequear directamente en la tabla de programas).
+- `[Best Buy]`: confirmado que la aplicación de hoy se recibió correctamente ("Your application to join Best Buy U.S has been received") — coincide con el estado `Sent Invite` visto en la tabla de programas. Sin resolución todavía.
+
+## 2026-08-24 (cont.) · 🔑 IDs de cuenta de las redes — consolidados en un solo lugar
+
+- `[Motivo]`: durante esta sesión se perdió el acceso al panel de Rakuten y no había un lugar único donde estuvieran los identificadores de cuenta. Quedan acá, juntos. **Ninguno es secreto** (los SID/Publisher ID viajan en los links de afiliado); las credenciales de API siguen exclusivamente en Secret Manager.
+
+| Red | Identificador | Dónde estaba |
+|---|---|---|
+| **Impact.com** | Account ID **7514506** | Email "Welcome to Trackonomics Essentials" (27-Jul-2026) |
+| **Rakuten Advertising** | SID **4732622** | `Infra/cloud/cloudrun-python.yaml` (env var `RAKUTEN_SID`) |
+| **CJ Affiliate** | Publisher **7704909** · Site ID **101840044** | Bitácora 2026-07-24 |
+| **Awin** | Publisher **3001457** | Bitácora 2026-07-24 |
+
+- `[Trackonomics Essentials]`: add-on **gratuito** de Impact, activo en la cuenta desde el 27-Jul-2026. Permite conectar OTRAS redes (Rakuten, CJ, Awin) dentro del panel de Impact para reporting cruzado y generación de links multi-red. **No es una fuente de afiliados nuevos** — es una herramienta de gestión/reporte sobre las redes donde ya estás. Vía potencialmente útil para recuperar visibilidad de Rakuten sin el panel propio, aunque la conexión probablemente exija credenciales de Rakuten (sin verificar).
+- `[Email de contacto de las afiliaciones]`: `info@clicks-and-go.com` (confirmado como destinatario de las notificaciones de CJ).
+
+## 2026-08-24 (cont.) · 🔒 Auditoría de seguridad, bugs y UX
+
+### 🔴 XSS almacenado en el JSON-LD de la ficha de producto (corregido)
+
+- `[Vector]`: `laptop/[slug]/page.tsx` inyectaba el marcado estructurado con
+  `dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}`.
+  `JSON.stringify` **no escapa** `<`, `>` ni `&`, así que un `</script>`
+  dentro de `name` cierra la etiqueta y lo que sigue se ejecuta.
+- `[Por qué no era teórico]`: el comentario del código afirmaba "no hay
+  entrada del usuario en este JSON". Es cierto para *nuestros* usuarios y
+  falso para el dato: `name`/`brand` vienen del feed de afiliados, y Newegg
+  (vía Rakuten, 96% del catálogo) es un **marketplace donde el título lo
+  escribe un vendedor tercero**. Medido sobre 100 productos reales de
+  producción: **8 ya traen `<`, `>` o `&`** en el nombre.
+- `[Agravante]`: la CSP del sitio lleva `script-src 'unsafe-inline'`, así que
+  no habría frenado la ejecución.
+- `[Fix]`: `Web/src/lib/jsonLd.ts` — `safeJsonLd()` escapa a `\uXXXX` (JSON
+  válido, Google lo lee idéntico) más U+2028/U+2029. 5 tests que fijan tanto
+  la neutralización como que el JSON siga parseando igual (si el escape
+  rompiera el marcado, perderíamos el rich snippet que justifica la etiqueta).
+
+### 🔴 Presupuesto de conexiones: Next.js también habla con Postgres
+
+- `[Corrección de un análisis previo]`: el ajuste de conexiones de esta misma
+  jornada partió de una premisa incompleta. Se verificó que `clicks-python`
+  no tocara Postgres y se asumió que Rails era el único cliente. **Falso**:
+  `Web/src/lib/db.ts` abre un `Pool` propio y `clicks-web` tiene
+  `DATABASE_URL` + socket de Cloud SQL montado.
+- `[Magnitud]`: NextAuth corre con `session: { strategy: "database" }`, o sea
+  que **cada request de un usuario logueado** hace `getSessionAndUser` contra
+  Postgres. Con `max: 10` y `maxScale: 50` el techo teórico era **500
+  conexiones contra ~20 disponibles** — 25× por encima, y el riesgo dominante
+  frente a las 16 de Rails.
+- `[Mitigación aplicada]`: pool de 10 → **3**. Acota el peor caso 3,3× sin
+  tocar semántica de sesión. Las queries del adapter son lookups indexados
+  por token, así que 3 cubren alta concurrencia por instancia.
+- `[Pendiente — decisión del titular]`: la mitigación NO cierra el problema.
+  Con `maxScale: 50` el techo sigue en 150. Las salidas reales son (a) subir
+  el tier de Cloud SQL, (b) pasar a sesiones JWT —Postgres solo en login—, o
+  (c) mover la sesión detrás de Rails, que es el dueño declarado de la base.
+- `[Nota arquitectónica]`: (c) además repara una violación de la constitución
+  del proyecto — hoy Next.js escribe en Postgres sin pasar por Rails.
+
+### 🟡 Rakuten: XML ilegible devolvía cero en silencio (corregido)
+
+- `_parse_xml` hacía `except Exception: return []` sin log. El único rastro
+  quedaba aguas abajo como *"sin resultados (¿API key configurada?)"* — una
+  causa **falsa**: la credencial puede estar perfecta y ser la respuesta la
+  que vino cortada, en HTML o con un 503. Ahora se loguea el tipo de error y
+  los primeros 200 caracteres del cuerpo.
+
+### 🟢 Verificado y SIN hallazgos
+
+- **IDOR**: todas las Server Actions re-derivan la sesión con `await auth()`
+  en vez de confiar en el closure; Rails scopea por `user_id` **y** por `id`
+  en los `destroy` (favoritos y alertas). Sin acceso cruzado.
+- **Inyección SQL**: todo parametrizado; el único `Arel.sql` lleva una cadena
+  constante.
+- **SSRF**: el allowlist de imágenes usa dominios específicos con comodín de
+  subdominio, no comodín global. `/out` valida contra `ALLOWED_OUT_DOMAINS`.
+- **Secretos al bundle**: la única `NEXT_PUBLIC_*` es `SITE_URL`. Se agregó
+  `server-only` a `db.ts` (ya lo tenía `railsApi.ts`).
+- **Ejecución de código**: sin `eval`/`exec`/`subprocess` en Python.
+- **Rate limiting**: `rack-attack` activo (120/min catálogo, 60/min noticias
+  y geo, 30/min escrituras). ⚠️ Corre sobre `:memory_store` (Redis se quitó
+  por costo), así que el contador es **por instancia**: con `maxScale: 4` el
+  límite efectivo es hasta 4× el configurado. Tradeoff conocido, no un bug.
+- **Accesibilidad de imágenes**: todos los `<Image>` tienen `alt`.
+
+### 🎨 UX: el panel no tenía estado de carga
+
+- El home lo sirve el CDN (TTFB medido 0,15–0,47 s), pero el panel es privado
+  y **no se cachea**, y encadena `updateGeo` + perfil + favoritos + alertas
+  contra un Rails con `minScale: 0`. La primera visita tras inactividad pagaba
+  el arranque en frío **con la pantalla en blanco**: la URL ya cambió y no hay
+  nada pintado, que se lee como "se colgó".
+- `[Fix]`: `panel/loading.tsx` con esqueleto que replica el layout real
+  (mismo `max-w-5xl`, avatar de 80 px, grilla de 3) para que no haya salto de
+  layout al llegar el contenido, más un `role="status"` para lectores de
+  pantalla.
+
+Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.

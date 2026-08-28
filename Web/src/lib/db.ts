@@ -1,3 +1,4 @@
+import "server-only"; // credenciales de Postgres: nunca al bundle del navegador
 import { Pool } from "pg";
 import fs from "fs";
 
@@ -23,10 +24,32 @@ function buildSsl(): false | { rejectUnauthorized: boolean; ca?: string } {
   return ca ? { rejectUnauthorized: true, ca } : { rejectUnauthorized: false };
 }
 
+/* ── ⚠️ PRESUPUESTO DE CONEXIONES — leer antes de subir `max` ──────────
+   `clicks-db2` es db-f1-micro: `max_connections = 25`, de las cuales 3 son
+   del superusuario y ~2 del agente de Cloud SQL. Quedan ~20 para TODA la
+   plataforma, y Next.js las comparte con Rails.
+
+   Este pool no es marginal: NextAuth corre con `session: { strategy:
+   "database" }`, así que CADA request de un usuario logueado hace
+   `getSessionAndUser` contra Postgres. Con `max: 10` y `maxScale: 50` en
+   Cloud Run, el techo teórico eran 500 conexiones contra 20 disponibles —
+   25× por encima. Con tráfico bajo no se nota; un pico de usuarios
+   autenticados vacía el pool de Postgres y tumba el sitio ENTERO, no solo
+   el login.
+
+   `max: 3` acota el peor caso por instancia. Las consultas del adapter son
+   lookups indexados por token (milisegundos), así que 3 conexiones cubren
+   una concurrencia alta por instancia; `idleTimeoutMillis` las devuelve al
+   resto de la flota a los 30s.
+
+   El arreglo de fondo NO es este número: es subir el tier de Cloud SQL o
+   dejar de pegarle a Postgres desde Next.js (sesiones JWT, o mover la
+   sesión detrás de Rails, que es el dueño declarado de la base).
+   ──────────────────────────────────────────────────────────────────── */
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: buildSsl(),
-  max: 10,
+  max: 3,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 3_000,
 });

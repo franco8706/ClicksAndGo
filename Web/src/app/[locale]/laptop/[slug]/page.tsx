@@ -5,6 +5,7 @@ import ProductImage from "@/components/ProductImage";
 import { Cpu, Box, HardDrive, ChevronLeft, ShoppingCart, Globe, Zap } from "lucide-react";
 
 import { formatCurrencyString } from "@/lib/currency";
+import { safeJsonLd } from "@/lib/jsonLd";
 import { displayTitle, normalizeBrand, splitTitle, seoTitle, buildMetaDescription, isIndexableProduct } from "@/lib/productSeo";
 import { Laptop } from "@/types/laptop";
 import { SPEC_SCHEMA, specSchemaFor, formatSpec, type ProductType } from "@/types/product";
@@ -217,9 +218,13 @@ export default async function LaptopDetailPage({ params }: PageProps) {
     <main className="min-h-screen pt-32 pb-20 relative overflow-hidden bg-white">
       <script
         type="application/ld+json"
-        // El objeto lo arma el servidor a partir del DTO ya validado por
-        // Rails; no hay entrada del usuario en este JSON.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // ⚠️ `JSON.stringify` a secas NO alcanza acá: no escapa `<`, así que
+        // un `</script>` dentro de `name` cierra esta etiqueta y lo que sigue
+        // se ejecuta. Y `name`/`brand` NO son datos nuestros — vienen del feed
+        // de afiliados, donde el título lo escribe un vendedor tercero de
+        // Newegg. La CSP lleva `script-src 'unsafe-inline'`, así que tampoco
+        // frenaría la ejecución. Ver src/lib/jsonLd.ts.
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[130px] pointer-events-none z-0" />
 

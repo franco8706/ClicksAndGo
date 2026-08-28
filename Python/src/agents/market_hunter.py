@@ -696,7 +696,17 @@ class RakutenNetworkAPI(RetailerAPI):
         """
         try:
             raiz = DefusedET.fromstring(xml_text)
-        except Exception:
+        except Exception as exc:
+            # 🔇 Antes esto devolvía [] mudo. El único log que quedaba era el
+            # del orquestador —"sin resultados (¿API key configurada?)"— que
+            # apunta a una causa FALSA: la credencial puede estar perfecta y
+            # ser la respuesta la que vino cortada o en HTML (un error de
+            # Rakuten, un portal cautivo, un 503 con cuerpo). Diagnosticar eso
+            # mirando la clave es perder el día.
+            print(
+                f"❌ [Rakuten] XML ilegible ({type(exc).__name__}: {exc}). "
+                f"Primeros 200 caracteres de la respuesta: {xml_text[:200]!r}"
+            )
             return []
 
         items = []
