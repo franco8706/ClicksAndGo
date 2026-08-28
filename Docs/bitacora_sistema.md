@@ -1302,3 +1302,38 @@ Las 3 mejores ofertas del catálogo argentino hoy: MacBook Pro 14" (9,5), Legion
   pantalla.
 
 Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
+
+## 2026-08-24 (cont.) · 🔴 SSRF en el servicio Rust (corregido)
+
+- `[Vector]`: `clicks-rust` corre con `ingress: all` + IAM `allUsers` — público
+  y SIN autenticación (verificado: `/health` responde 200 desde internet). El
+  endpoint `POST /api/v1/links/validate` toma URLs del cuerpo del request y las
+  visita siguiendo hasta 5 redirects, con `HEAD`, SIN ninguna validación del
+  destino (`grep` de 169.254/private/loopback/allowlist → 0 coincidencias).
+- `[Impacto]`: cualquiera en internet podía apuntarlo a `169.254.169.254`
+  (metadata server de GCP) y usar el servicio como proxy para leer los tokens
+  OAuth de la service account del contenedor — escalada de "validar un link" a
+  robo de credenciales de la nube. NO se verificó el exploit contra el metadata
+  real a propósito (el classifier lo bloqueó, con razón: es indistinguible de un
+  ataque). El análisis del código es concluyente sin necesidad de dispararlo.
+- `[Fix]`: `link_validator.rs` — `is_public_destination()` resuelve el host a IP
+  y exige que TODAS sean públicas; se aplica antes de la URL inicial y de CADA
+  salto de redirect (el bypass es un host público que responde 302 a una IP
+  interna). Rechaza loopback, RFC1918, link-local (169.254/16), CGNAT
+  (100.64/10), IPv6 ULA/link-local (por bits, porque los helpers de std recién
+  se estabilizaron en Rust 1.84 y el Dockerfile no fija versión) e IPv4 mapeada
+  en IPv6. 8 tests unitarios (`ssrf_tests`).
+- `[⚠️ No verificado localmente]`: este Codespace no tiene toolchain de Rust; la
+  compilación y los tests corren en Cloud Build durante el deploy. Un error de
+  compilación falla el deploy sin cambiar la revisión activa (Cloud Run no
+  enruta tráfico a un build fallido), así que el intento es seguro.
+- `[Pendiente — endurecimiento de fondo]`: el arreglo correcto de segundo nivel
+  es que este servicio NO sea público. Hoy `allUsers` lo expone entero. Pasarlo
+  a ingress interno / IAM autenticado requiere confirmar que las llamadas
+  Python→Rust (`/api/v1/legal/diff`) sigan funcionando (VPC connector o token de
+  identidad). Es un cambio más grande que la guarda; queda anotado.
+- `[Bug lateral, NO tocado]`: `follow_redirects` arma la URL de un redirect
+  relativo como `format!("{}{}", start_url, next)` — concatena sobre la URL
+  ORIGINAL, no sobre la actual, y no resuelve rutas relativas correctamente. Es
+  un bug de correctitud preexistente (no de seguridad: no cambia el host a uno
+  interno). No se tocó por no poder compilar/probar localmente.
