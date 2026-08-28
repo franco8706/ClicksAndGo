@@ -46,8 +46,11 @@ async fn is_public_destination(raw_url: &str) -> bool {
         "http" | "https" => {}
         _ => return false, // file://, gopher://, etc. — nunca
     }
-    let host = match parsed.host_str() {
-        Some(h) => h,
+    // Se posee el host como String (no `&str` prestado de `parsed`): el
+    // borrow no puede cruzar el `.await` de la resolución DNS sin disparar el
+    // borrow-checker (E0597) — fue justo lo que falló el primer build.
+    let host: String = match parsed.host_str() {
+        Some(h) => h.to_string(),
         None => return false,
     };
 
@@ -60,19 +63,19 @@ async fn is_public_destination(raw_url: &str) -> bool {
     // Un dominio del atacante puede resolver a 169.254.169.254; basta una
     // interna para rechazar. El puerto es irrelevante para el chequeo de IP.
     let port = parsed.port_or_known_default().unwrap_or(80);
-    match tokio::net::lookup_host((host, port)).await {
-        Ok(addrs) => {
-            let mut alguna = false;
-            for addr in addrs {
-                alguna = true;
-                if !is_public_ip(&addr.ip()) {
-                    return false;
-                }
-            }
-            alguna // sin resultados de DNS → no verificable → false
+    let addrs = match tokio::net::lookup_host((host.as_str(), port)).await {
+        Ok(a) => a,
+        Err(_) => return false, // DNS que no resuelve → no verificable
+    };
+
+    let mut alguna = false;
+    for addr in addrs {
+        alguna = true;
+        if !is_public_ip(&addr.ip()) {
+            return false;
         }
-        Err(_) => false,
     }
+    alguna // sin resultados de DNS → no verificable → false
 }
 
 /// Rechaza loopback, privadas (RFC1918), link-local (incluye el metadata

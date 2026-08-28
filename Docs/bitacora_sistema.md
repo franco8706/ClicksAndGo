@@ -1323,10 +1323,15 @@ Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
   (100.64/10), IPv6 ULA/link-local (por bits, porque los helpers de std recién
   se estabilizaron en Rust 1.84 y el Dockerfile no fija versión) e IPv4 mapeada
   en IPv6. 8 tests unitarios (`ssrf_tests`).
-- `[⚠️ No verificado localmente]`: este Codespace no tiene toolchain de Rust; la
-  compilación y los tests corren en Cloud Build durante el deploy. Un error de
-  compilación falla el deploy sin cambiar la revisión activa (Cloud Run no
-  enruta tráfico a un build fallido), así que el intento es seguro.
+- `[Verificación]`: el primer build de Cloud Build FALLÓ con E0597 (un `&str`
+  del host cruzaba el `.await` de la resolución DNS) — el deploy fallido no tocó
+  producción, la revisión anterior siguió sirviendo. Se instaló rustup en el
+  Codespace (cargo 1.98) y se corrigió poseyendo el host como `String` con
+  early-return en vez de match final. Verificado LOCALMENTE antes de
+  redesplegar: `cargo check` limpio + los 7 tests de `ssrf_tests` en verde.
+  Un cross-check independiente en Python confirmó la clasificación de IPs (y de
+  paso mostró que la guarda de Rust es MÁS estricta: rechaza CGNAT 100.64/10,
+  que el `ipaddress` de Python no marca).
 - `[Pendiente — endurecimiento de fondo]`: el arreglo correcto de segundo nivel
   es que este servicio NO sea público. Hoy `allUsers` lo expone entero. Pasarlo
   a ingress interno / IAM autenticado requiere confirmar que las llamadas
