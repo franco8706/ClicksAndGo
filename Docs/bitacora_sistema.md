@@ -1548,3 +1548,24 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
 - **WCAG 2.2.2 (pausar movimiento)**: el carrusel automático se pausa al pasar
   el mouse y no arranca si el visitante pidió menos movimiento.
 - **Imágenes**: todos los `<Image>` con `alt`.
+
+## 2026-08-25 (cont.) · 🌍 Red de seguridad para la paridad de idiomas
+
+- `[Riesgo]`: cuando falta una clave en un idioma, el componente cae al literal
+  en español que lleva hardcodeado como respaldo. O sea que un brasileño ve una
+  frase suelta en español y **nada falla de forma visible** — el modo de fallo
+  más difícil de detectar.
+- `[Estado medido]`: paridad perfecta hoy, **325 claves × 4 idiomas**, sin
+  faltantes ni sobrantes. La verificación previa (2026-07-26, 264 claves) fue
+  MANUAL, y a mano se vuelve a romper en cuanto alguien agrega un texto y se
+  olvida de un idioma.
+- `[Fix]`: `src/__tests__/i18nParidad.test.ts` — compara las rutas aplanadas de
+  cada diccionario contra el español y además detecta textos vacíos.
+- `[Verificado que PUEDE fallar]`: se quitó `common.allLaptops` del italiano y
+  el test falló señalando la clave; restaurado, volvió a pasar. Es el tercer
+  test de la jornada que se comprueba explícitamente contra el fallo — los dos
+  anteriores hubo que rehacerlos porque pasaban con el código roto.
+- `[Bug propio al escribirlo]`: importar el diccionario italiano como `it`
+  **pisaba la función `it` de vitest** y `it.each` dejaba de existir. Renombrado
+  a `itDict`, con la nota puesta para que no se repita.
+- 7 tests nuevos; **197 en la suite Web**.
