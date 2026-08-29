@@ -1454,3 +1454,29 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
   decisión a la función pura `debe_reintentar_con_get(status)`, que es lo
   genuinamente testeable. El test que fallaba mejoró el diseño.
 - `[Estado]`: 15 tests en `ssrf_tests`, `cargo check` limpio.
+
+## 2026-08-25 (cont.) · 💸 El presupuesto de IA no contenía el gasto (carrera)
+
+- `[Bug]`: `MasterOrchestratorAgent.can_use_ai()` hacía leer-y-después-escribir:
+  `_load_api_quota()` y luego `_save_api_quota(actual + 1)` con `$set` sobre un
+  valor ABSOLUTO. `market_hunter` corre con `ThreadPoolExecutor(max_workers=8)`
+  y cada hilo puede disparar llamadas de IA: los 8 leían el mismo contador, los
+  8 escribían el mismo valor+1, y se registraba UNA llamada de ocho.
+- `[Costo]`: no es un contador desprolijo, es plata. `AI_DAILY_LIMIT=500` dejaba
+  pasar muchas más llamadas reales a Vertex/Gemini de las presupuestadas.
+  Cuantificado con el fake del test: con 2 ms de latencia por operación (lo que
+  tarda Mongo de verdad), la lógica vieja concedía **96 llamadas contra un tope
+  de 20** y dejaba el contador muy por debajo de lo realmente consumido.
+- `[Fix]`: un solo `find_one_and_update` con `$inc` y
+  `return_document=AFTER`. El servidor de Mongo hace leer-modificar-escribir en
+  una operación atómica y cada hilo recibe su propio número de reserva. Se
+  incrementa ANTES de decidir, así dos hilos nunca comparten cupo.
+- `[⚠️ Nota de método — el primer test no servía]`: la versión inicial del test
+  de concurrencia **pasaba también con el código con bug**. Con el GIL y
+  operaciones instantáneas los hilos se serializan solos y la carrera casi no
+  se abre: la lógica vieja concedía exactamente 50 de 50 y parecía correcta.
+  Se comprobó explícitamente y se reforzó el fake con la latencia de red, que
+  es lo que hace la ventana ancha en producción. Verificado después: con
+  latencia, el test detecta el bug (96 vs. 20). Un test que no puede fallar no
+  prueba nada, y este es el segundo de la jornada que hubo que rehacer por eso.
+- `[Estado]`: 4 tests nuevos (`tests/test_ai_quota.py`), 281 en la suite Python.

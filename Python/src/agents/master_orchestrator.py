@@ -3,7 +3,7 @@ import os
 import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 
 from src.agents.market_hunter import MarketHunterOrchestrator
 from src.agents.news_radar import NewsRadarAgent
@@ -105,11 +105,54 @@ class MasterOrchestratorAgent:
                 pass
 
     def can_use_ai(self):
-        current_calls = self._load_api_quota()
-        if current_calls >= self.DAILY_LIMIT:
-            self.log_action("MasterOrchestrator", "Presupuesto IA agotado. Activando heurística ANTIGRAVITY.", "WARNING")
+        """Reserva UNA llamada del presupuesto diario de IA. `True` si hay cupo.
+
+        🔒 El incremento es ATÓMICO, y eso no es un detalle.
+
+        Antes esto hacía leer-y-después-escribir:
+            actual = self._load_api_quota()      # lee 100
+            self._save_api_quota(actual + 1)     # escribe 101 con $set
+
+        `market_hunter` corre con `ThreadPoolExecutor(max_workers=8)` y cada
+        hilo puede disparar llamadas de IA. Los 8 leían el mismo 100 y los 8
+        escribían 101: se registraba UNA llamada de ocho. Con `$set` sobre un
+        valor absoluto, además, la última escritura pisaba a las demás.
+
+        La consecuencia es plata: `AI_DAILY_LIMIT=500` podía dejar pasar miles
+        de llamadas reales a Vertex/Gemini antes de que el contador llegara al
+        tope. Con `$inc` en un `find_one_and_update`, el servidor de Mongo hace
+        leer-modificar-escribir en una sola operación y cada hilo recibe su
+        propio número de reserva.
+
+        Se incrementa ANTES de decidir: así dos hilos nunca reciben el mismo
+        cupo. El contador sigue subiendo con los intentos denegados, lo cual es
+        inofensivo — pasado el tope ya se deniega todo igual.
+        """
+        # Sin Mongo no hay forma de contar. Se permite la llamada en vez de
+        # bloquear el pipeline entero: la cuota es control de gasto, no de
+        # correctitud, y quedarse sin IA por telemetría caída es peor.
+        if not self.db_connected:
+            return True
+
+        try:
+            doc = self.db.ai_quota.find_one_and_update(
+                {"date": self._get_today_date_str()},
+                {"$inc": {"calls": 1}},
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+            usadas = (doc or {}).get("calls", 1)
+        except Exception:
+            return True  # best-effort: la cuota no debe tumbar el routing
+
+        if usadas > self.DAILY_LIMIT:
+            self.log_action(
+                "MasterOrchestrator",
+                f"Presupuesto IA agotado ({usadas - 1}/{self.DAILY_LIMIT}). "
+                "Activando heurística ANTIGRAVITY.",
+                "WARNING",
+            )
             return False
-        self._save_api_quota(current_calls + 1)
         return True
 
     # =====================================================================
