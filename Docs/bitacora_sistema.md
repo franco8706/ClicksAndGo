@@ -1337,11 +1337,18 @@ Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
   a ingress interno / IAM autenticado requiere confirmar que las llamadas
   Python→Rust (`/api/v1/legal/diff`) sigan funcionando (VPC connector o token de
   identidad). Es un cambio más grande que la guarda; queda anotado.
-- `[Bug lateral, NO tocado]`: `follow_redirects` arma la URL de un redirect
-  relativo como `format!("{}{}", start_url, next)` — concatena sobre la URL
-  ORIGINAL, no sobre la actual, y no resuelve rutas relativas correctamente. Es
-  un bug de correctitud preexistente (no de seguridad: no cambia el host a uno
-  interno). No se tocó por no poder compilar/probar localmente.
+- `[Bug lateral — CORREGIDO el 2026-08-25]`: `follow_redirects` armaba la URL de
+  un redirect relativo con `format!("{}{}", start_url, next)`, con tres fallas:
+  (1) resolvía contra la URL ORIGINAL, así que del segundo salto en adelante la
+  base era la equivocada; (2) concatenaba en crudo — base `https://x.com/a/b`
+  + `/c` daba `https://x.com/a/b/c` en vez de `https://x.com/c`; (3)
+  `starts_with("http")` es falso para `//cdn.example.com/x`
+  (protocolo-relativa), que terminaba pegada al final de la base.
+  No era cosmético: las redes de afiliados encadenan redirects (linksynergy →
+  comerciante) y una URL mal resuelta marca como BROKEN un link que SÍ
+  funciona, o sea que nos llevaría a desactivar un link que cobra. Reemplazado
+  por `Url::join` (RFC 3986) contra `current`, con 4 tests que fijan cada caso.
+  Total en `ssrf_tests`: 11 tests.
 
 ## 2026-08-25 · 🔐 Auditoría de dependencias (frente no cubierto el 24/08)
 

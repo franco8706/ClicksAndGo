@@ -300,11 +300,35 @@ impl LinkValidator {
                                 redirect_count: count,
                             });
                         }
-                        // URL relativa → combinar con la base
-                        current = if next.starts_with("http") {
-                            next.to_string()
-                        } else {
-                            format!("{}{}", start_url, next)
+                        // 🔗 Resolución RFC 3986 contra la URL que emitió ESTE
+                        // redirect (`current`), no contra la original.
+                        //
+                        // Antes: `format!("{}{}", start_url, next)`, con tres
+                        // fallas. (1) Usaba `start_url`, así que del segundo
+                        // salto en adelante resolvía contra la base equivocada.
+                        // (2) Concatenaba en crudo: base `https://x.com/a/b` +
+                        // `/c` daba `https://x.com/a/b/c` en vez de
+                        // `https://x.com/c`. (3) `starts_with("http")` es falso
+                        // para `//cdn.example.com/x` (protocolo-relativa), que
+                        // terminaba pegada al final de la base.
+                        //
+                        // No es cosmético: las redes de afiliados encadenan
+                        // redirects (linksynergy → comerciante), y una URL mal
+                        // resuelta marca como BROKEN un link que SÍ funciona —
+                        // es decir, nos haría desactivar un link que cobra.
+                        current = match reqwest::Url::parse(&current)
+                            .and_then(|base| base.join(next))
+                        {
+                            Ok(u) => u.to_string(),
+                            // Location ilegible → se corta acá en vez de
+                            // seguir a una URL inventada.
+                            Err(_) => {
+                                return Ok(RedirectOutcome {
+                                    final_status: status,
+                                    final_url: Some(current),
+                                    redirect_count: count,
+                                });
+                            }
                         };
                         continue;
                     }
@@ -363,6 +387,44 @@ mod ssrf_tests {
         for ip in ["8.8.8.8", "1.1.1.1", "104.18.0.1"] {
             assert!(is_public_ip(&ip.parse().unwrap()), "{ip} debería aceptarse");
         }
+    }
+
+    // ── Resolución de redirects relativos (RFC 3986) ────────────────────
+    // Fija las tres fallas de la concatenación cruda que había antes. Se
+    // prueba `Url::join` directo porque es la operación que reemplazó al
+    // `format!` y es donde vivía el bug.
+
+    #[test]
+    fn redirect_de_ruta_absoluta_reemplaza_el_path_completo() {
+        // Antes: base + "/c" daba "https://x.com/a/b/c". Correcto: "/c".
+        let base = reqwest::Url::parse("https://x.com/a/b").unwrap();
+        assert_eq!(base.join("/c").unwrap().as_str(), "https://x.com/c");
+    }
+
+    #[test]
+    fn redirect_protocolo_relativo_conserva_el_esquema() {
+        // Antes: "//cdn.example.com/x" no empezaba con "http", así que se
+        // pegaba al final de la base. Correcto: hereda el esquema.
+        let base = reqwest::Url::parse("https://x.com/a").unwrap();
+        assert_eq!(
+            base.join("//cdn.example.com/x").unwrap().as_str(),
+            "https://cdn.example.com/x"
+        );
+    }
+
+    #[test]
+    fn redirect_relativo_resuelve_contra_el_directorio_actual() {
+        let base = reqwest::Url::parse("https://x.com/a/b").unwrap();
+        assert_eq!(base.join("c").unwrap().as_str(), "https://x.com/a/c");
+    }
+
+    #[test]
+    fn redirect_absoluto_gana_sobre_la_base() {
+        let base = reqwest::Url::parse("https://x.com/a").unwrap();
+        assert_eq!(
+            base.join("https://otro.com/z").unwrap().as_str(),
+            "https://otro.com/z"
+        );
     }
 
     #[tokio::test]
