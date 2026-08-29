@@ -1592,3 +1592,26 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
 - `[Verificado]`: `next build` de producción exitoso con el componente ahora
   `async`; 197 tests. Comentario desactualizado corregido de paso ("292 URLs en
   el sitemap" → más de 16.000).
+
+## 2026-08-25 (cont.) · 📰 El ticker inventaba noticias cuando el pipeline fallaba
+
+- `[Bug]`: `HeroSection` tenía un `STATIC_TICKER` de respaldo con ocho
+  titulares **inventados**, presentados como noticias reales: "Laptops RTX 4060
+  desde $799 USD", "M4 Max: autonomía imbatible 22 hrs", "RTX 5090 bate récords
+  en juegos 4K". Son afirmaciones concretas de precio y de specs que no podemos
+  respaldar, servidas a visitantes reales.
+- `[Misma clase de problema que ya se corrigió dos veces]`: el claim de "% OFF"
+  (retirado por la Directiva Omnibus) y la meta description "Análisis experto
+  para {nombre}", que prometía un análisis que la página no ofrecía.
+- `[Lo peor era CUÁNDO aparecía]`: el respaldo se activa exactamente cuando el
+  pipeline de noticias falla — y ya falló dos veces documentadas: 51 días
+  congelado por un 404 leído como éxito, y lotes enteros perdidos por un campo
+  más largo que la columna. O sea que el contenido inventado salía justo en el
+  momento en que nadie estaba mirando.
+- `[Estado al detectarlo]`: NO se estaba mostrando. Verificado en producción en
+  es/pt/it: 0 ocurrencias, porque hoy hay noticias reales. Riesgo latente, no
+  incendio.
+- `[Fix]`: sin noticias reales, el ticker no se renderiza. Sigue el patrón que
+  ya rige en el proyecto — `ForYouRail` y `EventBanner` devuelven `null` cuando
+  no tienen datos, en vez de rellenar.
+- 197 tests y `next build` de producción en verde.

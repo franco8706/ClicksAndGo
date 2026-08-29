@@ -29,18 +29,6 @@ interface TypeSuggestion {
   readonly hint: string;    // tagline por tipo
 }
 
-/* Fallback si no hay noticias del API */
-const STATIC_TICKER: { source: string; headline: string; url?: string }[] = [
-  { source: "Gaming",      headline: "RTX 5090 bate récords en juegos 4K" },
-  { source: "IA",          headline: "NPUs integrados procesan IA sin conexión" },
-  { source: "Ultrabooks",  headline: "M4 Max: autonomía imbatible 22 hrs" },
-  { source: "Precios",     headline: "Laptops RTX 4060 desde $799 USD" },
-  { source: "Workstation", headline: "Dell Precision 5690 domina render 3D" },
-  { source: "ARM",         headline: "Snapdragon X Elite redefine Windows" },
-  { source: "Ofertas",     headline: "Mejores deals analizados esta semana" },
-  { source: "Data Center", headline: "NVIDIA GB300 llega a portátiles pro" },
-];
-
 /* ─────────────────────────────────────────────────────────
    Buscador predictivo — flat-style con glow azul
 ───────────────────────────────────────────────────────── */
@@ -175,10 +163,28 @@ function safeHttpUrl(raw?: string): string | undefined {
 }
 
 function NewsTicker({ news }: { news?: HardwareNews[] }) {
+  /* 📰 Sin noticias reales NO se muestra nada.
+     
+     Antes había un `STATIC_TICKER` de respaldo con ocho titulares inventados
+     —"Laptops RTX 4060 desde $799 USD", "M4 Max: autonomía imbatible 22 hrs"—
+     que se presentaban como noticias. Son afirmaciones concretas de precio y
+     de specs que no podemos respaldar, servidas a visitantes reales.
+
+     Es la misma clase de problema que este proyecto ya corrigió dos veces: el
+     claim de "% OFF" (retirado por la Directiva Omnibus) y la meta description
+     "Análisis experto para {nombre}", que prometía un análisis inexistente.
+     
+     El riesgo no era teórico: el respaldo se activa justo cuando el pipeline de
+     noticias falla, y ya falló —51 días congelado por un 404 leído como éxito,
+     y lotes enteros perdidos por un campo largo—. O sea que aparecía
+     precisamente en el momento en que nadie estaba mirando.
+
+     Ocultarlo sigue el patrón que ya rige acá: `ForYouRail` y `EventBanner`
+     devuelven null cuando no tienen datos, en vez de rellenar. */
+  if (!news || news.length === 0) return null;
+
   const items: { source: string; headline: string; url?: string }[] =
-    news && news.length > 0
-      ? news.map((n) => ({ source: n.category, headline: n.title, url: safeHttpUrl(n.sourceUrl) }))
-      : STATIC_TICKER;
+    news.map((n) => ({ source: n.category, headline: n.title, url: safeHttpUrl(n.sourceUrl) }));
 
   const doubled = [...items, ...items];
 
