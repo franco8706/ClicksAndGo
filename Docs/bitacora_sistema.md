@@ -1480,3 +1480,41 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
   latencia, el test detecta el bug (96 vs. 20). Un test que no puede fallar no
   prueba nada, y este es el segundo de la jornada que hubo que rehacer por eso.
 - `[Estado]`: 4 tests nuevos (`tests/test_ai_quota.py`), 281 en la suite Python.
+
+## 2026-08-25 (cont.) · 💱 Una moneda no soportada se mostraba como dólares
+
+- `[Bug latente]`: `formatCurrencyString` degradaba a USD **el código además del
+  formato** cuando la divisa no estaba en `CURRENCY_MAP`. Un precio de 500
+  libras se mostraba como "$500 USD": el número correcto con la moneda
+  equivocada — el visitante ve un valor ~27% menor y en la divisa de otro país.
+- `[Por qué importa acá]`: contradice el criterio que el propio proyecto ya
+  aplica al claim de descuento (retirado por riesgo legal) y a las fotos de
+  stock (`chk_laptops_no_stock_image`). Mostrar un precio en la divisa
+  equivocada es la misma clase de tergiversación.
+- `[Riesgo real, no hipotético]`: **solo Impact declara `currency`** en su feed
+  (`item.get("Currency")`). Rakuten, Awin y CJ no la mandan y dependen del mapa
+  país→moneda de `data_normalizer.py`. Awin cubre Reino Unido y Alemania, así
+  que un GBP entra en cuanto se sume ese mercado — y el titular está sumando
+  afiliados activamente (PcComponentes/Awin España).
+- `[Estado hoy]`: sin bug activo. Verificado contra producción: las únicas
+  divisas del catálogo son ARS, USD, EUR, MXN y BRL, todas soportadas.
+- `[Fix]`: una divisa fuera del mapa se formatea con número neutro y su código
+  REAL ("500 GBP"). Se ve menos pulido que un símbolo y es la única opción
+  honesta. La caída a USD se conserva solo para basura que no es un código
+  ISO-4217 de 3 letras ("AR$", vacío) — que era el motivo original del guard,
+  evitar el `RangeError` de `Intl.NumberFormat`.
+- 6 tests nuevos; 190 en la suite Web.
+
+### Verificaciones sin hallazgos (misma tanda)
+
+- **Precios NO se convierten de divisa**: `applied_exchange_rate` se guarda solo
+  como metadato; `current_price` viaja tal cual del feed. Correcto — cada red
+  entrega moneda local. El respaldo FX hardcodeado (`ARS: 1450`) se desvía 4,3%
+  del real, pero **no afecta a ningún precio mostrado** porque nunca multiplica.
+- **Sin OOM en Rust** en 14 días, pese a 256Mi con concurrencia 100.
+- **Postgres nunca agotó conexiones** en 30 días: el problema del pool es
+  latente, no un incendio. Confirma que la mitigación aplicada alcanza hasta
+  que se decida el arreglo de fondo.
+- **Abuso del servicio Rust ya acotado por infraestructura**: `maxScale: 10` y
+  tope de payload con 413. Se descartó agregar un rate limiter: exigiría una
+  dependencia nueva para una ganancia marginal.

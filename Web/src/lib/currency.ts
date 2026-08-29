@@ -36,9 +36,34 @@ export function formatCurrencyString(amount: number, currencyCode: string): stri
 
   // 🛡️ Sanitización: un código fuera del mapa (ej. "AR$", "XX") haría que
   // Intl.NumberFormat lance RangeError y rompa el render de la card.
-  // Si no es una moneda soportada, degradamos TODO a USD (config + código).
-  const requested = (currencyCode || 'USD').toUpperCase().trim() as CurrencyCode;
-  const targetCurrency: CurrencyCode = requested in CURRENCY_MAP ? requested : 'USD';
+  //
+  // ⚠️ Antes, una moneda no soportada se degradaba A USD — código incluido.
+  // Es decir: un precio de 500 libras se mostraba como "$500 USD". El número
+  // correcto con la moneda equivocada es una tergiversación del precio, no una
+  // degradación elegante: el visitante ve un valor ~27% menor y en la divisa
+  // de otro país. Va contra el mismo criterio que ya rige en este proyecto
+  // para el claim de descuento y para las fotos de stock.
+  //
+  // No es hipotético: solo Impact declara `currency` en su feed; Rakuten, Awin
+  // y CJ dependen del mapa país→moneda de `data_normalizer.py`. Awin cubre
+  // Reino Unido y Alemania, así que un GBP entra en cuanto se sume ese mercado.
+  //
+  // Ahora se formatea el número de forma neutra y se muestra el código REAL.
+  // Se ve menos pulido que un símbolo, y es la única opción honesta.
+  const requested = (currencyCode || 'USD').toUpperCase().trim();
+
+  if (!(requested in CURRENCY_MAP)) {
+    // Código plausible (3 letras ISO-4217) → se respeta tal cual.
+    // Basura ("AR$", "") → se cae a USD, que es el default histórico.
+    const esCodigoPlausible = /^[A-Z]{3}$/.test(requested);
+    const codigo = esCodigoPlausible ? requested : 'USD';
+    const numero = new Intl.NumberFormat('en-US', {
+      maximumFractionDigits: 2,
+    }).format(amount);
+    return `${numero} ${codigo}`;
+  }
+
+  const targetCurrency = requested as CurrencyCode;
   const config = CURRENCY_MAP[targetCurrency];
 
   // Generamos una llave única para el caché basada en la configuración regional
