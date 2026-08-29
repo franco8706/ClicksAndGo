@@ -1569,3 +1569,26 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
   **pisaba la función `it` de vitest** y `it.each` dejaba de existir. Renombrado
   a `itDict`, con la nota puesta para que no se repita.
 - 7 tests nuevos; **197 en la suite Web**.
+
+## 2026-08-25 (cont.) · 🌍 El 404 estaba escrito en 4 idiomas y mostraba solo español
+
+- `[Bug]`: `[locale]/not-found.tsx` tenía las traducciones de es/en/pt/it
+  completas… y `const t = COPY.es` fijo. Las de en/pt/it eran **código muerto**:
+  todo visitante veía el 404 en español. Verificado en producción antes de
+  tocar nada: `/pt/laptop/no-existe` devolvía "No encontramos esta página".
+- `[Por qué importaba]`: los 404 no son un caso raro acá. Un producto retirado
+  del catálogo deja su URL viva en el índice de Google, y el sitemap tiene más
+  de 16.000 URLs. El propio comentario del archivo ya lo anticipaba.
+- `[Causa del descuido]`: la nota decía "este boundary no recibe `params`". Es
+  cierto, pero la conclusión estaba equivocada: el proxy **ya inyecta
+  `x-locale`** en cada request (`proxy.ts:294`) y `headers()` está disponible en
+  un Server Component. La solución existía sin usar.
+- `[Fix]`: el idioma se lee de `x-locale` — el mismo valor con el que se
+  renderizó el resto del sitio, así que no hay desincronización. El enlace de
+  vuelta pasó de `/` a `/${locale}`, para no sacar al visitante de su idioma.
+- `[Contraste]`: `error.tsx` **sí** resolvía bien el idioma (lo lee de la URL en
+  el cliente, porque un error boundary debe ser Client Component). O sea que el
+  patrón ya se conocía en el proyecto y el 404 quedó afuera por omisión.
+- `[Verificado]`: `next build` de producción exitoso con el componente ahora
+  `async`; 197 tests. Comentario desactualizado corregido de paso ("292 URLs en
+  el sitemap" → más de 16.000).

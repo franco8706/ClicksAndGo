@@ -4,11 +4,12 @@
  * Antes no existía: `notFound()` de la página de detalle (producto con slug
  * inexistente — o un slug viejo que Google todavía tiene indexado) caía en la
  * pantalla genérica de Next, en inglés y sin camino de vuelta al catálogo.
- * Con 292 URLs en el sitemap, los 404 por producto retirado son inevitables:
+ * Con más de 16.000 URLs en el sitemap, los 404 por producto retirado son inevitables:
  * conviene que devuelvan al catálogo en vez de ser un callejón sin salida.
  */
 
 import React from "react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { SearchX, Home } from "lucide-react";
 
@@ -35,9 +36,24 @@ const COPY = {
   },
 } as const;
 
-export default function LocaleNotFound() {
-  // Este boundary no recibe `params`; el idioma por defecto es el del sitio.
-  const t = COPY.es;
+type CopyLocale = keyof typeof COPY;
+
+export default async function LocaleNotFound() {
+  /* 🌍 El idioma sale de `x-locale`, la cabecera que el proxy YA inyecta en
+     cada request (ver `proxy.ts`).
+
+     Antes esto era `const t = COPY.es` con la nota "este boundary no recibe
+     `params`". Es cierto que no los recibe, pero la conclusión estaba
+     equivocada: las traducciones de en/pt/it existían y NUNCA se usaban, así
+     que un brasileño que caía en un 404 leía "No encontramos esta página" en
+     español. Y los 404 no son raros acá — un producto retirado del catálogo
+     deja su URL viva en el índice de Google.
+
+     `headers()` sí está disponible en un Server Component, y el locale ya
+     viaja ahí resuelto: es el mismo valor con el que se renderizó el resto
+     del sitio, así que no hay riesgo de desincronización. */
+  const locale = (await headers()).get("x-locale") ?? "es";
+  const t = COPY[locale as CopyLocale] ?? COPY.es;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-white px-6 font-sans">
@@ -53,7 +69,7 @@ export default function LocaleNotFound() {
         <p className="text-[#6b7280] text-sm leading-relaxed mb-9">{t.body}</p>
 
         <Link
-          href="/"
+          href={`/${locale}`}
           className="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3 rounded-[2px] text-white font-bold text-sm"
         >
           <Home size={16} />
