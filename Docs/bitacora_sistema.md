@@ -1427,3 +1427,30 @@ Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
   `imageDigest` de la revisión activa contra el del registry (`c533a139…` vs.
   `2cd13625…`) y se forzó con `gcloud run services update --image ...:$GIT_SHA`.
   **Verificar SIEMPRE el digest post-deploy; "Done" no significa desplegado.**
+
+## 2026-08-25 (cont.) · 🔧 El validador de links daba por rotos los links que cobran
+
+Al verificar el arreglo anterior con links de afiliado REALES del catálogo (no
+con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
+
+- `[Impact — regresión introducida por mí]`: `lenovo-argentina.5nfc.net`
+  devolvía **508 "Loop Detected" tras 5 saltos**. Las cadenas de afiliación
+  encadenan tracking → red → comerciante y superan 5 saltos. Antes no se veía
+  porque reqwest seguía la cadena solo (hasta 10) y el bucle manual nunca
+  corría; al desactivar el auto-follow, el tope viejo quedó expuesto.
+  `MAX_HOPS` pasa de 5 a **10**. Subirlo es seguro: la guarda anti-SSRF valida
+  el destino en CADA salto, así que más saltos no amplían la superficie.
+- `[Rakuten — preexistente]`: `click.linksynergy.com` —el redirector de los
+  **8.173 productos** de Newegg— responde **400 a HEAD** y 200 a GET. El
+  validador lo marcaba roto. Se agregó fallback a GET para 400/403/405/501.
+  404 y 410 quedan fuera a propósito: ahí el recurso de verdad no está y
+  repetir solo gasta ancho de banda.
+- `[Impacto real hoy]`: **ninguno** — `grep` confirma que nada llama todavía a
+  `/api/v1/links/validate`. Se arregla igual porque el endpoint está público y
+  el día que se conecte marcaría como rotas las dos redes que facturan.
+- `[Nota de método]`: el primer test del fallback levantaba un servidor en
+  `127.0.0.1` y **falló con 403** — porque la guarda anti-SSRF bloquea loopback,
+  correctamente. En vez de debilitar la guarda para el test, se extrajo la
+  decisión a la función pura `debe_reintentar_con_get(status)`, que es lo
+  genuinamente testeable. El test que fallaba mejoró el diseño.
+- `[Estado]`: 15 tests en `ssrf_tests`, `cargo check` limpio.

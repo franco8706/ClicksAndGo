@@ -4,7 +4,7 @@
 // Valida links de afiliados de forma concurrente (Tokio async).
 // Verifica para cada URL:
 //   - Accesibilidad (HTTP 2xx/3xx)
-//   - Cadena de redirecciones (máx 5 hops)
+//   - Cadena de redirecciones (máx MAX_HOPS saltos)
 //   - Presencia del affiliate tag en la URL final
 //   - Tiempo de respuesta (latencia)
 //
@@ -111,6 +111,20 @@ fn is_public_ip(ip: &IpAddr) -> bool {
                 && v6.to_ipv4_mapped().map_or(true, |m| is_public_ip(&IpAddr::V4(m)))
         }
     }
+}
+
+/// ¿Conviene reintentar con GET tras esta respuesta a un HEAD?
+///
+/// Muchos redirectores de afiliados no soportan HEAD: medido contra
+/// producción, `click.linksynergy.com` —el que cubre los 8.173 productos de
+/// Rakuten— responde 400 a HEAD y 200 a GET. Sin reintento, el validador
+/// marcaría como ROTO el link de toda la red, que es el peor error posible
+/// acá: llevaría a desactivar links que sí cobran.
+///
+/// 404 queda FUERA a propósito: ahí el recurso realmente no está y repetir
+/// con GET solo gasta ancho de banda sin cambiar el veredicto.
+fn debe_reintentar_con_get(status: u16) -> bool {
+    matches!(status, 400 | 403 | 405 | 501)
 }
 
 #[derive(Debug, Deserialize)]
@@ -287,7 +301,20 @@ impl LinkValidator {
         }
     }
 
-    /// Sigue la cadena de redirecciones manualmente (máx 5 hops).
+    /// Tope de saltos de la cadena de redirects.
+    ///
+    /// Estaba en 5 y era MUY bajo para links de afiliado reales: medido contra
+    /// producción, `lenovo-argentina.5nfc.net` (Impact) encadena más de 5 saltos
+    /// —tracking → red → comerciante— y devolvía 508 "Loop Detected" sobre un
+    /// link perfectamente sano. Antes no se notaba porque reqwest seguía la
+    /// cadena solo (hasta 10) y este bucle nunca corría.
+    ///
+    /// 10 iguala el default de reqwest. Subirlo es seguro: la guarda anti-SSRF
+    /// valida el destino en CADA salto, así que más saltos no amplían la
+    /// superficie — solo evitan falsos "roto" sobre links que sí cobran.
+    const MAX_HOPS: u8 = 10;
+
+    /// Sigue la cadena de redirecciones manualmente (máx `MAX_HOPS`).
     /// reqwest por defecto sigue redirecciones pero no nos da el conteo;
     /// aquí capturamos cada hop para detectar loops y obtener la URL final.
     async fn follow_redirects(
@@ -310,12 +337,34 @@ impl LinkValidator {
                 });
             }
 
-            // Usamos HEAD para no descargar el body — mínimo ancho de banda
+            // HEAD primero: no descarga el body, mínimo ancho de banda.
             let resp = client
                 .head(&current)
                 .header("User-Agent", "ClicksAndGo_LinkValidator/4.2")
                 .send()
                 .await?;
+
+            // 🔁 Fallback a GET cuando el servidor no acepta HEAD.
+            //
+            // Muchos redirectores de afiliados lo rechazan: medido contra
+            // producción, `click.linksynergy.com` —el que cubre los 8.173
+            // productos de Rakuten— responde 400 a HEAD y funciona con GET.
+            // Sin este fallback, el validador marcaría como ROTO el link de
+            // toda la red, que es el peor error posible acá: llevaría a
+            // desactivar links que sí cobran.
+            //
+            // 405 (método no permitido), 400 y 403 son las respuestas típicas
+            // a un HEAD no soportado. Un 404 NO entra: ahí el recurso
+            // realmente no está y repetir con GET solo gasta ancho de banda.
+            let resp = if debe_reintentar_con_get(resp.status().as_u16()) {
+                client
+                    .get(&current)
+                    .header("User-Agent", "ClicksAndGo_LinkValidator/4.2")
+                    .send()
+                    .await?
+            } else {
+                resp
+            };
 
             let status = resp.status().as_u16();
 
@@ -324,7 +373,7 @@ impl LinkValidator {
                 if let Some(loc) = resp.headers().get("location") {
                     if let Ok(next) = loc.to_str() {
                         count += 1;
-                        if count >= 5 {
+                        if count >= Self::MAX_HOPS {
                             // Demasiados hops → posible loop
                             return Ok(RedirectOutcome {
                                 final_status: 508, // Loop Detected (RFC)
@@ -435,6 +484,33 @@ mod ssrf_tests {
         assert_eq!(
             resp.headers().get("location").and_then(|v| v.to_str().ok()),
             Some("/destino")
+        );
+    }
+
+    #[test]
+    fn reintenta_con_get_los_status_de_head_no_soportado() {
+        // 400 es el que devuelve click.linksynergy.com (toda la red Rakuten).
+        for s in [400u16, 403, 405, 501] {
+            assert!(debe_reintentar_con_get(s), "{s} debería reintentarse con GET");
+        }
+    }
+
+    #[test]
+    fn no_reintenta_cuando_el_recurso_de_verdad_no_esta() {
+        // 404/410: repetir con GET no cambia el veredicto y gasta ancho de banda.
+        // 2xx/3xx/5xx: no son "HEAD no soportado".
+        for s in [200u16, 301, 404, 410, 500, 503] {
+            assert!(!debe_reintentar_con_get(s), "{s} NO debería reintentarse");
+        }
+    }
+
+    #[test]
+    fn el_tope_de_saltos_cubre_cadenas_de_afiliados_reales() {
+        // Impact (lenovo-argentina.5nfc.net) encadena más de 5 saltos y con el
+        // tope viejo devolvía 508 sobre un link sano.
+        assert!(
+            LinkValidator::MAX_HOPS >= 10,
+            "las redes de afiliados encadenan tracking → red → comerciante"
         );
     }
 
