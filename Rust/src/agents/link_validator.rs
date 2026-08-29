@@ -156,10 +156,42 @@ impl LinkValidator {
     /// Sin él, 200 links = 200 conexiones TCP abiertas al mismo tiempo.
     const MAX_CONCURRENT: usize = 20;
 
+    /// Cliente PROPIO con los redirects DESACTIVADOS.
+    ///
+    /// 🔴 Por qué no se usa el `http_client` compartido del AppState: reqwest
+    /// sigue hasta 10 redirects por defecto y ese cliente no fija ninguna
+    /// política. Con auto-follow, la cadena la resuelve reqwest por dentro y
+    /// el bucle manual de `follow_redirects` nunca ve un 3xx — o sea que la
+    /// guarda anti-SSRF alcanzaba a validar SOLO la URL inicial. Un host
+    /// público que respondiera 302 hacia 169.254.169.254 la esquivaba entera,
+    /// que es justo el bypass que la guarda dice cubrir.
+    ///
+    /// Se detectó midiendo contra producción: una URL `http://` que debía
+    /// redirigir a `https://` devolvía `redirect_count: 0`, prueba de que el
+    /// bucle manual no estaba corriendo.
+    ///
+    /// Con `Policy::none()` cada 3xx vuelve al bucle, que valida el destino
+    /// ANTES de cada salto. No se toca el cliente compartido para no alterar
+    /// al benchmark_scraper, que sí quiere auto-follow.
+    fn client_sin_redirects() -> &'static Client {
+        static CLIENTE: std::sync::OnceLock<Client> = std::sync::OnceLock::new();
+        CLIENTE.get_or_init(|| {
+            Client::builder()
+                .user_agent("ClicksAndGo_LinkValidator/4.2")
+                .timeout(Duration::from_secs(15))
+                .connect_timeout(Duration::from_secs(5))
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .expect("Fallo al construir el cliente del LinkValidator")
+        })
+    }
+
     pub async fn validate_batch(
-        client: &Client,
+        _client: &Client,
         links: Vec<AffiliateLink>,
     ) -> Vec<LinkCheckResult> {
+        // Se ignora el cliente compartido a propósito (ver `client_sin_redirects`).
+        let client = Self::client_sin_redirects();
         let mut handles = Vec::with_capacity(links.len());
         let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(Self::MAX_CONCURRENT));
 
@@ -354,6 +386,57 @@ struct RedirectOutcome {
 #[cfg(test)]
 mod ssrf_tests {
     use super::*;
+
+    // ── La guarda depende de que NO haya auto-follow ────────────────────
+    //
+    // Si el cliente sigue redirects por su cuenta, el bucle manual nunca ve
+    // un 3xx y `is_public_destination` solo alcanza a validar la URL inicial:
+    // un host público que responda 302 a 169.254.169.254 esquiva la guarda
+    // entera. Este test fija que el validador use su propio cliente y que sea
+    // distinto del compartido (que sí quiere auto-follow para el scraper).
+
+    #[tokio::test]
+    async fn el_cliente_del_validador_no_sigue_redirects_solo() {
+        // Se levanta un servidor local que responde 302 hacia otra ruta. Si el
+        // cliente siguiera el redirect por su cuenta, veríamos el 200 del
+        // destino; con Policy::none() tiene que verse el 302 crudo — que es lo
+        // que devuelve el control al bucle manual donde vive la guarda SSRF.
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            for _ in 0..2 {
+                if let Ok((mut sock, _)) = listener.accept().await {
+                    let mut buf = [0u8; 1024];
+                    let _ = sock.read(&mut buf).await;
+                    let req = String::from_utf8_lossy(&buf);
+                    let resp: &[u8] = if req.starts_with("HEAD /destino") {
+                        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
+                    } else {
+                        b"HTTP/1.1 302 Found\r\nLocation: /destino\r\nContent-Length: 0\r\n\r\n"
+                    };
+                    let _ = sock.write_all(resp).await;
+                }
+            }
+        });
+
+        let resp = LinkValidator::client_sin_redirects()
+            .head(format!("http://{addr}/origen"))
+            .send()
+            .await
+            .expect("el servidor de prueba debe responder");
+
+        assert_eq!(
+            resp.status().as_u16(),
+            302,
+            "el cliente siguió el redirect solo → la guarda SSRF solo vería la URL inicial"
+        );
+        assert_eq!(
+            resp.headers().get("location").and_then(|v| v.to_str().ok()),
+            Some("/destino")
+        );
+    }
 
     #[test]
     fn rechaza_el_metadata_server_de_gcp() {

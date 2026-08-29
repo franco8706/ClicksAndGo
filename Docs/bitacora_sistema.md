@@ -1394,3 +1394,36 @@ Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
 - Conclusión: no urgente. Subir Rails 7.1 → 7.2/8.0 es una migración mayor y
   no se justifica por estos avisos. Queda anotado para cuando se haga por otros
   motivos.
+
+## 2026-08-25 (cont.) · 🔴 La guarda anti-SSRF tenía un hueco: reqwest seguía los redirects solo
+
+- `[Origen del hallazgo]`: verificando el arreglo del 24/08 contra producción,
+  una URL `http://www.lenovo.com/us/en/` —que debería redirigir a `https://`—
+  devolvía `redirect_count: 0` y `final_url: null`. Ese cero era la pista: el
+  bucle manual de `follow_redirects` no estaba corriendo.
+- `[Causa]`: el `http_client` compartido del `AppState` no fija política de
+  redirects, y **el default de reqwest es seguir hasta 10 automáticamente**.
+  Con auto-follow, la cadena la resuelve reqwest por dentro y el bucle manual
+  nunca ve un 3xx — así que `is_public_destination` alcanzaba a validar
+  únicamente la URL INICIAL.
+- `[Impacto]`: el bypass que la guarda decía cubrir seguía abierto. Un host
+  público que respondiera `302 → http://169.254.169.254/...` la esquivaba
+  entera y llegaba al metadata server igual. O sea: el fix del 24/08 estaba
+  incompleto y daba una falsa sensación de cierre.
+- `[Fix]`: `LinkValidator::client_sin_redirects()` — cliente propio en un
+  `OnceLock` con `redirect(Policy::none())`. Cada 3xx vuelve al bucle manual,
+  que valida el destino antes de cada salto. NO se toca el cliente compartido:
+  el `benchmark_scraper` sí quiere auto-follow.
+- `[Test]`: `el_cliente_del_validador_no_sigue_redirects_solo` levanta un
+  servidor TCP local que responde 302 y exige ver el 302 crudo. Un primer
+  intento de test comparaba punteros (`&'static` vs. local) y **habría pasado
+  siempre** — se descartó: un test que no puede fallar es peor que ninguno,
+  porque da confianza falsa sobre justo la propiedad que importa.
+- `[Estado]`: 12 tests en `ssrf_tests`, `cargo check` limpio.
+- `[⚠️ Trampa de deploy que volvió a morder]`: el deploy anterior de Rust fue un
+  **no-op silencioso**. `gcloud run services replace` con un YAML byte-idéntico
+  no crea revisión aunque `:latest` apunte a una imagen nueva — está documentado
+  en la entrada del 2026-07-27 y volvió a pasar. Se detectó comparando el
+  `imageDigest` de la revisión activa contra el del registry (`c533a139…` vs.
+  `2cd13625…`) y se forzó con `gcloud run services update --image ...:$GIT_SHA`.
+  **Verificar SIEMPRE el digest post-deploy; "Done" no significa desplegado.**
