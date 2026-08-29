@@ -1518,3 +1518,33 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
 - **Abuso del servicio Rust ya acotado por infraestructura**: `maxScale: 10` y
   tope de payload con 413. Se descartó agregar un rate limiter: exigiría una
   dependencia nueva para una ganancia marginal.
+
+## 2026-08-25 (cont.) · ♿ Accesibilidad: dos campos sin nombre accesible
+
+- `[Buscador principal]`: el input del hero solo tenía `placeholder`, que **no
+  es un nombre accesible** — desaparece al escribir y los lectores de pantalla
+  no lo tratan como etiqueta. Es la puerta de entrada del sitio: quien navega
+  con lector llegaba al campo sin saber qué era. Se agregó `aria-label`.
+  Se evaluó `type="search"` y se descartó: agrega el botón de limpiar NATIVO
+  del navegador y el componente ya tiene el suyo, así que quedarían dos.
+- `[Formulario de perfil]`: los 5 controles tenían `<label>` sin `htmlFor` y
+  `<input>` sin `id` — la asociación era puramente visual. Al tabular, un
+  lector de pantalla no anunciaba de qué campo se trataba. Asociados con
+  `htmlFor`/`id` (`perfil-nombre`, `perfil-apellido`, `perfil-telefono`,
+  `perfil-ciudad`, `perfil-pais`). El bloque de Email queda sin asociar a
+  propósito: es texto de solo lectura, no un control.
+- `[Nota de método]`: el primer grep marcó estos inputs junto a varios falsos
+  positivos, igual que había pasado con los `alt` de las imágenes — los
+  atributos estaban en líneas siguientes. Se verificó el markup real de cada
+  caso antes de tocar nada; de seis coincidencias, dos eran problemas reales.
+
+### Accesibilidad verificada SIN hallazgos
+
+- **Sin trampas de teclado**: no hay un solo `onClick` sobre `<div>`, `<span>`
+  ni `<li>` — todo lo clickeable es `<button>` o `<a>`.
+- **Foco visible**: `:focus-visible` con `outline: 2px` y `outline-offset`.
+- **Movimiento reducido**: `prefers-reduced-motion` respetado en globals.css,
+  AIDealsSection, CountUp y Reveal.
+- **WCAG 2.2.2 (pausar movimiento)**: el carrusel automático se pausa al pasar
+  el mouse y no arranca si el visitante pidió menos movimiento.
+- **Imágenes**: todos los `<Image>` con `alt`.

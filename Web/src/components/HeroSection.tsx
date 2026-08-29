@@ -102,6 +102,14 @@ function PredictiveSearch({ dict }: { readonly dict: Dict }) {
         <input
           ref={inputRef}
           type="text"
+          // ♿ `placeholder` NO es un nombre accesible: desaparece al escribir y
+          // los lectores de pantalla no lo tratan como etiqueta. Este es el
+          // buscador principal del sitio —la puerta de entrada— así que sin
+          // esto un usuario de lector llega al campo y no sabe qué es.
+          // Se mantiene `type="text"` y no `search`: este último agrega el botón
+          // de limpiar NATIVO del navegador, y el componente ya tiene el suyo
+          // (abajo, con su propio aria-label) — quedarían dos.
+          aria-label={dict.hero?.searchPlaceholder || "Buscar productos"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}

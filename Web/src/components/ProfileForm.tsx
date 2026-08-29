@@ -55,9 +55,10 @@ export default function ProfileForm({ profile, updateAction, signOutAction, dict
           {/* Nombre / Apellido */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>{dict.auth?.firstName || "Nombre"}</label>
+              <label className={labelClass} htmlFor="perfil-nombre">{dict.auth?.firstName || "Nombre"}</label>
               <input
                 name="name"
+                id="perfil-nombre"
                 type="text"
                 defaultValue={profile.name ?? ""}
                 placeholder="Ej: Juan"
@@ -66,9 +67,10 @@ export default function ProfileForm({ profile, updateAction, signOutAction, dict
               />
             </div>
             <div>
-              <label className={labelClass}>{dict.auth?.lastName || "Apellido"}</label>
+              <label className={labelClass} htmlFor="perfil-apellido">{dict.auth?.lastName || "Apellido"}</label>
               <input
                 name="last_name"
+                id="perfil-apellido"
                 type="text"
                 defaultValue={profile.last_name ?? ""}
                 placeholder="Ej: García"
@@ -81,9 +83,10 @@ export default function ProfileForm({ profile, updateAction, signOutAction, dict
           {/* Teléfono / Ciudad */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>{dict.auth?.phone || "Teléfono"}</label>
+              <label className={labelClass} htmlFor="perfil-telefono">{dict.auth?.phone || "Teléfono"}</label>
               <input
                 name="phone"
+                id="perfil-telefono"
                 type="tel"
                 defaultValue={profile.phone ?? ""}
                 placeholder="+54 11 1234-5678"
@@ -95,9 +98,10 @@ export default function ProfileForm({ profile, updateAction, signOutAction, dict
               </p>
             </div>
             <div>
-              <label className={labelClass}>{dict.auth?.city || "Ciudad"}</label>
+              <label className={labelClass} htmlFor="perfil-ciudad">{dict.auth?.city || "Ciudad"}</label>
               <input
                 name="city"
+                id="perfil-ciudad"
                 type="text"
                 defaultValue={profile.city ?? ""}
                 placeholder="Ej: Buenos Aires"
@@ -120,9 +124,10 @@ export default function ProfileForm({ profile, updateAction, signOutAction, dict
 
           {/* 🌍 País preferido del catálogo (vacío = automático por ubicación) */}
           <div>
-            <label className={labelClass}>{dict.dashboard?.preferredCountry || "País del catálogo"}</label>
+            <label className={labelClass} htmlFor="perfil-pais">{dict.dashboard?.preferredCountry || "País del catálogo"}</label>
             <select
               name="country_code"
+                id="perfil-pais"
               defaultValue={profile.country_code ?? ""}
               className={`${inputClass} cursor-pointer appearance-none`}
             >
