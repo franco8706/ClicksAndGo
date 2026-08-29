@@ -1342,3 +1342,48 @@ Suites tras los cambios: **184 Web · 76 Rails · 277 Python**, todas en verde.
   ORIGINAL, no sobre la actual, y no resuelve rutas relativas correctamente. Es
   un bug de correctitud preexistente (no de seguridad: no cambia el host a uno
   interno). No se tocó por no poder compilar/probar localmente.
+
+## 2026-08-25 · 🔐 Auditoría de dependencias (frente no cubierto el 24/08)
+
+### Web — 6 vulnerabilidades (2 críticas, 4 altas) → **0**
+
+| Paquete | Antes | Ahora | Aplicaba de verdad |
+|---|---|---|---|
+| `next-auth` | 5.0.0-beta.31 | **5.0.0-beta.32** | ❌ NO — ver abajo |
+| `@auth/core` | 0.41.2 | **0.41.3** | ❌ NO |
+| `next` | 16.2.4 | **16.3.3** | 🟡 Bajo impacto |
+| `sharp` | 0.33.5 | **0.35.4** | ✅ **SÍ — camino de ataque real** |
+| `postcss`, `nanoid` | — | resueltos | 🟡 build-time / DoS |
+
+- `[CRÍTICA de Auth.js — NO éramos vulnerables]`: CVE-2026-73421, "existence-based
+  auth checks fail open". El patrón vulnerable es `!!auth` (objeto pelado), que
+  ante un error de configuración queda truthy. **Todas** las puertas de acceso
+  del proyecto usan `session?.user?.id` — propiedades reales, que es justo la
+  mitigación que recomienda el aviso. Auditadas las 12 verificaciones del
+  código: ni una sola usa el patrón vulnerable. Se actualizó igual (estar a
+  salvo por buena práctica no es lo mismo que estar parcheado).
+- `[Bypass de middleware de Next — bajo impacto]`: 6 avisos de bypass de
+  Middleware/Proxy. Acá el proxy NO decide autorización —solo geo, cabeceras de
+  seguridad y el tag de afiliado—; el acceso al panel lo resuelve `auth()`
+  dentro del Server Component. Un bypass costaría cabeceras y locale, no acceso.
+- `[🔴 sharp — el que sí importaba]`: CVEs de libvips. Next usa sharp para el
+  optimizador, que procesa **imágenes remotas de CDNs de afiliados**. Newegg es
+  un marketplace donde el vendedor sube la imagen: un JPEG malicioso llegaba a
+  libvips vulnerable dentro de nuestro contenedor. Subir `sharp` de nivel
+  superior NO alcanzaba — Next traía una copia anidada en 0.34.5, también
+  vulnerable; hizo falta subir Next para eliminarla.
+- `[Verificación]`: `npm audit` → 0 vulnerabilidades; `tsc` limpio; 184 tests;
+  y **`next build` de producción exitoso** (los tests no ejercitan el build).
+  Se respetó la convención del proyecto de pinnear `next`/`next-auth` exactos.
+
+### Rails — 10 avisos, **ninguno aplicable**
+
+- 7 son de **ActiveStorage** (incluida la de RCE en variant processing):
+  `config/application.rb` NO carga ese framework — solo `active_model`,
+  `active_record` y `action_controller`. No está ni cargado.
+- 1 de **ActionView** (XSS en tag helpers): la app es una API JSON pura —
+  **0 archivos de vistas**, 44 `render json:`, cero tag helpers.
+- 2 de **ActiveSupport** (ReDoS/DoS en number helpers): no se usa ni uno.
+- Conclusión: no urgente. Subir Rails 7.1 → 7.2/8.0 es una migración mayor y
+  no se justifica por estos avisos. Queda anotado para cuando se haga por otros
+  motivos.
