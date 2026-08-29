@@ -50,10 +50,35 @@ build_and_push() {
 }
 
 deploy_service() {
-  local yaml="Infra/cloud/cloudrun-${1}.yaml"
-  log "Deploying ${1} from ${yaml}..."
+  local svc="$1"
+  local yaml="Infra/cloud/cloudrun-${svc}.yaml"
+  local tag="${REGISTRY}/${svc}:${GIT_SHA}"
+
+  log "Deploying ${svc} from ${yaml}..."
   gcloud run services replace "$yaml" --region "$REGION" --quiet
-  ok "${1} deployed"
+
+  # ⚠️ `services replace` con un YAML BYTE-IDÉNTICO al desplegado es un no-op,
+  # aunque `:latest` ya apunte a una imagen nueva: Cloud Run compara la
+  # especificación, no el contenido del tag. El resultado es un deploy que
+  # imprime "Done" mientras producción sigue sirviendo el binario viejo.
+  # Pasó el 2026-07-27 (Rails quedó 10 días atrás) y volvió a pasar el
+  # 2026-08-25 con Rust — la segunda vez con un arreglo de seguridad dentro.
+  #
+  # Se fuerza siempre la imagen por SHA: el tag cambia en cada commit, así que
+  # la especificación SIEMPRE difiere y la revisión se crea de verdad.
+  gcloud run services update "clicks-${svc}" \
+    --region "$REGION" --image "$tag" --quiet >/dev/null
+
+  # Verificación dura: el digest servido debe ser el de la imagen recién
+  # publicada. Sin esto, "Done" no prueba nada.
+  local servido esperado
+  servido=$(gcloud run services describe "clicks-${svc}" --region "$REGION" \
+    --format="value(spec.template.spec.containers[0].image)" 2>/dev/null)
+  esperado="$tag"
+  if [[ "$servido" != "$esperado" ]]; then
+    err "${svc}: la revisión activa sirve '${servido}' y se esperaba '${esperado}'"
+  fi
+  ok "${svc} deployed (${GIT_SHA})"
 }
 
 # ── Build & Push ─────────────────────────────────────────────────────────────
