@@ -32,6 +32,7 @@ import os
 import requests
 
 from src.rails_client import internal_headers, rails_url
+from src.rust_client import post_rust
 
 #: Tope de Rust (`MAX_BATCH_SIZE`). Por encima responde 413 — antes recortaba
 #: en silencio y devolvía 200 con medio resultado.
@@ -110,7 +111,9 @@ class ScoreBackfillAgent:
             } for it in lote]
 
             try:
-                resp = requests.post(self.rust_url, json={"items": payload}, timeout=60)
+                # 🔐 `post_rust` adjunta el token de identidad que exige Cloud Run
+                # desde que clicks-rust dejó de ser `allUsers`.
+                resp = post_rust(self.rust_url, {"items": payload}, timeout=60)
             except requests.RequestException as e:
                 self._log(f"🚨 [Backfill] Rust inalcanzable: {e}", "ERROR")
                 continue

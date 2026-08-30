@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup
 
 from src.providers import TASK_LEGAL_AUDIT
 from src.rails_client import NEWS_PATH, post_json, rails_url
+from src.rust_client import post_rust
 
 # URL del motor Rust — preprocesa el diff antes de llamar a Gemini.
 # RUST_API_URL puede venir como base (docker: http://rust_engine:8080) o como
@@ -521,10 +522,11 @@ Return ONLY valid JSON:
     ) -> Optional[dict]:
         """Llama al endpoint /api/v1/legal/diff de Rust para pre-análisis de bajo costo."""
         try:
-            resp = requests.post(
+            # 🔐 Autenticado: clicks-rust ya no acepta llamadas anónimas.
+            resp = post_rust(
                 _RUST_DIFF_URL,
-                json={"items": [{"source": source, "network": network,
-                                 "prev_text": prev_text or "", "curr_text": curr_text}]},
+                {"items": [{"source": source, "network": network,
+                            "prev_text": prev_text or "", "curr_text": curr_text}]},
                 timeout=10,
             )
             if resp.status_code == 200:

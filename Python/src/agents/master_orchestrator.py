@@ -12,6 +12,7 @@ from src.agents.semantic_engine import SemanticEngineAgent
 from src.agents.legal_agent import LegalComplianceAgent
 from src.agents.price_alert_agent import PriceAlertAgent
 from src.providers import ProviderRouter
+from src.rust_client import post_rust
 
 class MasterOrchestratorAgent:
     """
@@ -192,7 +193,8 @@ class MasterOrchestratorAgent:
         # 3. 🧮 Delegación de Benchmarks a RUST (¡Seguridad de Memoria!)
         try:
             # Python simplemente da la orden. Rust hace el trabajo sucio en C++.
-            res_bench = requests.post(self.rust_benchmark_url, timeout=30)
+            # 🔐 Autenticado: clicks-rust ya no acepta llamadas anónimas.
+            res_bench = post_rust(self.rust_benchmark_url, timeout=30)
             if res_bench.status_code == 200:
                 data = res_bench.json()
                 self.log_action("MasterOrchestrator", f"Rust extrajo {data.get('cpu_count')} CPUs y {data.get('gpu_count')} GPUs de forma segura.")
@@ -268,7 +270,7 @@ class MasterOrchestratorAgent:
 
             for i in range(0, len(items), self.RUST_BATCH_SIZE):
                 lote = items[i:i + self.RUST_BATCH_SIZE]
-                res_rust = requests.post(self.rust_batch_url, json={"items": lote}, timeout=30)
+                res_rust = post_rust(self.rust_batch_url, {"items": lote}, timeout=30)
                 if res_rust.status_code == 200:
                     score_map.update(
                         {it["sku"]: it for it in res_rust.json() if "sku" in it}
