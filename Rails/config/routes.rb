@@ -18,6 +18,29 @@ Rails.application.routes.draw do
       # resuelve el país del visitante por IP en un solo lugar.
       get :geo, to: "geo#show"
 
+      # ── 🔐 Adapter de NextAuth ────────────────────────────────────────
+      # Devuelve Postgres a Rails: `Web/src/auth.ts` abría su propio pool.
+      #
+      # ⚠️ Los lookups de sesión y de token son POST aunque sean lecturas.
+      # `session_token` es una credencial portadora y una URL termina en los
+      # logs de acceso — eso convertiría el log en un almacén de sesiones
+      # robables. El email va por el mismo camino por ser dato personal.
+      scope "auth" do
+        post   "users",                    to: "auth#create_user"
+        post   "users/lookup",             to: "auth#lookup_user"
+        get    "users/:id",                to: "auth#find_user"
+        patch  "users/:id",                to: "auth#update_user"
+        delete "users/:id",                to: "auth#delete_user"
+        post   "accounts",                 to: "auth#link_account"
+        post   "accounts/unlink",          to: "auth#unlink_account"
+        post   "sessions",                 to: "auth#create_session"
+        post   "sessions/lookup",          to: "auth#lookup_session"
+        post   "sessions/update",          to: "auth#update_session"
+        post   "sessions/delete",          to: "auth#delete_session"
+        post   "verification_tokens",      to: "auth#create_verification_token"
+        post   "verification_tokens/use",  to: "auth#use_verification_token"
+      end
+
       # 💻 Dominio: Laptops / Notebooks (endpoint histórico, retrocompatible)
       resources :notebooks, only: [:index, :create] do
         collection do
