@@ -37,12 +37,14 @@ const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-interface RailsFetchOptions extends RequestInit {
+export interface RailsFetchOptions extends RequestInit {
   /** `true` para métodos no idempotentes que igual son seguros de repetir. */
   readonly retryUnsafe?: boolean;
 }
 
-async function railsFetch(path: string, init: RailsFetchOptions = {}): Promise<Response> {
+/** Exportado para el adapter de NextAuth (`authRailsAdapter.ts`), que
+ *  necesita el mismo timeout, los mismos reintentos y la misma clave interna. */
+export async function railsFetch(path: string, init: RailsFetchOptions = {}): Promise<Response> {
   const { retryUnsafe, ...requestInit } = init;
   const method = (requestInit.method || "GET").toUpperCase();
   const idempotent = method === "GET" || method === "HEAD" || retryUnsafe === true;

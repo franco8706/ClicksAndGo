@@ -1646,3 +1646,29 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
   servicio como audiencia. Es exactamente el error que el test
   `test_el_audience_es_la_url_base_sin_path` previene: mandar la URL con path
   daría 403 en todas las llamadas.
+
+## 2026-08-30 (cont.) · 🗄️ Next.js deja de hablar con Postgres (paso 2 de 2)
+
+- `[Cambio]`: `Web/src/auth.ts` usaba `ClicksAdapter`, con un `Pool` propio y
+  14 queries directas. Ahora usa `RailsAdapter`, que pasa por
+  `Api::V1::AuthController`. **`Web/src/lib/db.ts` quedó huérfano y se eliminó**:
+  era código muerto con la lógica de credenciales y del TLS de Postgres.
+- `[Efecto en el presupuesto]`: Next.js ya NO abre conexiones a la base.
+  El techo teórico pasa de "Rails 16 + Next.js hasta 150" a **solo Rails: 16**,
+  contra ~20 disponibles. Por primera vez el número cierra.
+- `[⚠️ El detalle que hacía o rompía la migración]`: **JSON no tiene tipo
+  Date**. El driver de Postgres devolvía objetos `Date`; al pasar por HTTP se
+  vuelven cadenas ISO, y NextAuth COMPARA `session.expires` como fecha. Sin
+  rehidratarlas, las sesiones se romperían de formas raras y silenciosas. El
+  adapter convierte explícitamente `expires` y `emailVerified` al volver.
+- `[Reintentos, decididos uno por uno]`: las lecturas se reintentan porque
+  Rails corre con `minScale: 0` y un cold start no puede desloguear a nadie.
+  `createUser` y `createSession` NO se reintentan: repetirlos chocaría contra
+  una constraint de unicidad. `useVerificationToken` tampoco, y es el caso más
+  sutil — consumir un magic link lo BORRA, así que un reintento tras una
+  respuesta perdida devolvería null y el visitante vería como "inválido" un
+  enlace que acababa de funcionar.
+- `[Verificado contra PRODUCCIÓN antes de tocar Web]`: 401 sin la clave
+  interna; token y email inexistentes devuelven `null` y no un error; y un
+  ciclo completo real —crear usuario → crear sesión → recuperar sesión+usuario
+  → borrar ambos— con la limpieza confirmada (ambos vuelven `null`).
