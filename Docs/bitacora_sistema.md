@@ -1615,3 +1615,34 @@ con homepages), aparecieron dos falsos "roto" sobre las dos redes vivas:
   ya rige en el proyecto — `ForYouRail` y `EventBanner` devuelven `null` cuando
   no tienen datos, en vez de rellenar.
 - 197 tests y `next build` de producción en verde.
+
+## 2026-08-30 · 🔐 clicks-rust cerrado con IAM (ya no es público)
+
+- `[Estado previo]`: `allUsers` con `roles/run.invoker`. Cualquiera en internet
+  podía invocar los 8 endpoints. Sin datos personales de por medio, así que no
+  era fuga de información: era CPU gratis a costa nuestra, y un validador de
+  links capaz de hacer peticiones salientes desde nuestra IP.
+- `[Enfoque: verificar primero, cerrar después]`. El riesgo de cerrar primero
+  era el modo de fallo silencioso de siempre: si Python no autenticaba, el
+  scoring dejaba de actualizarse y NADA se vería roto en el sitio — los
+  productos conservarían su puntaje viejo. Por eso el orden fue:
+  1. Desplegar Python con el token, con Rust todavía abierto.
+  2. Confirmar contra producción que la cadena funciona (log del LegalAgent
+     "Rust clasificó como SKIP", que solo aparece si el diff respondió) y que
+     no hubo advertencias de "token de identidad" no obtenido.
+  3. **Conceder** invoker a `clicks-sa` ANTES de quitar `allUsers`, para que
+     nunca hubiera una ventana sin acceso.
+  4. Quitar `allUsers` y verificar las dos caras.
+- `[Verificado con IAM cerrado]`: anónimo → **403** en `/health`,
+  `/links/validate` y `/score/batch`; Python → sigue funcionando (log de las
+  04:11:40, posterior al cierre confirmado). Web, Rails y Python sin impacto.
+- `[Detalle útil]`: la propagación del cambio de IAM tardó **~80 segundos**.
+  Durante ese lapso el servicio siguió respondiendo 200 a anónimos. Conviene
+  verificar con `curl` en bucle y no dar el cambio por hecho al ver el comando
+  terminar.
+- `[Por qué mi token de gcloud da 401 y el de Python funciona]`: Cloud Run
+  valida la AUDIENCIA del token. `gcloud auth print-identity-token` emite uno
+  para el cliente de gcloud; `rust_client.py` lo pide con la URL base del
+  servicio como audiencia. Es exactamente el error que el test
+  `test_el_audience_es_la_url_base_sin_path` previene: mandar la URL con path
+  daría 403 en todas las llamadas.
